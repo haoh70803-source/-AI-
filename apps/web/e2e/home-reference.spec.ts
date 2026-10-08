@@ -1,0 +1,155 @@
+import { randomUUID } from "node:crypto";
+import { db, ensurePersonalWorkspaceForUser } from "@content-center/db";
+import { expect, test } from "@playwright/test";
+import { auth } from "../lib/auth";
+
+let userId = "";
+let workspaceId = "";
+let sourceId = "";
+let cookies: Array<{name: string; value: string; domain: string; path: string; httpOnly: boolean; sameSite: "Lax"}> = [];
+test.beforeAll(async () => {
+  if (process.env.ENVIRONMENT_ID !== "LOCAL_TEST") throw new Error("LOCAL_TEST required");
+  const registration = await auth.api.signUpEmail({ body: { name: "视觉验收", email: `reference-home-${randomUUID()}@example.test`, password: "reference-home-test-only" }, asResponse: true });
+  expect(registration.ok).toBe(true);
+  userId = ((await registration.clone().json()) as {user: {id: string}}).user.id;
+  workspaceId = (await ensurePersonalWorkspaceForUser(db, {userId})).id;
+  sourceId = (await db.sourceItem.create({ data: { workspaceId, createdById: userId, sourceType: "TEXT", sourcePlatform: "GENERIC", status: "READY", title: "家长访谈资料", rawText: "家长希望先看见真实的课程安排，再了解老师如何反馈学习过程。" } })).id;
+  cookies = registration.headers.getSetCookie().map((value) => {
+    const pair = value.split(";")[0]!;
+    const index = pair.indexOf("=");
+    return { name: pair.slice(0,index), value: pair.slice(index+1), domain: "localhost", path:"/", httpOnly:true, sameSite:"Lax" as const };
+  });
+});
+test.afterAll(async () => {
+  if (workspaceId) await db.workspace.delete({where:{id:workspaceId}});
+  if (userId) await db.user.delete({where:{id:userId}});
+  await db.$disconnect();
+});
+test("homepage composer stays usable through scroll, focus, resizing and draft restoration", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  await page.context().addCookies(cookies);
+  await page.setViewportSize({ width: 1680, height: 945 });
+  await page.goto("/dashboard");
+  const input = page.getByLabel("描述你想完成的事情");
+  await expect(input).toHaveCount(1);
+  await input.fill("下滑、刷新之后都保留这段未发送的内容");
+  await page.getByRole("heading", { name: "鑫世界工作台", exact: true }).click();
+  const originalHeight = (await page.locator(".xsj-composer").boundingBox())!.height;
+  const initialBox = (await page.locator(".xsj-composer").boundingBox())!;
+  expect(initialBox.y + initialBox.height / 2).toBeGreaterThan(945 * .48);
+  expect(initialBox.y + initialBox.height / 2).toBeLessThan(945 * .65);
+  await page.screenshot({ path: info.outputPath("composer-centered-first-screen.png") });
+  await page.evaluate(() => scrollTo(0, 120));
+  await expect.poll(async () => Math.round((await page.locator(".xsj-composer").boundingBox())!.y)).toBe(Math.round(initialBox.y - 120));
+  await expect.poll(async () => (await page.locator(".xsj-composer").boundingBox())!.height).toBe(originalHeight);
+  await page.screenshot({ path: info.outputPath("composer-natural-scroll.png") });
+  await page.evaluate(() => scrollTo(0, 500));
+  await expect(page.locator(".xsj-home")).toHaveClass(/is-compact/);
+  await expect.poll(async () => (await page.locator(".xsj-composer").boundingBox())!.height).toBeGreaterThan(130);
+  await expect(input).toHaveValue("下滑、刷新之后都保留这段未发送的内容");
+  await page.screenshot({ path: info.outputPath("composer-compact.png") });
+  await input.click();
+  await expect.poll(async () => (await page.locator(".xsj-composer").boundingBox())!.height).toBeGreaterThan(130);
+  await expect(page.getByRole("button", { name: "选择创作模型", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "选择创作模型", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "选择模型" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "选择模型" })).toHaveCount(0);
+  await page.reload();
+  await expect(input).toHaveValue("下滑、刷新之后都保留这段未发送的内容");
+  await page.evaluate(() => scrollTo(0, 0));
+  await expect(page.locator(".xsj-home")).not.toHaveClass(/is-compact/);
+  await expect.poll(async () => (await page.locator(".xsj-composer").boundingBox())!.height).toBe(originalHeight);
+  for (const width of [390, 768, 1440, 1680, 1920, 2560]) {
+    await page.setViewportSize({ width, height: width < 1000 ? 844 : 1080 });
+    await expect.poll(async () => {
+      const box = await page.locator(".xsj-composer").boundingBox();
+      return box!.x >= 68 && box!.x + box!.width <= width;
+    }).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`home-current-${width}.png`) });
+  }
+  await page.setViewportSize({ width: 1680, height: 945 });
+  await page.locator(".xsj-inspiration-card").first().click();
+  await page.getByRole("button", { name: "使用这个灵感" }).click();
+  await expect(input).toHaveValue(/雪境之瞳/);
+  await expect(input).toBeFocused();
+  await page.getByRole("tab", { name: "Skill", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "从第一个 Skill 开始" })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate(() => scrollTo(0, 0));
+  await expect(page.locator(".xsj-morph-layer")).toHaveCSS("transition-duration", "0s");
+});
+
+test("starts a project from the first sentence and restores the discovery conversation", async ({page}) => {
+  test.setTimeout(60_000);
+  await page.context().addCookies(cookies);
+  await page.setViewportSize({width:1680,height:945});
+  await page.goto("/dashboard");
+  await page.getByLabel("描述你想完成的事情").fill("我想生成一个口播稿");
+  await page.getByRole("button",{name:"开始创作"}).click();
+  await expect(page).toHaveURL(/\/dashboard\?project=.+&start=1/);
+  await expect(page.getByRole("heading",{name:"口播稿创作"})).toBeVisible();
+  await expect(page.getByRole("region", { name: "未分组" }).getByRole("link",{name:"口播稿创作",exact:true})).toHaveAttribute("aria-current","page");
+  await expect(page.getByRole("region",{name:"Agent 对话"}).getByText("鑫小助",{exact:true})).toBeVisible();
+  await expect(page.getByText("我想生成一个口播稿",{exact:true})).toBeVisible({timeout:30_000});
+  await expect(page.getByText("Agent 输出",{exact:true})).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("我想生成一个口播稿",{exact:true})).toBeVisible();
+  await expect(page.getByRole("main",{name:"项目工作区"})).toBeVisible();
+  await expect(page.getByRole("region",{name:"Agent 对话"})).toBeVisible();
+  for (const hidden of ["Agent 输出","本次生成思路","内容检查已完成","生成后润色","去 AI 味","稿件反馈与方法评价","查看可拍检查","鑫世界默认创作方法"]) await expect(page.getByText(hidden,{exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"+ 资料",exact:true}).click();
+  await expect(page.getByText("当前资料",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"关闭",exact:true}).click();
+  await page.getByRole("button",{name:"+ Skill",exact:true}).click();
+  await expect(page.getByText("当前工作区 Skill",{exact:true})).toBeVisible();
+  await expect(page.getByText("鑫世界默认创作方法",{exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"关闭",exact:true}).click();
+  await page.getByRole("button",{name:"高级画布",exact:true}).click();
+  await expect(page.getByRole("region",{name:"内容画布"})).toBeVisible();
+  await page.getByRole("button",{name:"返回创作台"}).click();
+});
+
+test("selects a source, gets a restorable first draft, and saves it only on click", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.context().addCookies(cookies);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/dashboard");
+  await page.getByRole("button", { name: "资料库", exact: true }).click();
+  await page.getByLabel("搜索已有资料").fill("家长访谈资料");
+  await page.getByRole("checkbox", { name: "家长访谈资料" }).check();
+  await page.getByRole("button", { name: "关闭选择框" }).click();
+  await page.getByLabel("描述你想完成的事情").fill("请写一篇关于学校如何向家长解释课程价值的文案，面向家长，语气自然，不虚构数字。");
+  await page.getByRole("button", { name: "开始创作" }).click();
+  await expect(page).toHaveURL(/\/dashboard\?project=.+&start=1/u);
+  const projectId = new URL(page.url()).searchParams.get("project")!;
+  await expect.poll(() => db.projectSource.count({ where: { projectId, sourceItemId: sourceId } })).toBe(1);
+  const candidate = page.getByTestId("workspace-artifact-view");
+  await expect(candidate.getByText("候选稿 · 未保存")).toBeVisible({ timeout: 45_000 });
+  await expect(candidate.getByRole("button", { name: "保存为稿件" })).toBeVisible();
+  await expect.poll(() => db.artifact.count({ where: { projectId } })).toBe(0);
+  await page.reload();
+  await expect(candidate.getByText("候选稿 · 未保存")).toBeVisible({ timeout: 30_000 });
+  await candidate.getByRole("button", { name: "保存为稿件" }).click();
+  await expect(page).toHaveURL(new RegExp(`node=artifact%3A|node=artifact:`), { timeout: 30_000 });
+  await expect.poll(() => db.artifact.count({ where: { projectId } })).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("saves a completed oral-script candidate into MotherContent only after confirmation", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.context().addCookies(cookies);
+  await page.goto("/dashboard");
+  await page.getByLabel("描述你想完成的事情").fill("请写一条关于校长如何向家长解释课程价值的 60 秒口播稿，语气自然，不虚构数据。");
+  await page.getByRole("button", { name: "开始创作" }).click();
+  await expect(page).toHaveURL(/\/dashboard\?project=.+&start=1/u);
+  const projectId = new URL(page.url()).searchParams.get("project")!;
+  const candidate = page.getByTestId("workspace-artifact-view");
+  await expect(candidate.getByText("候选稿 · 未保存")).toBeVisible({ timeout: 45_000 });
+  await expect.poll(() => db.motherContent.count({ where: { projectId } })).toBe(0);
+  await candidate.getByRole("button", { name: "保存为稿件" }).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard\\?project=${projectId}$`), { timeout: 30_000 });
+  await expect.poll(() => db.motherContent.count({ where: { projectId } })).toBe(1);
+  expect((await db.motherContent.findFirst({ where: { projectId }, select: { body: true } }))?.body).toContain("MOCK MODE");
+});

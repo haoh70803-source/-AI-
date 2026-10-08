@@ -1,0 +1,1 @@
+export default function ResearchLoading() { return <div className="research-loading" role="status" aria-label="正在读取研究内容"><div className="research-skeleton is-title" /><div className="research-skeleton is-panel" /><div className="research-skeleton" /><div className="research-skeleton" style={{ width: "70%" }} /><span className="research-caption">正在读取研究内容…</span></div>; }

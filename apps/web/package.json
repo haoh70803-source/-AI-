@@ -1,0 +1,47 @@
+{
+  "name": "@content-center/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint app components lib server tests e2e --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run tests --no-file-parallelism",
+    "test:e2e": "playwright test",
+    "experience:bootstrap": "tsx scripts/bootstrap-experience.ts",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts"
+  },
+  "dependencies": {
+    "@better-auth/core": "1.7.2",
+    "@better-auth/prisma-adapter": "1.7.2",
+    "@content-center/core": "workspace:*",
+    "@content-center/db": "workspace:*",
+    "@content-center/integrations": "workspace:*",
+    "@content-center/providers": "workspace:*",
+    "@content-center/ui": "workspace:*",
+    "@content-center/worker": "workspace:*",
+    "@napi-rs/canvas": "0.1.80",
+    "@xyflow/react": "12.11.6",
+    "better-auth": "1.7.2",
+    "bullmq": "6.3.3",
+    "jsdom": "30.0.1",
+    "lucide-react": "1.38.0",
+    "next": "16.3.4",
+    "pdf-parse": "2.4.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "server-only": "0.0.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "jszip": "3.10.1",
+    "tailwindcss": "4.3.3"
+  }
+}

@@ -1,0 +1,133 @@
+# LEGACY COMPATIBILITY: staging only, not the approved local/customer release profile.
+# Schema upgrades and bootstrap require a separate reviewed maintenance action.
+services:
+  - type: web
+    name: xsj-content-web-staging
+    runtime: node
+    repo: https://github.com/lazyyz1/xsj-content-center
+    region: singapore
+    branch: feat/web-integration-release
+    autoDeployTrigger: commit
+    buildCommand: pnpm install --frozen-lockfile && pnpm exec turbo build
+    preDeployCommand: pnpm --filter @content-center/db db:migrate
+    startCommand: pnpm --filter @content-center/web start
+    healthCheckPath: /api/health/live # Liveness only; customer readiness is separately checked.
+    envVars:
+      - key: EXPERIENCE_LIMITS_ENABLED
+        value: "true"
+      - key: EXPERIENCE_SITE_ID
+        value: xsj-web-experience
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_DRIVER
+        value: RENDER_MEDIA_RELAY
+      - key: MEDIA_STORAGE_ROOT
+        value: /var/data/xsj-media
+      - key: APP_URL
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: MEDIA_RELAY_INTERNAL_BASE_URL
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          property: hostport
+      - key: MEDIA_RELAY_INTERNAL_SECRET
+        generateValue: true
+      - key: MEDIA_RELAY_SIGNING_SECRET
+        generateValue: true
+      - key: ASR_AUDIO_RETENTION_HOURS
+        value: "24"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: xsj-content-postgres-staging
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: xsj-content-redis-staging
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      # Supply a stable 32-byte Base64 key; preserve it across deploys.
+      - key: INTEGRATION_ENCRYPTION_KEY
+        sync: false
+      - key: ALLOW_PUBLIC_SIGNUP
+        value: "false"
+      - key: NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP
+        value: "false"
+    disk:
+      name: xsj-content-media-staging
+      mountPath: /var/data
+      sizeGB: 10
+
+  - type: worker
+    name: xsj-content-worker-staging
+    runtime: node
+    repo: https://github.com/lazyyz1/xsj-content-center
+    region: singapore
+    branch: feat/web-integration-release
+    autoDeployTrigger: commit
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @content-center/worker build
+    startCommand: pnpm --filter @content-center/worker start
+    envVars:
+      - key: EXPERIENCE_LIMITS_ENABLED
+        value: "true"
+      - key: EXPERIENCE_SITE_ID
+        value: xsj-web-experience
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_DRIVER
+        value: RENDER_MEDIA_RELAY
+      - key: MEDIA_STORAGE_ROOT
+        value: /var/data/xsj-media
+      - key: MEDIA_RELAY_INTERNAL_BASE_URL
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          property: hostport
+      - key: APP_URL
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: MEDIA_RELAY_INTERNAL_SECRET
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          envVarKey: MEDIA_RELAY_INTERNAL_SECRET
+      - key: MEDIA_RELAY_SIGNING_SECRET
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          envVarKey: MEDIA_RELAY_SIGNING_SECRET
+      - key: DATABASE_URL
+        fromDatabase:
+          name: xsj-content-postgres-staging
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: xsj-content-redis-staging
+          property: connectionString
+      - key: AUTH_SECRET
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          envVarKey: AUTH_SECRET
+      - key: INTEGRATION_ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: xsj-content-web-staging
+          envVarKey: INTEGRATION_ENCRYPTION_KEY
+
+  - type: keyvalue
+    name: xsj-content-redis-staging
+    region: singapore
+    ipAllowList: []
+
+databases:
+  - name: xsj-content-postgres-staging
+    region: singapore
+    ipAllowList: []

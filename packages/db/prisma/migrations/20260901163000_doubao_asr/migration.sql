@@ -1,0 +1,1 @@
+ALTER TABLE "SourceAsset" ALTER COLUMN "remoteUrl" DROP NOT NULL;

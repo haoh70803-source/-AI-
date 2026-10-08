@@ -1,0 +1,114 @@
+# Creates only the background worker; existing Web, database and Redis are reused.
+services:
+  - type: worker
+    name: xsj-content-worker-experience
+    runtime: docker
+    repo: https://github.com/lazyyz1/xsj-content-center
+    branch: codex/web-experience-candidate
+    region: singapore
+    plan: starter
+    autoDeployTrigger: off
+    dockerfilePath: ./apps/worker/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SYSTEM_MANAGED_PROVIDERS
+        value: "true"
+      - key: TRANSCRIPTION_PRIMARY
+        value: DOUBAO_RECORDING_FILE_2_0
+      - key: STORAGE_DRIVER
+        value: RENDER_MEDIA_RELAY
+      - key: MEDIA_STORAGE_ROOT
+        value: /var/data/xsj-media
+      - key: EXPERIENCE_LIMITS_ENABLED
+        value: "true"
+      - key: EXPERIENCE_SITE_ID
+        value: xsj-web-experience
+      - key: ASR_AUDIO_RETENTION_HOURS
+        value: "24"
+      - key: MEDIA_RELAY_INTERNAL_BASE_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          property: hostport
+      - key: DATABASE_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: DATABASE_URL
+      - key: REDIS_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: REDIS_URL
+      - key: AUTH_SECRET
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: AUTH_SECRET
+      - key: INTEGRATION_ENCRYPTION_KEY
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: INTEGRATION_ENCRYPTION_KEY
+      - key: APP_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: APP_URL
+      - key: MEDIA_RELAY_INTERNAL_SECRET
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: MEDIA_RELAY_INTERNAL_SECRET
+      - key: MEDIA_RELAY_SIGNING_SECRET
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: MEDIA_RELAY_SIGNING_SECRET
+      - key: REDFOX_API_KEY
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: REDFOX_API_KEY
+      - key: REDFOX_BASE_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: REDFOX_BASE_URL
+      - key: DOUBAO_API_KEY
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: DOUBAO_API_KEY
+      - key: DOUBAO_ASR_BASE_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: DOUBAO_ASR_BASE_URL
+      - key: DOUBAO_ASR_RESOURCE_ID
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: DOUBAO_ASR_RESOURCE_ID
+      - key: DEEPSEEK_API_KEY
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: DEEPSEEK_API_KEY
+      - key: AI_PROVIDER
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: AI_PROVIDER
+      - key: AI_MODEL_ID
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: AI_MODEL_ID
+      - key: AI_BASE_URL
+        fromService:
+          name: xsj-content-web-free-staging
+          type: web
+          envVarKey: AI_BASE_URL

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "AUTH_SECRET",
+    "ALLOW_PUBLIC_SIGNUP",
+    "NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP",
+    "EXA_API_KEY",
+    "APP_URL",
+    "STORAGE_DRIVER",
+    "S3_ENDPOINT",
+    "S3_REGION",
+    "S3_BUCKET",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "S3_FORCE_PATH_STYLE",
+    "MEDIA_STORAGE_ROOT",
+    "MEDIA_RELAY_INTERNAL_BASE_URL",
+    "MEDIA_RELAY_BASE_URL",
+    "MEDIA_RELAY_INTERNAL_SECRET",
+    "MEDIA_RELAY_SIGNING_SECRET",
+    "ASR_AUDIO_RETENTION_HOURS",
+    "INTEGRATION_ENCRYPTION_KEY",
+    "MOCK_MODE",
+    "ENVIRONMENT_ID",
+    "EXPERIENCE_LIMITS_ENABLED",
+    "EXPERIENCE_SITE_ID",
+    "DEMO_MODE",
+    "DEMO_AUTO_LOGIN",
+    "EXPERIENCE_LOGIN_PASSWORD",
+    "APP_ENV",
+    "NODE_ENV",
+    "RUNTIME_GUARD",
+    "WORKER_HEALTH_URL",
+    "SYSTEM_MANAGED_PROVIDERS",
+    "AI_PROVIDER",
+    "AI_MODEL_ID",
+    "AI_BASE_URL",
+    "KIMI_API_KEY",
+    "KIMI_BASE_URL",
+    "KIMI_MODEL_ID",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_BASE_URL",
+    "DEEPSEEK_MODEL_ID",
+    "M8_AI_PROVIDER",
+    "M8_AI_MODEL_ID",
+    "M8_AI_BASE_URL",
+    "REDFOX_API_KEY",
+    "REDFOX_BASE_URL",
+    "DOUBAO_API_KEY",
+    "DOUBAO_APP_ID",
+    "DOUBAO_ACCESS_TOKEN",
+    "DOUBAO_ASR_BASE_URL",
+    "DOUBAO_ASR_RESOURCE_ID",
+    "TRANSCRIPTION_PRIMARY",
+    "LOCAL_ASR_ENDPOINT"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
+  }
+}

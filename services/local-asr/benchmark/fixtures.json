@@ -1,0 +1,60 @@
+[
+  {
+    "id": "normal_zh",
+    "category": "普通中文口播",
+    "text": "今天我们来聊一聊，如何把零散素材整理成清晰、可靠的内容项目。",
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "rate": "+0%",
+    "expectedTerms": ["零散素材", "内容项目"]
+  },
+  {
+    "id": "background_music",
+    "category": "轻微背景声",
+    "text": "人工智能可以提高内容生产效率，但最终发布仍然需要人工审核。",
+    "voice": "zh-CN-YunxiNeural",
+    "rate": "+0%",
+    "background": true,
+    "expectedTerms": ["人工智能", "人工审核"]
+  },
+  {
+    "id": "fast_speech",
+    "category": "较快语速",
+    "text": "先收录素材，再提取音频，然后完成转写，最后进入选题和创作流程。",
+    "voice": "zh-CN-YunyangNeural",
+    "rate": "+45%",
+    "expectedTerms": ["提取音频", "创作流程"]
+  },
+  {
+    "id": "mixed_english",
+    "category": "中英混合",
+    "text": "请打开 OpenAI Dashboard，检查 API Usage 和 Worker 状态。",
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "rate": "+0%",
+    "expectedTerms": ["OpenAI", "Dashboard", "API", "Worker"]
+  },
+  {
+    "id": "numbers",
+    "category": "数字与金额",
+    "text": "项目预算是十二万三千四百五十六元，完成率百分之八十七点五，截止日期是二零二六年九月二日。",
+    "voice": "zh-CN-YunxiNeural",
+    "rate": "+0%",
+    "expectedTerms": ["十二万三千四百五十六元", "百分之八十七点五", "二零二六年九月二日"]
+  },
+  {
+    "id": "names_brands",
+    "category": "人名与专有词",
+    "text": "张伟和李娜正在评估 RedFox、FunASR、SenseVoice 与豆包语音识别。",
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "rate": "+0%",
+    "expectedTerms": ["张伟", "李娜", "RedFox", "FunASR", "SenseVoice", "豆包"]
+  },
+  {
+    "id": "synthetic_accent",
+    "category": "合成地域口音",
+    "text": "我从沈阳出发，想把这段带口音的日常表达准确地整理成文字。",
+    "voice": "zh-CN-liaoning-XiaobeiNeural",
+    "rate": "+0%",
+    "expectedTerms": ["沈阳", "带口音", "整理成文字"]
+  }
+]
+

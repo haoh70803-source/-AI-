@@ -1,0 +1,72 @@
+# LEGACY COMPATIBILITY: staging only, not the approved local/customer release profile.
+# Schema upgrades and bootstrap require a separate reviewed maintenance action.
+# Free demo: Web and serialized Worker share one ephemeral instance.
+services:
+  - type: web
+    name: xsj-content-web-free-staging
+    runtime: node
+    plan: free
+    repo: https://github.com/lazyyz1/xsj-content-center
+    region: singapore
+    branch: codex/web-experience-candidate
+    autoDeployTrigger: commit
+    # Free staging only builds the Web app; Turbo's full monorepo build is unnecessarily memory-heavy here.
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @content-center/web exec next build --webpack    startCommand: node scripts/start-free-experience.mjs
+    healthCheckPath: /api/health/live # Liveness only; customer readiness is separately checked.
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: staging
+      - key: STORAGE_DRIVER
+        value: RENDER_MEDIA_RELAY
+      - key: MEDIA_STORAGE_ROOT
+        value: /tmp/xsj-media
+      - key: APP_URL
+        fromService:
+          type: web
+          name: xsj-content-web-free-staging
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: MEDIA_RELAY_INTERNAL_BASE_URL
+        fromService:
+          type: web
+          name: xsj-content-web-free-staging
+          property: hostport
+      - key: MEDIA_RELAY_INTERNAL_SECRET
+        generateValue: true
+      - key: MEDIA_RELAY_SIGNING_SECRET
+        generateValue: true
+      - key: ASR_AUDIO_RETENTION_HOURS
+        value: "24"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: xsj-content-postgres-free-staging
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: xsj-content-redis-free-staging
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: INTEGRATION_ENCRYPTION_KEY
+        sync: false
+      - key: ALLOW_PUBLIC_SIGNUP
+        value: "false"
+      - key: NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP
+        value: "false"
+      # One-time staging admin bootstrap bridge. Keep disabled after the first successful run.
+      - key: STAGING_ADMIN_BOOTSTRAP_ENABLED
+        value: "false"
+
+  - type: keyvalue
+    name: xsj-content-redis-free-staging
+    plan: free
+    region: singapore
+    ipAllowList: []
+
+databases:
+  - name: xsj-content-postgres-free-staging
+    plan: free
+    region: singapore
+    ipAllowList: []

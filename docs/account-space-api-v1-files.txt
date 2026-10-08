@@ -1,0 +1,116 @@
+Current candidate inventory
+Branch: feat/account-space-api-v1
+Staged: none
+Commit: NO / Push: NO / Merge: NO
+
+ M .gitignore
+ M apps/web/app/(app)/layout.tsx
+ M apps/web/app/(app)/settings/creator-profile/page.tsx
+ M apps/web/app/(app)/settings/integrations/page.tsx
+ M apps/web/app/(app)/settings/layout.tsx
+ M apps/web/app/(app)/settings/members/page.tsx
+ M apps/web/app/(app)/settings/page.tsx
+ M apps/web/app/api/integrations/[provider]/disable/route.ts
+ M apps/web/app/api/integrations/[provider]/enable/route.ts
+ M apps/web/app/api/integrations/[provider]/route.ts
+ M apps/web/app/api/internal/media-storage/[assetId]/route.ts
+ M apps/web/app/api/media/[token]/route.ts
+ M apps/web/components/auth-form.tsx
+ M apps/web/components/integrations/integration-card.tsx
+ M apps/web/components/integrations/transcription-settings-card.tsx
+ M apps/web/components/settings/creator-profile-form.tsx
+ M apps/web/components/sidebar-foundation.tsx
+ M apps/web/lib/auth.ts
+ M apps/web/next-env.d.ts
+ M apps/web/package.json
+ M apps/web/server/access.ts
+ M apps/web/server/ai/control/model-router.ts
+ M apps/web/server/api-access.ts
+ M apps/web/server/discovery/recommendations/service.ts
+ M apps/web/server/integration-api.ts
+ M apps/web/server/integrations.ts
+ M apps/web/server/research/access.ts
+ M packages/db/prisma/schema.prisma
+ M packages/db/src/workspaces.ts
+ M packages/integrations/src/encryption.ts
+ M packages/integrations/src/kimi-model-policy.ts
+ M packages/integrations/src/schemas.ts
+ M packages/integrations/src/service.integration.test.ts
+ M packages/integrations/src/service.ts
+ M packages/integrations/src/system-provider-policy.test.ts
+ M packages/integrations/src/system-provider-policy.ts
+ M packages/providers/src/doubao/client.ts
+ M packages/providers/src/doubao/recording-file-client.ts
+ M packages/providers/src/index.ts
+ M packages/providers/src/openai-compatible/provider.test.ts
+ M packages/providers/src/openai-compatible/provider.ts
+ M packages/providers/src/redfox/client.test.ts
+ M packages/providers/src/redfox/client.ts
+ M packages/providers/src/s3-compatible-storage.ts
+ M packages/providers/src/safe-url.ts
+ M pnpm-lock.yaml
+?? apps/web/app/(app)/@settings/(.)settings/about/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/account/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/creator-profile/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/diagnostics/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/integrations/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/layout.tsx
+?? apps/web/app/(app)/@settings/(.)settings/members/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/storage/page.tsx
+?? apps/web/app/(app)/@settings/(.)settings/workspace/page.tsx
+?? apps/web/app/(app)/@settings/[...catchAll]/page.tsx
+?? apps/web/app/(app)/@settings/default.tsx
+?? apps/web/app/(app)/settings/about/page.tsx
+?? apps/web/app/(app)/settings/account/page.tsx
+?? apps/web/app/(app)/settings/diagnostics/page.tsx
+?? apps/web/app/(app)/settings/storage/page.tsx
+?? apps/web/app/(app)/settings/workspace/page.tsx
+?? apps/web/app/api/integrations/[provider]/test/route.ts
+?? apps/web/app/api/settings/diagnostics/route.ts
+?? apps/web/app/api/settings/members/[id]/route.ts
+?? apps/web/app/api/settings/members/route.ts
+?? apps/web/app/api/settings/sessions/route.ts
+?? apps/web/app/api/settings/storage/route.ts
+?? apps/web/app/api/settings/workspace/route.ts
+?? apps/web/app/workspace-unavailable/page.tsx
+?? apps/web/components/account-sessions.tsx
+?? apps/web/components/account-settings.tsx
+?? apps/web/components/local-storage-settings.tsx
+?? apps/web/components/member-settings.tsx
+?? apps/web/components/settings-diagnostics.tsx
+?? apps/web/components/settings-navigation.tsx
+?? apps/web/components/settings-v1.css
+?? apps/web/components/settings-window.tsx
+?? apps/web/scripts/account-preview.ts
+?? apps/web/scripts/local-storage-smoke.ts
+?? apps/web/server/account-api.ts
+?? apps/web/server/account-sessions.ts
+?? apps/web/server/account-space.ts
+?? apps/web/server/integration-test.ts
+?? apps/web/server/local-storage.ts
+?? apps/web/server/settings-diagnostics.ts
+?? apps/web/server/workspace-context.ts
+?? apps/web/tests/account-api-connection.test.ts
+?? apps/web/tests/account-sessions.test.ts
+?? apps/web/tests/account-space.test.ts
+?? apps/web/tests/local-storage.test.ts
+?? docker-compose.account.yml
+?? docs/account-space-api-v1-candidate.md
+?? docs/account-space-api-v1-files.txt
+?? docs/settings-window-local-storage.md
+?? output/playwright/account-api-desktop.png
+?? output/playwright/account-api-mobile.png
+?? output/playwright/account-api-tested.png
+?? output/playwright/account-members.png
+?? output/playwright/account-settings.png
+?? output/playwright/api-custom.yml
+?? output/playwright/api-saved.yml
+?? output/playwright/api-snapshot.yml
+?? output/playwright/api-tested.yml
+?? output/playwright/members-disabled.yml
+?? output/playwright/members-final.yml
+?? packages/db/prisma/migrations/20260928090000_account_space/migration.sql
+?? packages/providers/src/provider-fetch.ts
+?? scripts/account-env.mjs
+?? scripts/account-http-smoke.mjs

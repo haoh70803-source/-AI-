@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { validateFusionConfig } from './fusion-config.mjs';
+const fixture=()=>({DATABASE_URL:'postgresql://local:local@127.0.0.1:55438/content_center_12_review',APP_URL:'http://localhost:3022',STORAGE_DRIVER:'S3_COMPATIBLE',S3_ENDPOINT:'http://127.0.0.1:19020',REDIS_URL:'redis://127.0.0.1:1/0',ENVIRONMENT_ID:'LOCAL_REVIEW',AUTH_COOKIE_PREFIX:'content-center-12-review',LOCAL_REVIEW_OFFLINE:'true',FREE_WORKER_MODE:'false',AUTH_SECRET:'local-test-only',INTEGRATION_ENCRYPTION_KEY:Buffer.alloc(32,42).toString('base64'),S3_BUCKET:'local',S3_ACCESS_KEY_ID:'local',S3_SECRET_ACCESS_KEY:'local-test-only'});
+test('new deployment accepts a canonical 32 byte key',()=>assert.equal(validateFusionConfig(fixture()).S3_BUCKET,'local'));
+test('hex encoding cannot silently pass deployment preflight',()=>assert.throws(()=>validateFusionConfig({...fixture(),INTEGRATION_ENCRYPTION_KEY:Buffer.alloc(32,42).toString('hex')}),/FUSION_INVALID_ENCRYPTION_KEY/));
+test('short, missing and noncanonical encryption keys are rejected',()=>{for(const value of [undefined,'',Buffer.alloc(16).toString('base64'),fixture().INTEGRATION_ENCRYPTION_KEY+' '])assert.throws(()=>validateFusionConfig({...fixture(),INTEGRATION_ENCRYPTION_KEY:value}),/FUSION_INVALID_ENCRYPTION_KEY/);});
+test('a copied old or remote database cannot be selected',()=>{for(const DATABASE_URL of ['postgresql://local:local@localhost:5433/content_center','postgresql://local:local@remote:55438/content_center_12_review'])assert.throws(()=>validateFusionConfig({...fixture(),DATABASE_URL}));});
+test('build placeholders and missing storage credentials fail closed',()=>{for(const S3_SECRET_ACCESS_KEY of ['',undefined,'BUILD_ONLY'])assert.throws(()=>validateFusionConfig({...fixture(),S3_SECRET_ACCESS_KEY}),/FUSION_CONFIGURATION_INCOMPLETE/);});

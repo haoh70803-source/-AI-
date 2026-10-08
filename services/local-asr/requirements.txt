@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch==2.11.0+cu130
+torchaudio==2.11.0+cu130
+funasr==1.4.12
+fastapi==0.141.1
+uvicorn==0.52.4
+python-multipart==0.0.32
+psutil==7.2.2
+rapidfuzz==3.14.3
+edge-tts==7.2.8

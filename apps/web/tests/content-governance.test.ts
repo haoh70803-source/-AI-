@@ -1,0 +1,23 @@
+import { describe, it, expect } from 'vitest';
+import { hubInput, scoreLimits, scoreStatus, factState } from '../server/content-governance/policy';
+const now = new Date('2026-10-07T12:00:00Z');
+const request = { id: 'r', hostUserId: 'a', contentOwnerUserId: 'b', createdAt: new Date(now.getTime() - 3600000), expiresAt: new Date(now.getTime() + 3600000), approvals: [{ identity: 'HOST', actorId: 'a', decision: 'APPROVE' }, { identity: 'CONTENT_OWNER', actorId: 'b', decision: 'APPROVE' }] };
+const fact = { category: 'STABLE', retiredAt: null, validUntil: null, knowledge: { retiredAt: null }, confirmations: [request] };
+describe('content governance boundaries', () => {
+    it.each([[64, 'REJECTED'], [65, 'REWORK_REQUIRED'], [79, 'REWORK_REQUIRED'], [80, 'PENDING_APPROVAL'], [100, 'PENDING_APPROVAL']])('score boundary %s', (total, status) => { let rest = total; const d = Object.fromEntries(Object.entries(scoreLimits).map(([k, max]) => { const n = Math.min(rest, max); rest -= n; return [k, n]; })) as typeof scoreLimits; expect(scoreStatus(d)).toEqual({ total, status }); });
+    it('rejects client total and incomplete score dimensions', () => { expect(hubInput.safeParse({ action: 'topic.score', id: 'a', revision: 1, dimensions: scoreLimits, reason: '测试', total: 100 }).success).toBe(false); expect(hubInput.safeParse({ action: 'topic.score', id: 'a', revision: 1, dimensions: { audience: 15 }, reason: '测试' }).success).toBe(false); });
+    it('rejects scores above their individual bounds', () => expect(hubInput.safeParse({ action: 'topic.score', id: 'a', revision: 1, dimensions: { ...scoreLimits, aiFit: 6 }, reason: '测试' }).success).toBe(false));
+    it('accepts both bound approvals', () => expect(factState(fact, now)).toBe('CONFIRMED'));
+    it('does not accept one approval', () => expect(factState({ ...fact, confirmations: [{ ...request, approvals: request.approvals.slice(0, 1) }] }, now)).toBe('PENDING'));
+    it('does not accept a forged approval identity', () => expect(factState({ ...fact, confirmations: [{ ...request, approvals: [{ identity: 'HOST', actorId: 'wrong', decision: 'APPROVE' }, request.approvals[1]!] }] }, now)).toBe('PENDING'));
+    it('does not accept both identities from one person', () => expect(factState({ ...fact, confirmations: [{ ...request, contentOwnerUserId: 'a' }] }, now)).toBe('PENDING'));
+    it('rejects an expired pending confirmation', () => expect(factState({ ...fact, confirmations: [{ ...request, expiresAt: now, approvals: [] }] }, now)).toBe('EXPIRED'));
+    it('treats rejection as final for the request', () => expect(factState({ ...fact, confirmations: [{ ...request, approvals: [{ identity: 'HOST', actorId: 'a', decision: 'REJECT' }] }] }, now)).toBe('REJECTED'));
+    it('latest pending request supersedes prior approval', () => expect(factState({ ...fact, confirmations: [{ ...request, id: 'new', approvals: [] }, request] }, now)).toBe('PENDING'));
+    it('dynamic confirmations expire after 24 hours', () => expect(factState({ ...fact, category: 'DYNAMIC', confirmations: [{ ...request, createdAt: new Date(now.getTime() - 86400000) }] }, now)).toBe('EXPIRED'));
+    it('stable approved fact survives request deadline', () => expect(factState({ ...fact, confirmations: [{ ...request, expiresAt: new Date(now.getTime() - 1000) }] }, now)).toBe('CONFIRMED'));
+    it('fact validity supersedes successful approval', () => expect(factState({ ...fact, validUntil: now }, now)).toBe('EXPIRED'));
+    it.each(['PROHIBITED', 'DISPUTED'])('does not adopt special category %s', category => expect(factState({ ...fact, category }, now)).toBe(category));
+    it('archived source knowledge invalidates its fact', () => expect(factState({ ...fact, knowledge: { retiredAt: now } }, now)).toBe('ARCHIVED'));
+    it('rejects ambiguous timezone and overlong TTL', () => { expect(hubInput.safeParse({ action: 'fact.create', knowledgeId: 'a', claim: 'test', category: 'DYNAMIC', validUntil: '2026-10-08T12:00:00' }).success).toBe(false); expect(hubInput.safeParse({ action: 'fact.request', id: 'a', ttlHours: 25 }).success).toBe(false); });
+});

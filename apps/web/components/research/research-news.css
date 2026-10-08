@@ -1,0 +1,97 @@
+/* Research news uses the workbench tokens and shared controls; no global overrides. */
+.research-news-page{max-width:1120px;margin:auto;min-width:0}
+.research-news-topline,.research-news-filterline,.research-news-sync,.research-news-count,.research-news-item-footer,.research-news-links,.research-news-actions,.research-news-edition{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.research-news-topline{justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:20px}
+.research-news-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.research-news-tabs button{border:0;background:transparent;color:var(--text-secondary);min-height:40px}
+.research-news-tabs button[aria-current=page]{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.research-news-sync{gap:3px}.research-news-sync .research-status{margin-right:7px}
+.research-news-page button:has(svg){border-radius:var(--radius-control)}
+.research-news-page .research-news-sync button,.research-news-page .research-news-actions button{border:0;min-height:40px}
+.research-news-page .research-news-actions button[aria-pressed=true]{color:var(--accent);background:var(--accent-soft)}
+.research-news-filters{display:grid;grid-template-columns:minmax(200px,1fr) minmax(130px,180px) minmax(140px,210px);gap:10px;margin-bottom:12px}
+.research-news-search{position:relative;display:flex;align-items:center;min-width:0}
+.research-news-search>svg{position:absolute;left:12px;color:var(--text-tertiary);pointer-events:none}
+.research-news-search input{padding-left:36px!important;min-height:44px;border-radius:var(--radius-control)!important;width:100%}
+.research-news-page select{min-height:44px;border-radius:var(--radius-control)}
+.research-news-filterline{gap:8px}.research-news-filterline select{max-width:200px}
+.research-news-count{justify-content:space-between;margin:17px 0 3px;color:var(--text-secondary);font-size:12px}.research-news-count button{border:0;background:transparent;color:var(--accent)}
+.research-news-list{min-width:0}.research-news-item{padding:23px 0;border-bottom:1px solid var(--border);min-width:0}
+.research-news-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--text-secondary);font-size:12px;margin-bottom:9px}
+.research-news-category{background:var(--accent-soft);color:var(--accent-strong);padding:2px 7px;border-radius:5px}
+.research-news-page button.research-news-title{display:block;border:0;background:transparent;text-align:left;padding:0;font-size:18px;font-weight:600;line-height:1.6;letter-spacing:-.015em;overflow-wrap:anywhere;color:var(--text-primary);white-space:normal}
+.research-news-page button.research-news-title:hover{background:transparent;color:var(--accent)}
+.research-news-item>p{margin-top:9px;font-size:14px;line-height:1.85;color:var(--text-secondary);max-width:88ch;overflow-wrap:anywhere}
+.research-news-item-footer{justify-content:space-between;margin-top:12px}
+.research-news-links{gap:16px;font-size:12px;color:var(--text-secondary);margin-top:10px}
+.research-news-links a{display:inline-flex;align-items:center;gap:5px;min-height:32px}
+.research-news-links a:hover{color:var(--accent)}
+.research-news-footnote{font-size:12px;line-height:1.8;color:var(--text-secondary);margin-top:24px!important}
+.research-news-warning{padding:12px 14px;border:1px solid var(--border);border-left:3px solid var(--warning);border-radius:var(--radius-control);background:var(--surface-secondary);font-size:12px;color:var(--text-secondary);margin:12px 0!important}
+.research-news-edition{justify-content:space-between;margin-bottom:22px}
+.research-news-edition label{display:flex;align-items:center;gap:10px;font-size:13px}
+.research-news-edition>a{display:flex;align-items:center;gap:6px;color:var(--accent);font-size:12px}
+.research-news-daily>header{padding:24px;border-radius:var(--radius-card);background:var(--surface-secondary);border:1px solid var(--border)}
+.research-news-daily>header h2{font-size:22px;line-height:1.65}.research-news-daily>header p{margin:12px 0;line-height:1.85;white-space:pre-line}
+.research-news-daily>header small{display:block;margin-top:16px}
+.research-news-daily-section{margin-top:26px}.research-news-daily-section>h3{font-size:16px;color:var(--accent)}
+.research-news-dialog{margin:auto;position:fixed;inset:0;border:1px solid var(--border-strong);border-radius:var(--radius-panel);padding:0;width:min(740px,calc(100vw - 32px));max-height:88dvh;background:var(--surface);color:var(--text-primary);box-shadow:var(--shadow-panel);overflow:auto}
+.research-news-dialog::backdrop{background:rgb(32 33 42 / .3);backdrop-filter:blur(3px)}
+.research-news-dialog>div{padding:28px}.research-news-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--text-secondary);font-size:12px}
+.research-news-dialog h2{font-size:24px;line-height:1.6;margin:15px 0;overflow-wrap:anywhere}
+.research-news-dialog .research-news-original{font-size:14px;color:var(--text-secondary);margin-bottom:12px;overflow-wrap:anywhere}
+.research-news-detail-summary{line-height:1.95;white-space:pre-line;overflow-wrap:anywhere;margin:24px 0!important;font-size:15px}
+.research-news-dialog .research-news-actions{margin-top:24px}
+@media(max-width:850px){.research-news-filters{grid-template-columns:1fr 1fr}.research-news-search{grid-column:1/-1}.research-news-topline{align-items:flex-start}.research-news-item-footer{align-items:flex-start}.research-news-sync{flex-wrap:wrap}}
+@media(max-width:540px){.research-news-page .research-page-heading{display:block}.research-news-page .research-page-heading>a{margin-top:12px}.research-news-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.research-news-page select{width:100%;min-width:0}.research-news-filterline>select{flex:1;max-width:none}.research-news-sync .research-status{width:100%}.research-news-meta{gap:7px}.research-news-page button.research-news-title{font-size:17px}.research-news-dialog>div{padding:20px}.research-news-dialog h2{font-size:21px}.research-news-daily>header{padding:18px}.research-news-edition label{width:100%}.research-news-edition select{flex:1}}
+
+/* Existing reading controls; these changes do not copy unobserved reference pixels. */
+.research-news-search-form,.research-news-desktop-filters,.research-news-chips,.research-news-edition-navigation,.research-news-history-dates,.research-news-daily-toc{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.research-news-filters{grid-template-columns:minmax(220px,1fr) auto}
+.research-news-search-form{flex-wrap:nowrap;min-width:0}.research-news-search-form .research-news-search{flex:1}
+.research-news-desktop-filters select{max-width:180px}
+.research-news-page .research-news-filter-toggle{display:none}
+.research-news-chips{margin:8px 0}.research-news-chips button{max-width:100%;overflow-wrap:anywhere;white-space:normal}
+.research-news-drawer-controls{display:grid;gap:12px;margin:16px 0}
+.research-news-filter-dialog{max-width:440px}
+.research-news-history{border-bottom:1px solid var(--border);padding:12px 0;margin-bottom:16px}
+.research-news-history summary{cursor:pointer;min-height:40px;line-height:40px;color:var(--text-secondary)}
+.research-news-history>details{padding-left:14px}.research-news-history-dates button{min-height:40px}
+.research-news-history-dates button[aria-current=date]{color:var(--accent);background:var(--accent-soft)}
+.research-news-daily-toc{padding:16px 0;border-bottom:1px solid var(--border);color:var(--accent);font-size:13px}
+.research-news-daily-toc a{min-height:36px;display:inline-flex;align-items:center}
+.research-news-daily-section{scroll-margin-top:24px}
+@media(max-width:850px){.research-news-filters{grid-template-columns:minmax(0,1fr) auto}.research-news-desktop-filters{display:none}.research-news-page .research-news-filter-toggle{display:inline-flex}.research-news-search{grid-column:auto}.research-news-search-form{grid-column:auto}}
+@media(prefers-reduced-motion:reduce){.research-news-page{scroll-behavior:auto}}
+
+/* Original workbench layout based on the approved written specification. */
+.research-news-page{max-width:1040px}
+.research-news-page .research-page-heading h1{font-size:24px}
+.research-news-page .research-page-heading p{font-size:14px}
+.research-news-date-group>h2{font-size:13px;font-weight:600;color:var(--text-secondary);padding:12px 0;margin:12px 0 0;border-bottom:1px solid var(--border)}
+.research-news-list .research-news-item{display:grid;grid-template-columns:64px minmax(0,1fr);gap:22px;padding:16px 0;margin:0 0 12px}
+.research-news-time-track{font-size:12px;color:var(--text-tertiary);position:relative;padding-top:3px}
+.research-news-time-track:after{content:"";position:absolute;top:5px;right:-12px;width:1px;height:calc(100% - 5px);background:var(--border)}
+.research-news-item-body{min-width:0}
+.research-news-page button.research-news-title{font-size:18px;line-height:1.5}
+.research-news-summary{font-size:15px;line-height:1.75;color:var(--text-secondary);margin-top:8px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.research-news-item-footer{margin-top:8px}.research-news-meta{font-size:12px;margin-bottom:7px}
+.research-news-daily{container-type:inline-size}
+.research-news-daily-layout{display:grid;grid-template-columns:minmax(0,1fr)}
+.research-news-daily-body{min-width:0;max-width:960px}
+.research-news-daily-body>header{padding:18px 0 24px;border-bottom:1px solid var(--border)}
+.research-news-daily-body>header h2{font-size:25px;line-height:1.5;margin:12px 0}
+.research-news-daily-body>header small{display:block;font-size:12px;color:var(--text-secondary);margin-top:14px}
+.research-news-daily-body>header .research-caption{margin:8px 0}
+.research-news-daily-section .research-news-item{padding:16px 0}
+.research-news-history-aside{display:none}
+.research-news-recent-dates{display:flex;gap:8px;overflow-x:auto;margin-bottom:8px}
+.research-news-recent-dates button{min-height:40px;flex-shrink:0}
+.research-news-recent-dates button[aria-current=date]{color:var(--accent);background:var(--accent-soft)}
+.research-news-markdown{font-size:15px;line-height:1.8;overflow-wrap:anywhere}
+.research-news-markdown p{margin:10px 0}.research-news-markdown ul,.research-news-markdown ol{padding-left:22px;margin:12px 0}
+.research-news-markdown a{color:var(--accent);text-decoration:underline}.research-news-markdown pre{max-width:100%;overflow:auto;padding:12px;background:var(--surface-secondary);border-radius:var(--radius-control)}
+.research-news-markdown table{display:block;overflow:auto;max-width:100%;border-collapse:collapse}.research-news-markdown td,.research-news-markdown th{border:1px solid var(--border);padding:6px 10px}
+.research-news-markdown blockquote{border-left:2px solid var(--border-strong);padding-left:14px;margin:12px 0;color:var(--text-secondary)}
+@container(min-width:1040px){.research-news-daily-layout{grid-template-columns:224px minmax(680px,1fr);gap:24px}.research-news-history-aside{display:block;border-right:1px solid var(--border);padding-right:16px}.research-news-history-aside h3{font-size:13px;margin:12px 0}.research-news-history-aside summary{min-height:40px;cursor:pointer;font-size:13px;color:var(--text-secondary)}.research-news-history-aside .research-news-history-dates{display:grid;grid-template-columns:1fr}.research-news-daily-body>.research-news-history,.research-news-daily-body>.research-news-recent-dates{display:none}}
+@media(max-width:540px){.research-news-date-group>h2{background:var(--surface-secondary);padding:9px 10px;border:0;border-radius:var(--radius-control)}.research-news-list .research-news-item{display:block;padding:16px 0;margin:0}.research-news-time-track{display:none}.research-news-page button.research-news-title{font-size:17px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.research-news-summary{-webkit-line-clamp:2}.research-news-item-footer{gap:4px}.research-news-links{gap:10px}.research-news-daily-body>header h2{font-size:22px}}

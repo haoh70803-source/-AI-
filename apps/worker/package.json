@@ -1,0 +1,33 @@
+{
+  "name": "@content-center/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./experience-limits": "./src/experience-limits.ts",
+    "./queue": "./src/queue.ts",
+    "./integrations": "./src/integrations.ts",
+    "./transcription": "./src/transcription.ts",
+    "./material-analysis-request": "./src/material-analysis-request.ts",
+    "./queue-producer": "./src/queue-producer.ts",
+    "./job-recovery": "./src/job-recovery.ts",
+    "./worker-mode": "./src/worker-mode.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@content-center/config": "workspace:*",
+    "@content-center/core": "workspace:*",
+    "@content-center/db": "workspace:*",
+    "@content-center/integrations": "workspace:*",
+    "@content-center/providers": "workspace:*",
+    "bullmq": "6.3.3",
+    "ioredis": "6.0.0"
+  }
+}

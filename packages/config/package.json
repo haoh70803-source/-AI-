@@ -1,0 +1,16 @@
+{
+  "name": "@content-center/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": ["src", "tsconfig"],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  }
+}

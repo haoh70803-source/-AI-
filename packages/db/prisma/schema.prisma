@@ -1,0 +1,2561 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum SystemRole {
+  SYSTEM_ADMIN
+  USER
+}
+
+enum IntegrationProvider {
+  WEB_SEARCH
+  REDFOX
+  DOUBAO_ASR
+  TRANSCRIPTION
+  LLM
+  PUBLISHING
+  STORAGE
+}
+
+enum IntegrationStatus {
+  CONFIGURED
+  UNCONFIGURED
+  ERROR
+  DISABLED
+  MOCK
+}
+
+enum SourceType {
+  TEXT
+  URL
+  VIDEO
+  AUDIO
+  IMAGE
+  DOCUMENT
+}
+
+enum SourcePlatform {
+  GENERIC
+  DOUYIN
+  XIAOHONGSHU
+  WECHAT
+  BILIBILI
+  YOUTUBE
+  TIKTOK
+  OTHER
+}
+
+enum ContentIdeaStatus {
+  INBOX
+  READY
+  IN_PROGRESS
+  DONE
+  ARCHIVED
+}
+
+enum TrendPlatform {
+  DOUYIN
+  XIAOHONGSHU
+  GLOBAL
+}
+
+enum TrendType {
+  HOT
+  SURGING
+  DARK_HORSE
+}
+
+enum SourceItemStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  ARCHIVED
+}
+
+enum IngestJobType {
+  EXTRACT_TEXT
+  FETCH_URL
+  TRANSCRIBE
+  PROCESS_MEDIA
+  ANALYZE_MATERIAL
+  DISTILL_MATERIAL
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ProviderMode {
+  REAL
+  MOCK
+}
+
+enum AssetType {
+  VIDEO
+  IMAGE
+  AUDIO
+  DOCUMENT
+}
+
+enum ArtifactType {
+  TEXT
+}
+
+enum AssetStatus {
+  REMOTE
+  DOWNLOADING
+  STORED
+  FAILED
+}
+
+enum ContentProjectStatus {
+  DRAFT
+  RESEARCHING
+  BRIEF_READY
+  WRITING
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum ProjectSourceRole {
+  REFERENCE
+  EVIDENCE
+  INSPIRATION
+  OWN_MATERIAL
+}
+
+enum EvidenceType {
+  FACT
+  VIEWPOINT
+  CASE
+  DATA
+  QUOTE
+  EXPERIENCE
+  QUESTION
+  OTHER
+  ORGANIZATION
+  PRODUCT_SERVICE
+  COMMERCIAL_COMMITMENT
+}
+
+enum EvidenceOwnership {
+  OWN
+  EXTERNAL
+  UNKNOWN
+}
+
+enum EvidenceStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum PromptType {
+  ANALYZE_MATERIAL
+  ANALYZE_BENCHMARK
+  DISTILL_MATERIAL
+  UNIFIED_CREATIVE_ANALYSIS
+  ANALYZE_SOURCES
+  EXTRACT_EVIDENCE
+  GENERATE_ANGLES
+  GENERATE_BRIEF
+  GENERATE_MOTHER_CONTENT
+  REWRITE_SELECTION
+  SHORTEN
+  EXPAND
+  ADD_PERSONAL_VIEW
+  HUMANIZE
+  ADAPT_PLATFORM
+  GENERATE_DEEP_CONTENT_PACKAGE
+  REVIEW_PLATFORM_CONTENT
+  GENERATE_TOPIC_CANDIDATES
+  GENERATE_TODAY_RECOMMENDATIONS
+  PROJECT_ASSISTANT
+  MATERIAL_KNOWLEDGE_EXTRACTION
+  METHOD_SUGGESTION_FROM_RESEARCH
+  CREATOR_PROFILE_SUGGESTION
+}
+
+enum MaterialAnalysisStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BenchmarkStudyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BenchmarkCollectionRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum MaterialAnalysisOrigin {
+  AI
+  HUMAN
+}
+
+enum MaterialDistillationMode {
+  COMPREHENSIVE
+  COPYWRITING
+}
+
+enum MaterialDistillationStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum UnifiedCreativeAnalysisStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RecommendationMode {
+  DETERMINISTIC
+  AI_ASSISTED
+}
+
+enum RecommendationItemStatus {
+  NEW
+  SAVED
+  STARTED
+  DISMISSED
+}
+
+enum RecommendationEvidenceType {
+  TREND
+  BENCHMARK_CONTENT
+  CONTENT_IDEA
+  SOURCE_ITEM
+  PROJECT
+  CREATOR_PROFILE
+}
+
+enum ReviewResult {
+  PENDING
+  CHANGES_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum PublishStatus {
+  DRAFT
+  SCHEDULED
+  READY_TO_PUBLISH
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum AIRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum Platform {
+  DOUYIN
+  XIAOHONGSHU
+  WECHAT_MOMENTS
+  WECHAT_CHANNELS
+  WECHAT_OFFICIAL
+}
+
+enum PlatformVariantStatus {
+  DRAFT
+  READY
+  STALE
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum DeepContentPackageStatus {
+  DRAFT
+  GENERATING
+  READY
+  ARCHIVED
+}
+
+enum MotherContentOrigin {
+  HUMAN
+  KIMI
+  GPT_WEB
+}
+
+enum AssistantMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AssistantMessageStatus {
+  PENDING
+  STREAMING
+  COMPLETED
+  FAILED
+  STOPPED
+}
+
+enum DraftRevisionOrigin {
+  HUMAN
+  AI
+  GPT_WEB
+}
+
+enum MethodStatus {
+  SAVED
+  TRIAL
+  CORE
+  DISABLED
+}
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum MethodSuggestionType {
+  OPENING
+  STRUCTURE
+  VIEWPOINT_PROGRESSION
+  CASE_USAGE
+  EVIDENCE_USAGE
+  ENDING
+  RHYTHM
+  BOUNDARY
+}
+
+enum MethodSuggestionStability {
+  LIMITED
+  STABLE
+}
+
+enum CreatorProfileSuggestionType {
+  CORE_TOPIC
+  PERSONAL_VIEW
+  HOOK_PREFERENCE
+  STRUCTURE_PREFERENCE
+  PREFERRED_STYLE
+  FORBIDDEN_STYLE
+  EXAMPLE_PHRASE
+}
+
+enum CreationFeedbackOutcome {
+  DIRECTLY_USED
+  USED_AFTER_EDIT
+  NOT_USED
+}
+
+enum MethodUsageFeedbackRating {
+  HELPFUL
+  NEUTRAL
+  NOT_SUITABLE
+}
+
+enum CanvasObjectType {
+  TEXT
+  MATERIAL_REFERENCE
+  IMAGE_REFERENCE
+}
+
+enum CanvasSnapshotReason {
+  MANUAL_CHECKPOINT
+  BEFORE_DELETE
+  AI_INPUT
+}
+
+enum CanvasRelationType {
+  GENERATED_FROM
+}
+
+enum CanvasReferencePurpose {
+  PRIMARY
+  CONTEXT
+}
+
+model User {
+  researchSessions ResearchSession[]
+  researchRuns ResearchRun[]
+  researchObjectPreferences ResearchObjectPreference[]
+  id                      String               @id @default(cuid())
+  name                    String
+  email                   String               @unique
+  emailVerified           Boolean              @default(false)
+  image                   String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  systemRole              SystemRole           @default(USER)
+  disabledAt              DateTime?
+  sessions                Session[]
+  accounts                Account[]
+  workspaceMemberships    WorkspaceMember[]
+  auditLogs               AuditLog[]
+  createdSources          SourceItem[]         @relation("SourceCreatedBy")
+  requestedIngestJobs     IngestJob[]          @relation("IngestRequestedBy")
+  createdCollections      Collection[]         @relation("CollectionCreatedBy")
+  apiUsages               ApiUsage[]
+  createdProjects         ContentProject[]     @relation("ProjectCreatedBy")
+  createdEvidenceItems    EvidenceItem[]       @relation("EvidenceCreatedBy")
+  confirmedEvidenceItems  EvidenceItem[]       @relation("EvidenceConfirmedBy")
+  rejectedEvidenceItems   EvidenceItem[]       @relation("EvidenceRejectedBy")
+  createdBriefs           CreativeBrief[]      @relation("BriefCreatedBy")
+  createdMotherContent    MotherContent[]      @relation("MotherContentCreatedBy")
+  creatorProfiles         CreatorProfile[]
+  aiRuns                  AIRun[]              @relation("AIRunUser")
+  createdPlatformVariants PlatformVariant[]    @relation("PlatformVariantCreatedBy")
+  createdDeepPackages     DeepContentPackage[] @relation("DeepContentPackageCreatedBy")
+  reviewRecords           ReviewRecord[]       @relation("ReviewRecordReviewer")
+  createdPublishTasks     PublishTask[]         @relation("PublishTaskCreatedBy")
+  publishedTasks          PublishTask[]         @relation("PublishTaskPublisher")
+  createdBenchmarkAccounts BenchmarkAccount[]   @relation("BenchmarkAccountCreatedBy")
+  createdContentIdeas     ContentIdea[]          @relation("ContentIdeaCreatedBy")
+  createdRecommendationBatches RecommendationBatch[] @relation("RecommendationBatchCreatedBy")
+  createdMaterialAnalyses MaterialAnalysis[]           @relation("MaterialAnalysisCreatedBy")
+  createdMaterialDistillations MaterialDistillation[] @relation("MaterialDistillationCreatedBy")
+  createdBenchmarkStudies BenchmarkStudy[]             @relation("BenchmarkStudyCreatedBy")
+  requestedBenchmarkCollectionRuns BenchmarkCollectionRun[]   @relation("BenchmarkCollectionRunRequestedBy")
+  createdUnifiedCreativeAnalyses UnifiedCreativeAnalysis[] @relation("UnifiedCreativeAnalysisCreatedBy")
+  ownedMethodAssets       MethodAsset[]                @relation("MethodAssetOwner")
+  editedMethodVersions    MethodVersion[]              @relation("MethodVersionEditedBy")
+  selectedProjectMethods  ProjectMethodSelection[]     @relation("ProjectMethodSelectionUser")
+  methodUsages            MethodUsage[]                @relation("MethodUsageUser")
+  creationFeedbacks       CreationFeedback[]           @relation("CreationFeedbackUser")
+  methodUsageFeedbacks    MethodUsageFeedback[]        @relation("MethodUsageFeedbackUser")
+  createdCanvasObjects    CanvasObject[]               @relation("CanvasObjectCreatedBy")
+  updatedCanvasObjects    CanvasObject[]               @relation("CanvasObjectUpdatedBy")
+  deletedCanvasObjects    CanvasObject[]               @relation("CanvasObjectDeletedBy")
+  createdCanvasSnapshots  CanvasObjectSnapshot[]       @relation("CanvasSnapshotCreatedBy")
+  createdCanvasRelations  CanvasRelation[]             @relation("CanvasRelationCreatedBy")
+  createdDraftBranches    DraftBranch[]                 @relation("DraftBranchCreatedBy")
+  updatedDraftBranches    DraftBranch[]                 @relation("DraftBranchUpdatedBy")
+  deletedDraftBranches    DraftBranch[]                 @relation("DraftBranchDeletedBy")
+  createdDraftRevisions   DraftRevision[]               @relation("DraftRevisionCreatedBy")
+  createdAssistantThreads AssistantThread[]             @relation("AssistantThreadCreatedBy")
+  createdArtifacts        Artifact[]                    @relation("ArtifactCreatedBy")
+  projectFolders                   ProjectFolder[]
+  projectPreferences               UserProjectPreference[]
+  createdCanvasGenerateRuns CanvasGenerateRun[]          @relation("CanvasGenerateRunCreatedBy")
+  generatedMethodSuggestions MethodSuggestion[]          @relation("MethodSuggestionGeneratedBy")
+  reviewedMethodSuggestions  MethodSuggestion[]          @relation("MethodSuggestionReviewedBy")
+  generatedProfileSuggestions CreatorProfileSuggestion[] @relation("ProfileSuggestionGeneratedBy")
+  reviewedProfileSuggestions  CreatorProfileSuggestion[] @relation("ProfileSuggestionReviewedBy")
+
+  @@index([systemRole])
+  @@index([disabledAt])
+}
+
+model Session {
+  activeWorkspaceId String?
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+}
+
+model Workspace {
+  feishuConnection FeishuConnection?
+  videoAccounts VideoAccount[]
+  videoMetrics VideoDailyMetric[]
+  videoContents VideoContent[]
+  videoTasks VideoTask[]
+  contentPolicy WorkspaceContentPolicy?
+  contentTopics ContentTopic[]
+  knowledgeEntries KnowledgeEntry[]
+  factRecords FactRecord[]
+  ipContextVersions IPContextVersion[]
+
+  disabledAt DateTime?
+  researchSessions ResearchSession[]
+  researchRuns ResearchRun[]
+  researchObjectPreferences ResearchObjectPreference[]
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String               @unique
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  members             WorkspaceMember[]
+  integrations        IntegrationConfig[]
+  auditLogs           AuditLog[]
+  sourceItems         SourceItem[]
+  ingestJobs          IngestJob[]
+  transcripts         Transcript[]
+  contentTags         ContentTag[]
+  collections         Collection[]
+  sourceAssets        SourceAsset[]
+  sourceUnderstandings SourceUnderstanding[]
+  apiUsages           ApiUsage[]
+  contentProjects     ContentProject[]
+  evidenceItems       EvidenceItem[]
+  creativeBriefs      CreativeBrief[]
+  motherContents      MotherContent[]
+  creatorProfiles     CreatorProfile[]
+  promptTemplates     PromptTemplate[]
+  platformTemplates   PlatformTemplate[]
+  platformVariants    PlatformVariant[]
+  deepContentPackages DeepContentPackage[]
+  aiRuns              AIRun[]
+  reviewRecords       ReviewRecord[]
+  publishTasks        PublishTask[]
+  benchmarkAccounts   BenchmarkAccount[]
+  contentIdeas        ContentIdea[]
+  trendSnapshots      TrendSnapshot[]
+  benchmarkContentSnapshots BenchmarkContentSnapshot[]
+  benchmarkStudies    BenchmarkStudy[]
+  benchmarkCollectionRuns   BenchmarkCollectionRun[]
+  recommendationBatches RecommendationBatch[]
+  recommendationItems RecommendationItem[]
+  recommendationEvidence RecommendationEvidence[]
+  materialAnalyses       MaterialAnalysis[]
+  materialDistillations  MaterialDistillation[]
+  unifiedCreativeAnalyses UnifiedCreativeAnalysis[]
+  methodAssets           MethodAsset[]
+  creationFeedbacks      CreationFeedback[]
+  canvasObjects          CanvasObject[]
+  canvasSnapshots        CanvasObjectSnapshot[]
+  canvasRelations        CanvasRelation[]
+  canvasMaterialReferences CanvasMaterialReference[]
+  draftBranches           DraftBranch[]
+  draftRevisions          DraftRevision[]
+  assistantThreads        AssistantThread[]
+  artifacts               Artifact[]
+  projectFolders            ProjectFolder[]
+  userProjectPreferences    UserProjectPreference[]
+  canvasGenerateRuns      CanvasGenerateRun[]
+  methodSuggestions       MethodSuggestion[]
+  creatorProfileSuggestions CreatorProfileSuggestion[]
+}
+
+model WorkspaceMember {
+  disabledAt DateTime?
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model IntegrationConfig {
+  id                   String              @id @default(cuid())
+  workspaceId          String
+  provider             IntegrationProvider
+  status               IntegrationStatus   @default(UNCONFIGURED)
+  configured           Boolean             @default(false)
+  publicConfig         Json?
+  encryptedConfig      String?
+  lastFour             String?
+  encryptionKeyVersion Int                 @default(1)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  workspace            Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider])
+}
+
+model AuditLog {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  userId       String
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId])
+}
+
+model SourceItem {
+  feishuDocument FeishuDocument?
+  id             String           @id @default(cuid())
+  workspaceId    String
+  createdById    String
+  sourceType     SourceType
+  sourcePlatform SourcePlatform   @default(GENERIC)
+  sourceUrl      String?
+  canonicalUrl   String?
+  externalId     String?
+  sourceProvider String?
+  title          String?
+  author         String?
+  description    String?
+  thumbnailUrl   String?
+  rawText        String?
+  status         SourceItemStatus @default(PENDING)
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy      User             @relation("SourceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  ingestJobs     IngestJob[]
+  transcript     Transcript?
+  sourceUnderstanding SourceUnderstanding?
+  tags           SourceItemTag[]
+  collections    CollectionItem[]
+  assets         SourceAsset[]
+  projects       ProjectSource[]
+  evidenceItems  EvidenceItem[]
+  ideaReferences ContentIdeaReference[]
+  materialAnalyses MaterialAnalysis[]
+  materialDistillations MaterialDistillation[]
+  methodVersionsFromSource MethodVersion[] @relation("MethodVersionSourceItem")
+  benchmarkStudySamples BenchmarkStudySample[]
+  canvasMaterialReferences CanvasMaterialReference[]
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, canonicalUrl])
+  @@unique([workspaceId, sourcePlatform, externalId])
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, status])
+  @@index([workspaceId, sourcePlatform])
+}
+
+enum SourceUnderstandingStatus {
+  NOT_STARTED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model SourceUnderstanding {
+  id           String @id @default(cuid())
+  workspaceId  String
+  sourceItemId String @unique
+  assetId      String
+  sourceType   SourceType
+  status       SourceUnderstandingStatus @default(NOT_STARTED)
+  runId        String?
+  text         String?
+  pages        Json?
+  provider     String?
+  model        String?
+  errorCode    String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItem   SourceItem @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+}
+
+model SourceAsset {
+  id             String      @id @default(cuid())
+  workspaceId    String
+  sourceItemId   String
+  assetType      AssetType
+  sourceProvider String
+  remoteUrl      String?
+  storageKey     String?
+  mimeType       String?
+  sizeBytes      BigInt?
+  status         AssetStatus @default(REMOTE)
+  metadata       Json?
+  storedAt       DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  workspace      Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItem     SourceItem  @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+  canvasMaterialReferences CanvasMaterialReference[]
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, sourceItemId])
+  @@index([sourceItemId, status])
+}
+
+model ApiUsage {
+  id                String    @id @default(cuid())
+  workspaceId       String
+  userId            String
+  provider          String
+  operation         String
+  requestId         String
+  providerRequestId String?
+  success           Boolean
+  units             Int       @default(1)
+  cost              Decimal?
+  inputTokens       Int?
+  outputTokens      Int?
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, provider, operation])
+  @@index([requestId])
+}
+
+model IngestJob {
+  id            String        @id @default(cuid())
+  workspaceId   String
+  sourceItemId  String
+  requestedById String
+  jobType       IngestJobType
+  provider      String
+  providerMode  ProviderMode
+  status        JobStatus     @default(QUEUED)
+  progress      Int           @default(0)
+  attempt       Int           @default(0)
+  maxAttempts   Int           @default(3)
+  errorCode     String?
+  errorMessage  String?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItem    SourceItem    @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+  requestedBy   User          @relation("IngestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, status])
+  @@index([sourceItemId, createdAt])
+}
+
+model Transcript {
+  id           String       @id @default(cuid())
+  workspaceId  String
+  sourceItemId String       @unique
+  provider     String
+  providerMode ProviderMode
+  language     String?
+  durationMs   Int?
+  fullText     String
+  segments     Json
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItem   SourceItem   @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+  methodVersions MethodVersion[] @relation("MethodVersionSourceTranscript")
+
+  @@index([workspaceId, createdAt])
+}
+
+model ContentTag {
+  id          String          @id @default(cuid())
+  workspaceId String
+  name        String
+  slug        String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItems SourceItemTag[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, name])
+}
+
+model SourceItemTag {
+  sourceItemId String
+  tagId        String
+  createdAt    DateTime   @default(now())
+  sourceItem   SourceItem @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+  tag          ContentTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([sourceItemId, tagId])
+  @@index([tagId])
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  createdById String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User             @relation("CollectionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  sourceItems CollectionItem[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, createdAt])
+}
+
+model CollectionItem {
+  collectionId String
+  sourceItemId String
+  createdAt    DateTime   @default(now())
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  sourceItem   SourceItem @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, sourceItemId])
+  @@index([sourceItemId])
+}
+
+model ContentProject {
+  ipContextSnapshot Json?
+  originTopic ContentTopic?
+  researchSessions ResearchSession[]
+  id                  String               @id @default(cuid())
+  workspaceId         String
+  createdById         String
+  clientRequestId          String?
+  creationModel            Json?
+  creationRequestHash      String?
+  creatorProfileId    String?
+  title               String
+  description         String?
+  goal                String?
+  audience            String?
+  status              ContentProjectStatus @default(DRAFT)
+  primaryDraftBranchId String?              @unique
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy           User                 @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  creatorProfile      CreatorProfile?      @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  sources             ProjectSource[]
+  evidenceItems       EvidenceItem[]
+  creativeBrief       CreativeBrief?
+  motherContent       MotherContent?
+  platformVariants    PlatformVariant[]
+  deepContentPackages DeepContentPackage[]
+  aiRuns              AIRun[]
+  reviewRecords       ReviewRecord[]
+  publishTasks        PublishTask[]
+  contentIdea         ContentIdea?
+  recommendationItems RecommendationItem[]
+  unifiedCreativeAnalyses UnifiedCreativeAnalysis[]
+  methodSelections       ProjectMethodSelection[]
+  methodUsages            MethodUsage[]
+  creationFeedbacks      CreationFeedback[]
+  canvasObjects          CanvasObject[]
+  canvasSnapshots        CanvasObjectSnapshot[]
+  canvasRelations        CanvasRelation[]
+  canvasMaterialReferences CanvasMaterialReference[]
+  draftBranches          DraftBranch[]      @relation("ProjectDraftBranches")
+  draftRevisions         DraftRevision[]
+  primaryDraftBranch     DraftBranch?       @relation("PrimaryDraftBranch", fields: [primaryDraftBranchId], references: [id], onDelete: SetNull)
+  assistantThreads       AssistantThread[]
+  artifacts              Artifact[]
+  userPreferences          UserProjectPreference[]
+  canvasGenerateRuns     CanvasGenerateRun[]
+
+  @@index([workspaceId, createdAt])
+  @@unique([workspaceId, createdById, clientRequestId])
+  @@index([workspaceId, status])
+  @@index([createdById])
+  @@index([creatorProfileId])
+}
+
+model ProjectFolder {
+  id          String                  @id @default(cuid())
+  workspaceId String
+  userId      String
+  name        String
+  sortOrder   Int                     @default(0)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  workspace   Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferences UserProjectPreference[]
+
+  @@unique([workspaceId, userId, name])
+  @@index([workspaceId, userId, sortOrder])
+}
+
+model UserProjectPreference {
+  id           String         @id @default(cuid())
+  workspaceId  String
+  userId       String
+  projectId    String
+  folderId     String?
+  pinnedAt     DateTime?
+  sortOrder    Int            @default(0)
+  lastOpenedAt DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folder       ProjectFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, userId, projectId])
+  @@index([workspaceId, userId, pinnedAt])
+  @@index([workspaceId, userId, folderId, sortOrder])
+  @@index([workspaceId, userId, lastOpenedAt])
+}
+
+model DraftBranch {
+  id                  String          @id @default(cuid())
+  workspaceId         String
+  projectId           String
+  title               String
+  workingTitle        String              @default("")
+  workingBody         String              @default("") @db.Text
+  workingOutline      Json                @default("[]")
+  workingOrigin       DraftRevisionOrigin @default(HUMAN)
+  workingOriginNote   String?
+  workingGenerateRunId String?
+  currentRevisionId   String?         @unique
+  confirmedRevisionId String?         @unique
+  version             Int             @default(0)
+  createdById         String
+  updatedById         String
+  deletedAt           DateTime?
+  deletedById         String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  workspace           Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project             ContentProject  @relation("ProjectDraftBranches", fields: [projectId], references: [id], onDelete: Cascade)
+  primaryForProject   ContentProject? @relation("PrimaryDraftBranch")
+  currentRevision     DraftRevision?  @relation("CurrentDraftRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+  confirmedRevision   DraftRevision?  @relation("ConfirmedDraftRevision", fields: [confirmedRevisionId], references: [id], onDelete: SetNull)
+  revisions           DraftRevision[] @relation("DraftBranchRevisions")
+  createdBy           User            @relation("DraftBranchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy           User            @relation("DraftBranchUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  deletedBy           User?           @relation("DraftBranchDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  artifact            Artifact?
+
+  @@index([workspaceId, projectId, deletedAt, updatedAt])
+  @@index([projectId, deletedAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([deletedById])
+}
+
+model DraftRevision {
+  id              String              @id @default(cuid())
+  workspaceId     String
+  projectId       String
+  draftBranchId   String
+  revision        Int
+  title           String
+  body            String              @db.Text
+  outline         Json
+  origin          DraftRevisionOrigin @default(HUMAN)
+  originNote      String?
+  generateRunId   String?
+  warningSnapshot Json?
+  createdById     String
+  createdAt       DateTime            @default(now())
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project         ContentProject      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  draftBranch     DraftBranch         @relation("DraftBranchRevisions", fields: [draftBranchId], references: [id], onDelete: Cascade)
+  currentFor      DraftBranch?        @relation("CurrentDraftRevision")
+  confirmedFor    DraftBranch?        @relation("ConfirmedDraftRevision")
+  createdBy       User                @relation("DraftRevisionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([draftBranchId, revision])
+  @@index([workspaceId, projectId, createdAt])
+  @@index([projectId, draftBranchId, createdAt])
+  @@index([createdById])
+  @@index([generateRunId])
+}
+
+model CanvasObject {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  projectId      String
+  objectType     CanvasObjectType
+  title          String?
+  textContent    String?          @db.Text
+  positionX      Float
+  positionY      Float
+  width          Float
+  height         Float
+  zIndex         Int              @default(0)
+  contentVersion Int              @default(1)
+  layoutVersion  Int              @default(1)
+  metadata       Json?
+  createdById    String
+  updatedById    String
+  deletedAt      DateTime?
+  deletedById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project        ContentProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy      User             @relation("CanvasObjectCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User             @relation("CanvasObjectUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  deletedBy      User?            @relation("CanvasObjectDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  snapshots      CanvasObjectSnapshot[]
+  sourceRelations CanvasRelation[] @relation("CanvasRelationSource")
+  targetRelations CanvasRelation[] @relation("CanvasRelationTarget")
+  materialReference CanvasMaterialReference?
+  assistantThreads AssistantThread[]
+  sourceGenerateRuns CanvasGenerateRun[] @relation("CanvasGenerateRunSource")
+  resultGenerateRuns CanvasGenerateRun[] @relation("CanvasGenerateRunResult")
+
+  @@index([workspaceId, projectId, deletedAt, updatedAt])
+  @@index([projectId, deletedAt, zIndex])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([deletedById])
+}
+
+model CanvasObjectSnapshot {
+  id                   String               @id @default(cuid())
+  workspaceId          String
+  projectId            String
+  objectId             String
+  objectType           CanvasObjectType
+  objectContentVersion Int
+  title                String?
+  textContent          String?              @db.Text
+  contentHash          String?
+  snapshotReason       CanvasSnapshotReason
+  referenceManifest    Json?
+  createdById          String
+  createdAt            DateTime             @default(now())
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project              ContentProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  object               CanvasObject          @relation(fields: [objectId], references: [id], onDelete: Restrict)
+  createdBy            User                  @relation("CanvasSnapshotCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  sourceRelations      CanvasRelation[]
+  generateRuns         CanvasGenerateRun[]
+
+  @@index([workspaceId, projectId, createdAt])
+  @@index([objectId, objectContentVersion, createdAt])
+  @@index([createdById])
+}
+
+model CanvasRelation {
+  id               String             @id @default(cuid())
+  workspaceId      String
+  projectId        String
+  relationType     CanvasRelationType
+  sourceObjectId   String
+  targetObjectId   String
+  sourceSnapshotId String
+  createdById      String
+  createdAt        DateTime           @default(now())
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project          ContentProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceObject     CanvasObject       @relation("CanvasRelationSource", fields: [sourceObjectId], references: [id], onDelete: Restrict)
+  targetObject     CanvasObject       @relation("CanvasRelationTarget", fields: [targetObjectId], references: [id], onDelete: Restrict)
+  sourceSnapshot   CanvasObjectSnapshot @relation(fields: [sourceSnapshotId], references: [id], onDelete: Restrict)
+  createdBy        User               @relation("CanvasRelationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, projectId, createdAt])
+  @@index([sourceObjectId])
+  @@index([targetObjectId])
+  @@index([sourceSnapshotId])
+  @@index([createdById])
+}
+
+model CanvasMaterialReference {
+  id                      String                 @id @default(cuid())
+  workspaceId             String
+  projectId               String
+  canvasObjectId          String                 @unique
+  sourceItemId            String
+  sourceAssetId           String?
+  purpose                 CanvasReferencePurpose @default(PRIMARY)
+  excerpt                 String?                @db.Text
+  sourceTitleSnapshot     String
+  sourceTypeSnapshot      SourceType
+  sourceUpdatedAtAtAttach DateTime?
+  createdAt               DateTime               @default(now())
+  workspace               Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project                 ContentProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  canvasObject            CanvasObject           @relation(fields: [canvasObjectId], references: [id], onDelete: Cascade)
+  sourceItem              SourceItem             @relation(fields: [sourceItemId], references: [id], onDelete: Restrict)
+  sourceAsset             SourceAsset?           @relation(fields: [sourceAssetId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, projectId, createdAt])
+  @@index([sourceItemId])
+  @@index([sourceAssetId])
+}
+
+model BenchmarkAccount {
+  id                String         @id @default(cuid())
+  workspaceId       String
+  creatorProfileId  String?
+  platform          SourcePlatform
+  externalAccountId String
+  name              String
+  avatarUrl         String?
+  bio               String?
+  originalUrl       String?
+  researchCategory  String?
+  researchNotes     String?                    @db.Text
+  enabled           Boolean        @default(true)
+  lastSyncedAt      DateTime?
+  createdById       String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  workspace         Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creatorProfile    CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  createdBy         User           @relation("BenchmarkAccountCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  contentSnapshots  BenchmarkContentSnapshot[]
+  studies           BenchmarkStudy[]
+  collectionRuns    BenchmarkCollectionRun[]
+
+  @@unique([workspaceId, platform, externalAccountId])
+  @@index([workspaceId, enabled, updatedAt])
+  @@index([workspaceId, researchCategory])
+  @@index([creatorProfileId])
+}
+
+model BenchmarkContentSnapshot {
+  id                 String           @id @default(cuid())
+  workspaceId        String
+  benchmarkAccountId String
+  platform           SourcePlatform
+  externalId         String
+  title              String
+  url                String
+  authorName         String?
+  coverUrl           String?
+  metadata           Json
+  publishedAt        DateTime?
+  observedAt         DateTime         @default(now())
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  benchmarkAccount   BenchmarkAccount @relation(fields: [benchmarkAccountId], references: [id], onDelete: Cascade)
+  studySamples       BenchmarkStudySample[] @relation("BenchmarkStudySampleSnapshot")
+  comments           BenchmarkComment[]
+  observations       BenchmarkMetricObservation[]
+  collectionRunItems BenchmarkCollectionRunItem[]
+
+  @@unique([workspaceId, platform, externalId])
+  @@index([workspaceId, observedAt])
+  @@index([benchmarkAccountId, observedAt])
+}
+
+model BenchmarkComment {
+  id         String                   @id @default(cuid())
+  snapshotId String
+  externalId String
+  text       String                   @db.Text
+  likes      Int?
+  postedAt   DateTime?
+  parentId   String?
+  importedAt DateTime                 @default(now())
+  snapshot   BenchmarkContentSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, externalId])
+  @@index([snapshotId, postedAt])
+}
+
+model BenchmarkMetricObservation {
+  id              String                   @id @default(cuid())
+  snapshotId      String
+  collectionRunId String?
+  observedAt      DateTime                 @default(now())
+  metrics         Json
+  snapshot        BenchmarkContentSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  collectionRun   BenchmarkCollectionRun?  @relation(fields: [collectionRunId], references: [id], onDelete: SetNull)
+
+  @@unique([snapshotId, collectionRunId])
+  @@index([snapshotId, observedAt])
+  @@index([collectionRunId, observedAt])
+}
+
+model BenchmarkCollectionRun {
+  id                 String                       @id @default(cuid())
+  workspaceId        String
+  benchmarkAccountId String
+  requestedById      String
+  status             BenchmarkCollectionRunStatus @default(QUEUED)
+  rangeStart         DateTime
+  rangeEnd           DateTime
+  profileSnapshot    Json?
+  nextOffset         Int                          @default(0)
+  pageCount          Int                          @default(0)
+  seenCount          Int                          @default(0)
+  inRangeCount       Int                          @default(0)
+  undatedCount       Int                          @default(0)
+  stopReason         String?                      @db.Text
+  errorMessage       String?                      @db.Text
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  workspace          Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  benchmarkAccount   BenchmarkAccount             @relation(fields: [benchmarkAccountId], references: [id], onDelete: Cascade)
+  requestedBy        User                         @relation("BenchmarkCollectionRunRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  observations       BenchmarkMetricObservation[]
+  items              BenchmarkCollectionRunItem[]
+  studies            BenchmarkStudy[]
+
+  @@index([workspaceId, benchmarkAccountId, createdAt])
+  @@index([workspaceId, status])
+}
+
+model BenchmarkCollectionRunItem {
+  id               String                   @id @default(cuid())
+  collectionRunId  String
+  snapshotId       String
+  titleSnapshot    String
+  urlSnapshot      String
+  coverUrlSnapshot String?
+  metadataSnapshot Json
+  publishedAt      DateTime?
+  inRange          Boolean                  @default(false)
+  createdAt        DateTime                 @default(now())
+  collectionRun    BenchmarkCollectionRun   @relation(fields: [collectionRunId], references: [id], onDelete: Cascade)
+  snapshot         BenchmarkContentSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionRunId, snapshotId])
+  @@index([collectionRunId, inRange, publishedAt])
+  @@index([snapshotId])
+}
+
+model BenchmarkStudy {
+  id                String                @id @default(cuid())
+  workspaceId       String
+  benchmarkAccountId String
+  collectionRunId     String?
+  createdById       String
+  version           Int
+  status            BenchmarkStudyStatus  @default(PROCESSING)
+  sampleCount       Int
+  insufficientSamples Boolean
+  output            Json?
+  aiRunId           String?               @unique
+  errorCode         String?
+  errorMessage      String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  workspace         Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  benchmarkAccount  BenchmarkAccount     @relation(fields: [benchmarkAccountId], references: [id], onDelete: Cascade)
+  collectionRun       BenchmarkCollectionRun? @relation(fields: [collectionRunId], references: [id], onDelete: SetNull)
+  createdBy         User                  @relation("BenchmarkStudyCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  aiRun             AIRun?                @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  samples           BenchmarkStudySample[]
+  sharedArtifacts   Artifact[]
+  methodVersions    MethodVersion[]
+  methodSuggestions MethodSuggestion[]
+
+  @@unique([benchmarkAccountId, version])
+  @@index([workspaceId, benchmarkAccountId, createdAt])
+  @@index([workspaceId, status])
+  @@index([collectionRunId])
+  @@index([createdById])
+}
+
+model BenchmarkStudySample {
+  id                 String             @id @default(cuid())
+  studyId            String
+  sourceItemId       String
+  materialAnalysisId String?
+  snapshotId         String?
+  createdAt          DateTime           @default(now())
+  study              BenchmarkStudy    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  sourceItem         SourceItem        @relation(fields: [sourceItemId], references: [id], onDelete: Restrict)
+  materialAnalysis   MaterialAnalysis? @relation(fields: [materialAnalysisId], references: [id], onDelete: Restrict)
+  snapshot           BenchmarkContentSnapshot? @relation("BenchmarkStudySampleSnapshot", fields: [snapshotId], references: [id], onDelete: SetNull)
+
+  @@unique([studyId, sourceItemId])
+  @@index([sourceItemId])
+  @@index([materialAnalysisId])
+  @@index([snapshotId])
+}
+
+model ContentIdea {
+  id               String            @id @default(cuid())
+  workspaceId      String
+  creatorProfileId String?
+  projectId        String?            @unique
+  title            String
+  description      String?
+  aiRationale      Json?
+  status           ContentIdeaStatus @default(INBOX)
+  createdById      String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creatorProfile   CreatorProfile?   @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  project          ContentProject?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy        User              @relation("ContentIdeaCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  references       ContentIdeaReference[]
+  recommendationItems RecommendationItem[]
+
+  @@index([workspaceId, status, updatedAt])
+  @@index([creatorProfileId])
+  @@index([createdById])
+}
+
+model ContentIdeaReference {
+  id               String         @id @default(cuid())
+  ideaId           String
+  platform         SourcePlatform
+  externalId       String
+  title            String
+  url              String
+  authorName       String?
+  coverUrl         String?
+  metadataSnapshot Json?
+  sourceItemId     String?
+  trendSnapshotId  String?
+  createdAt        DateTime       @default(now())
+  idea             ContentIdea    @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  sourceItem       SourceItem?     @relation(fields: [sourceItemId], references: [id], onDelete: SetNull)
+  trendSnapshot    TrendSnapshot?  @relation(fields: [trendSnapshotId], references: [id], onDelete: SetNull)
+
+  @@unique([ideaId, platform, externalId])
+  @@unique([ideaId, trendSnapshotId])
+  @@index([sourceItemId])
+  @@index([trendSnapshotId])
+}
+
+model TrendSnapshot {
+  id             String          @id @default(cuid())
+  workspaceId    String
+  provider       String
+  platform       TrendPlatform
+  trendType      TrendType
+  externalKey    String
+  title          String
+  keyword        String?
+  rank           Int?
+  metrics        Json
+  windowStart    DateTime
+  windowEnd      DateTime
+  observedAt     DateTime        @default(now())
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ideaReferences ContentIdeaReference[]
+
+  @@index([workspaceId, platform, trendType, observedAt])
+  @@index([workspaceId, externalKey, observedAt])
+  @@index([workspaceId, windowStart, windowEnd])
+}
+
+model ResearchObjectPreference {
+  id               String        @id @default(cuid())
+  workspaceId      String
+  userId           String
+  kind             String
+  objectKey        String
+  trendProvider    String?
+  trendPlatform    TrendPlatform?
+  trendType        TrendType?
+  trendExternalKey String?
+  followedAt       DateTime?
+  viewedAt         DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  workspace        Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId, kind, objectKey])
+  @@index([workspaceId, userId, kind, viewedAt])
+  @@index([workspaceId, userId, kind, followedAt])
+  @@index([workspaceId, userId, trendProvider, trendPlatform, trendType, trendExternalKey])
+}
+
+model RecommendationBatch {
+  id               String             @id @default(cuid())
+  workspaceId      String
+  creatorProfileId String?
+  mode             RecommendationMode
+  generatedAt      DateTime           @default(now())
+  expiresAt        DateTime
+  aiRunId          String?            @unique
+  createdById      String
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creatorProfile   CreatorProfile?    @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  aiRun             AIRun?            @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  createdBy         User              @relation("RecommendationBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items             RecommendationItem[]
+
+  @@index([workspaceId, createdById, generatedAt])
+  @@index([creatorProfileId])
+}
+
+model RecommendationItem {
+  id                          String                   @id @default(cuid())
+  workspaceId                 String
+  batchId                     String
+  position                    Int
+  title                       String
+  coreQuestion                String
+  angle                       String
+  whyRecommended              String
+  whyNow                      String
+  creatorFit                  String
+  differenceFromRecentContent String
+  suggestedNextStep           String
+  riskNotes                   Json
+  recommendedFormat           String?
+  status                      RecommendationItemStatus @default(NEW)
+  contentIdeaId               String?
+  projectId                   String?
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  workspace                   Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  batch                       RecommendationBatch      @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  contentIdea                 ContentIdea?             @relation(fields: [contentIdeaId], references: [id], onDelete: SetNull)
+  project                     ContentProject?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  evidence                    RecommendationEvidence[]
+
+  @@unique([batchId, position])
+  @@index([workspaceId, status, createdAt])
+  @@index([contentIdeaId])
+  @@index([projectId])
+}
+
+model RecommendationEvidence {
+  id                   String                     @id @default(cuid())
+  workspaceId          String
+  recommendationItemId String
+  type                 RecommendationEvidenceType
+  referenceId          String
+  snapshot             Json
+  createdAt            DateTime                   @default(now())
+  workspace            Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  recommendationItem   RecommendationItem         @relation(fields: [recommendationItemId], references: [id], onDelete: Cascade)
+
+  @@unique([recommendationItemId, type, referenceId])
+  @@index([workspaceId, type, referenceId])
+}
+
+model ProjectSource {
+  id           String            @id @default(cuid())
+  projectId    String
+  sourceItemId String
+  role         ProjectSourceRole @default(REFERENCE)
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  project      ContentProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceItem   SourceItem        @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, sourceItemId])
+  @@index([sourceItemId])
+  @@index([projectId, sortOrder])
+}
+
+model MaterialAnalysis {
+  id                            String                 @id @default(cuid())
+  workspaceId                   String
+  sourceItemId                  String
+  version                       Int
+  status                        MaterialAnalysisStatus @default(PROCESSING)
+  suggestedTitle                String?
+  summary                       String?
+  topic                         String?
+  tags                          Json
+  keywords                      Json
+  contentType                   String?
+  targetAudience                String?
+  coreViewpoint                 String?
+  keyPoints                     Json
+  coreQuestion                  String?
+  understanding                Json?
+  origin                        MaterialAnalysisOrigin @default(AI)
+  aiRunId                       String?                @unique
+  transcriptUpdatedAtAtAnalysis DateTime
+  errorCode                     String?
+  errorMessage                  String?
+  createdById                   String
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
+  workspace                     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItem                    SourceItem             @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+  aiRun                         AIRun?                  @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  createdBy                     User                   @relation("MaterialAnalysisCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  methodVersions                MethodVersion[]         @relation("MethodVersionSourceAnalysis")
+  benchmarkStudySamples         BenchmarkStudySample[]
+
+  @@unique([sourceItemId, version])
+  @@index([workspaceId, sourceItemId, createdAt])
+  @@index([workspaceId, status])
+  @@index([createdById])
+}
+
+model MaterialDistillation {
+  id                          String                    @id @default(cuid())
+  workspaceId                 String
+  sourceItemId                String
+  createdById                 String
+  version                     Int
+  mode                        MaterialDistillationMode
+  status                      MaterialDistillationStatus @default(PROCESSING)
+  schemaVersion               String
+  output                      Json?
+  aiRunId                     String?                   @unique
+  transcriptUpdatedAtAtDistillation DateTime
+  errorCode                   String?
+  errorMessage                String?
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+  workspace                   Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceItem                  SourceItem                @relation(fields: [sourceItemId], references: [id], onDelete: Cascade)
+  createdBy                   User                      @relation("MaterialDistillationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  aiRun                       AIRun?                    @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  methodVersions              MethodVersion[]
+
+  @@unique([sourceItemId, version])
+  @@index([workspaceId, sourceItemId, createdAt])
+  @@index([workspaceId, status])
+  @@index([createdById])
+}
+
+model MethodAsset {
+  id             String       @id @default(cuid())
+  workspaceId    String
+  ownerUserId    String
+  status         MethodStatus @default(SAVED)
+  statusUpdatedAt DateTime    @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner          User         @relation("MethodAssetOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  versions       MethodVersion[]
+  projectMethodSelections ProjectMethodSelection[]
+  methodUsages            MethodUsage[]
+  sourceSuggestion        MethodSuggestion?
+
+  @@index([workspaceId, ownerUserId, status, updatedAt])
+}
+
+model MethodSuggestion {
+  id                     String                    @id @default(cuid())
+  workspaceId            String
+  ownerUserId            String
+  sourceBenchmarkStudyId String
+  sourceMethodIndex      Int
+  type                    MethodSuggestionType
+  title                   String
+  steps                   Json
+  applicableScenarios     Json
+  boundaries              Json
+  rationale               String
+  stability               MethodSuggestionStability
+  sampleCount             Int
+  sourceRefs              Json
+  evidence                Json
+  status                  SuggestionStatus          @default(PENDING)
+  dedupeKey               String                    @unique
+  savedMethodAssetId      String?                   @unique
+  generatedById           String
+  reviewedById            String?
+  reviewedAt              DateTime?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  workspace               Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceBenchmarkStudy    BenchmarkStudy            @relation(fields: [sourceBenchmarkStudyId], references: [id], onDelete: Cascade)
+  savedMethodAsset        MethodAsset?              @relation(fields: [savedMethodAssetId], references: [id], onDelete: SetNull)
+  generatedBy             User                      @relation("MethodSuggestionGeneratedBy", fields: [generatedById], references: [id], onDelete: Restrict)
+  reviewedBy              User?                     @relation("MethodSuggestionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, ownerUserId, status, createdAt])
+  @@index([sourceBenchmarkStudyId, status])
+  @@index([generatedById])
+  @@index([reviewedById])
+}
+
+model MethodVersion {
+  id                       String          @id @default(cuid())
+  assetId                 String
+  version                 Int
+  title                   String
+  steps                   Json
+  applicableScenarios     Json
+  boundaries             Json
+  sourceItemId           String?
+  sourceMaterialAnalysisId String?
+  sourceTranscriptId     String?
+  sourceTranscriptUpdatedAt DateTime?
+  sourceBenchmarkStudyId String?
+  sourceMaterialDistillationId String?
+  workspaceDefaultKey      String?
+  evidence               Json
+  workflowContract       Json?
+  editedById             String
+  createdAt              DateTime        @default(now())
+  asset                  MethodAsset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  sourceItem             SourceItem?      @relation("MethodVersionSourceItem", fields: [sourceItemId], references: [id], onDelete: Restrict)
+  sourceMaterialAnalysis MaterialAnalysis? @relation("MethodVersionSourceAnalysis", fields: [sourceMaterialAnalysisId], references: [id], onDelete: Restrict)
+  sourceTranscript       Transcript?      @relation("MethodVersionSourceTranscript", fields: [sourceTranscriptId], references: [id], onDelete: Restrict)
+  sourceBenchmarkStudy   BenchmarkStudy? @relation(fields: [sourceBenchmarkStudyId], references: [id], onDelete: Restrict)
+  sourceMaterialDistillation MaterialDistillation? @relation(fields: [sourceMaterialDistillationId], references: [id], onDelete: Restrict)
+  editedBy               User            @relation("MethodVersionEditedBy", fields: [editedById], references: [id], onDelete: Restrict)
+  projectSelections      ProjectMethodSelection[]
+  methodUsages           MethodUsage[]
+  feedbacks               MethodUsageFeedback[]
+
+  @@unique([assetId, version])
+  @@index([sourceItemId])
+  @@index([sourceMaterialAnalysisId])
+  @@index([sourceTranscriptId])
+  @@index([sourceBenchmarkStudyId])
+  @@index([sourceMaterialDistillationId])
+  @@index([workspaceDefaultKey])
+}
+
+model ProjectMethodSelection {
+  id               String       @id @default(cuid())
+  projectId        String
+  methodAssetId    String
+  methodVersionId  String
+  selectedByUserId String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  project          ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  methodAsset      MethodAsset    @relation(fields: [methodAssetId], references: [id], onDelete: Cascade)
+  methodVersion    MethodVersion  @relation(fields: [methodVersionId], references: [id], onDelete: Cascade)
+  selectedBy       User           @relation("ProjectMethodSelectionUser", fields: [selectedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, selectedByUserId, methodAssetId])
+  @@index([projectId, selectedByUserId])
+  @@index([methodVersionId])
+}
+
+model MethodUsage {
+  id              String        @id @default(cuid())
+  projectId       String
+  methodAssetId   String
+  methodVersionId String
+  aiRunId         String
+  userId          String
+  createdAt       DateTime      @default(now())
+  project         ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  methodAsset     MethodAsset   @relation(fields: [methodAssetId], references: [id], onDelete: Cascade)
+  methodVersion   MethodVersion @relation(fields: [methodVersionId], references: [id], onDelete: Cascade)
+  aiRun           AIRun         @relation(fields: [aiRunId], references: [id], onDelete: Cascade)
+  user            User          @relation("MethodUsageUser", fields: [userId], references: [id], onDelete: Restrict)
+  feedbacks       MethodUsageFeedback[]
+
+  @@unique([aiRunId, methodVersionId])
+  @@index([projectId, userId, createdAt])
+  @@index([methodAssetId, methodVersionId])
+}
+
+model EvidenceItem {
+  id           String         @id @default(cuid())
+  workspaceId  String
+  projectId    String?
+  sourceItemId String?
+  type         EvidenceType
+  excerpt      String?
+  claim        String?
+  note         String?
+  sourceUrl    String?
+  ownership    EvidenceOwnership @default(OWN)
+  status       EvidenceStatus    @default(CONFIRMED)
+  locator      Json?
+  confidence   Float?
+  dedupeKey    String?           @unique
+  confirmedById String?
+  confirmedAt   DateTime?
+  rejectedById  String?
+  rejectedAt    DateTime?
+  sortOrder    Int            @default(0)
+  createdById  String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project      ContentProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceItem   SourceItem?    @relation(fields: [sourceItemId], references: [id], onDelete: SetNull)
+  createdBy    User           @relation("EvidenceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  confirmedBy  User?          @relation("EvidenceConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  rejectedBy   User?          @relation("EvidenceRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, projectId, sortOrder])
+  @@index([sourceItemId])
+  @@index([workspaceId, sourceItemId, status])
+  @@index([projectId, ownership, status])
+  @@index([confirmedById])
+  @@index([rejectedById])
+  @@index([createdById])
+}
+
+model CreativeBrief {
+  id          String         @id @default(cuid())
+  workspaceId String
+  projectId   String         @unique
+  topic       String
+  angle       String
+  audience    String
+  coreMessage String
+  coreQuestion String?
+  background   String?
+  keyPoints   Json
+  structure   Json
+  tone        String
+  risks       Json
+  metadata    Json?
+  version     Int            @default(1)
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User           @relation("BriefCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, updatedAt])
+  @@index([createdById])
+}
+
+model MotherContent {
+  id               String              @id @default(cuid())
+  workspaceId      String
+  projectId        String              @unique
+  title            String
+  body             String
+  outline          Json
+  version          Int                 @default(1)
+  confirmedVersion Int?
+  confirmedWarnings Json?
+  origin           MotherContentOrigin @default(HUMAN)
+  originNote       String?
+  createdById      String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project          ContentProject      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy        User                @relation("MotherContentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  platformVariants PlatformVariant[]
+  creationFeedbacks CreationFeedback[]
+
+  @@index([workspaceId, updatedAt])
+  @@index([createdById])
+}
+
+model CreationFeedback {
+  id                   String                 @id @default(cuid())
+  workspaceId          String
+  projectId            String
+  userId               String
+  motherContentId      String
+  motherContentVersion Int
+  sourceAiRunId        String
+  outcome              CreationFeedbackOutcome
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  workspace            Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project              ContentProject         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user                 User                   @relation("CreationFeedbackUser", fields: [userId], references: [id], onDelete: Restrict)
+  motherContent        MotherContent          @relation(fields: [motherContentId], references: [id], onDelete: Cascade)
+  sourceAiRun          AIRun                  @relation("CreationFeedbackSourceRun", fields: [sourceAiRunId], references: [id], onDelete: Cascade)
+  methodFeedbacks      MethodUsageFeedback[]
+
+  @@unique([userId, projectId])
+  @@index([workspaceId, projectId, createdAt])
+  @@index([sourceAiRunId])
+  @@index([motherContentId, motherContentVersion])
+}
+
+model MethodUsageFeedback {
+  id                 String                    @id @default(cuid())
+  creationFeedbackId String
+  methodUsageId      String
+  methodVersionId    String
+  userId             String
+  rating             MethodUsageFeedbackRating
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  creationFeedback  CreationFeedback          @relation(fields: [creationFeedbackId], references: [id], onDelete: Cascade)
+  methodUsage       MethodUsage               @relation(fields: [methodUsageId], references: [id], onDelete: Cascade)
+  methodVersion     MethodVersion             @relation(fields: [methodVersionId], references: [id], onDelete: Cascade)
+  user              User                      @relation("MethodUsageFeedbackUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([creationFeedbackId, methodUsageId])
+  @@index([methodUsageId])
+  @@index([methodVersionId])
+  @@index([userId, createdAt])
+}
+
+model CreatorProfile {
+  id                   String               @id @default(cuid())
+  workspaceId          String
+  userId               String
+  displayName          String               @default("")
+  positioning          String               @default("")
+  targetAudience       String               @default("")
+  tone                 String               @default("")
+  preferredStyle       String               @default("")
+  forbiddenStyle       String               @default("")
+  coreTopics           Json
+  personalViews        Json
+  brandTerms           Json
+  forbiddenTerms       Json
+  hookPreferences      Json
+  structurePreferences Json
+  ctaPreferences       Json
+  examplePhrases       Json
+  notes                String               @default("")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects             ContentProject[]
+  benchmarkAccounts    BenchmarkAccount[]
+  contentIdeas         ContentIdea[]
+  deepContentPackages  DeepContentPackage[]
+  recommendationBatches RecommendationBatch[]
+  suggestions           CreatorProfileSuggestion[]
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model CreatorProfileSuggestion {
+  id               String                       @id @default(cuid())
+  workspaceId      String
+  creatorProfileId String?
+  targetUserId     String
+  type             CreatorProfileSuggestionType
+  currentValue     Json
+  proposedValue    String
+  rationale        String
+  evidenceRefs     Json
+  sampleCount      Int
+  status           SuggestionStatus             @default(PENDING)
+  dedupeKey        String                       @unique
+  generatedById    String
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+  workspace        Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creatorProfile   CreatorProfile?              @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  generatedBy      User                         @relation("ProfileSuggestionGeneratedBy", fields: [generatedById], references: [id], onDelete: Restrict)
+  reviewedBy       User?                        @relation("ProfileSuggestionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, targetUserId, status, createdAt])
+  @@index([creatorProfileId, status])
+  @@index([generatedById])
+  @@index([reviewedById])
+}
+
+model DeepContentPackage {
+  id                   String                   @id @default(cuid())
+  workspaceId          String
+  projectId            String
+  creatorProfileId     String?
+  version              Int
+  status               DeepContentPackageStatus @default(DRAFT)
+  topicPackage         Json
+  viewpointPackage     Json
+  evidencePackage      Json
+  expressionPackage    Json
+  structurePackage     Json
+  creatorContribution  Json
+  recommendedDirection String
+  risks                Json
+  needsConfirmation    Json
+  createdById          String
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  workspace            Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project              ContentProject           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creatorProfile       CreatorProfile?          @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  createdBy            User                     @relation("DeepContentPackageCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, version])
+  @@index([workspaceId, projectId, status])
+  @@index([creatorProfileId])
+  @@index([createdById])
+}
+
+model PromptTemplate {
+  id           String     @id @default(cuid())
+  workspaceId  String?
+  name         String
+  type         PromptType
+  version      Int
+  systemPrompt String
+  template     String
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  aiRuns       AIRun[]
+
+  @@unique([workspaceId, type, version])
+  @@index([type, isActive, version])
+  @@index([workspaceId, type, isActive])
+}
+
+model PlatformTemplate {
+  id           String     @id @default(cuid())
+  workspaceId  String?
+  platform     Platform
+  name         String
+  version      Int
+  systemPrompt String
+  template     String
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  aiRuns       AIRun[]
+
+  @@unique([workspaceId, platform, version])
+  @@index([platform, isActive, version])
+  @@index([workspaceId, platform, isActive])
+}
+
+model PlatformVariant {
+  id                  String                @id @default(cuid())
+  workspaceId         String
+  projectId           String
+  motherContentId     String
+  platform            Platform
+  version             Int                   @default(1)
+  title               String?
+  body                String
+  hook                String?
+  summary             String?
+  hashtags            Json
+  mediaPlan           Json
+  metadata            Json
+  status              PlatformVariantStatus @default(DRAFT)
+  sourceMotherVersion Int
+  createdById         String
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project             ContentProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  motherContent       MotherContent         @relation(fields: [motherContentId], references: [id], onDelete: Cascade)
+  createdBy           User                  @relation("PlatformVariantCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  reviewRecords       ReviewRecord[]
+  publishTasks        PublishTask[]
+
+  @@unique([projectId, platform])
+  @@index([workspaceId, projectId])
+  @@index([workspaceId, platform, updatedAt])
+  @@index([motherContentId])
+  @@index([createdById])
+}
+
+model ReviewRecord {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  projectId         String
+  platformVariantId String
+  reviewerId        String
+  result            ReviewResult    @default(PENDING)
+  issues            Json
+  comment           String?
+  aiReviewed        Boolean         @default(false)
+  aiRunId           String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project           ContentProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  platformVariant   PlatformVariant @relation(fields: [platformVariantId], references: [id], onDelete: Cascade)
+  reviewer          User            @relation("ReviewRecordReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  aiRun             AIRun?          @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, projectId, createdAt])
+  @@index([platformVariantId, createdAt])
+  @@index([reviewerId])
+  @@index([aiRunId])
+}
+
+model PublishTask {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  projectId         String
+  platformVariantId String
+  platform          Platform
+  status            PublishStatus   @default(DRAFT)
+  scheduledAt       DateTime?
+  publishedAt       DateTime?
+  publisherId       String?
+  createdById       String
+  externalUrl       String?
+  externalPostId    String?
+  note              String?
+  contentSnapshot   Json
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project           ContentProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  platformVariant   PlatformVariant @relation(fields: [platformVariantId], references: [id], onDelete: Restrict)
+  createdBy         User            @relation("PublishTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  publisher         User?           @relation("PublishTaskPublisher", fields: [publisherId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, scheduledAt])
+  @@index([workspaceId, platform, createdAt])
+  @@index([projectId, createdAt])
+  @@index([platformVariantId, createdAt])
+  @@index([createdById])
+  @@index([publisherId])
+}
+
+model AIRun {
+  researchRun ResearchRun?
+  id                 String            @id @default(cuid())
+  workspaceId        String
+  projectId          String?
+  userId             String
+  action             PromptType
+  provider           String
+  model              String
+  providerRequestId  String?
+  promptTemplateId   String?
+  platformTemplateId String?
+  promptVersion      Int
+  status             AIRunStatus       @default(QUEUED)
+  inputSummary       Json
+  metadata           Json?
+  outputJson         Json?
+  contextTruncated   Boolean           @default(false)
+  inputTokens        Int?
+  outputTokens       Int?
+  cost               Decimal?
+  errorCode          String?
+  errorMessage       String?
+  createdAt          DateTime          @default(now())
+  finishedAt         DateTime?
+  appliedAt          DateTime?
+  discardedAt        DateTime?
+  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project            ContentProject?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user               User              @relation("AIRunUser", fields: [userId], references: [id], onDelete: Restrict)
+  promptTemplate     PromptTemplate?   @relation(fields: [promptTemplateId], references: [id], onDelete: Restrict)
+  platformTemplate   PlatformTemplate? @relation(fields: [platformTemplateId], references: [id], onDelete: Restrict)
+  reviewRecords      ReviewRecord[]
+  recommendationBatch RecommendationBatch?
+  materialAnalysis    MaterialAnalysis?
+  materialDistillation MaterialDistillation?
+  benchmarkStudy      BenchmarkStudy?
+  unifiedCreativeAnalysis UnifiedCreativeAnalysis?
+  methodUsages        MethodUsage[]
+  creationFeedbacks   CreationFeedback[] @relation("CreationFeedbackSourceRun")
+  assistantMessage    AssistantMessage?
+  canvasGenerateRun   CanvasGenerateRun?
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, projectId, createdAt])
+  @@index([projectId, action, createdAt])
+  @@index([userId])
+  @@index([platformTemplateId])
+}
+
+model AssistantThread {
+  @@index([projectId, createdById, canvasObjectId])
+  id          String             @id @default(cuid())
+  workspaceId String
+  projectId   String
+  canvasObjectId String?
+  createdById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     ContentProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  canvasObject CanvasObject?     @relation(fields: [canvasObjectId], references: [id], onDelete: Cascade)
+  createdBy   User               @relation("AssistantThreadCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  messages    AssistantMessage[]
+
+  @@index([workspaceId, updatedAt])
+  @@index([createdById])
+  @@index([projectId, canvasObjectId])
+}
+
+model AssistantMessage {
+  id        String                 @id @default(cuid())
+  threadId  String
+  role      AssistantMessageRole
+  content   String                 @db.Text
+  status    AssistantMessageStatus @default(PENDING)
+  aiRunId   String?                @unique
+  artifactId String?
+  metadata  Json?
+  errorCode String?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  thread    AssistantThread        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  aiRun     AIRun?                 @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  artifact  Artifact?              @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+
+  @@index([threadId, createdAt])
+  @@index([threadId, status])
+  @@index([artifactId, createdAt])
+}
+
+model Artifact {
+  id            String       @id @default(cuid())
+  workspaceId   String
+  projectId     String
+  draftBranchId String       @unique
+  createdById   String
+  sourceResearchRunId String?
+  sourceBenchmarkStudyId String?
+  type          ArtifactType @default(TEXT)
+  title         String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project       ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  draftBranch   DraftBranch    @relation(fields: [draftBranchId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("ArtifactCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  sourceResearchRun ResearchRun? @relation(fields: [sourceResearchRunId], references: [id], onDelete: SetNull)
+  sourceBenchmarkStudy BenchmarkStudy? @relation(fields: [sourceBenchmarkStudyId], references: [id], onDelete: SetNull)
+  messages      AssistantMessage[]
+
+  @@index([workspaceId, projectId, updatedAt])
+  @@unique([projectId, sourceResearchRunId])
+  @@unique([projectId, sourceBenchmarkStudyId])
+}
+
+enum CanvasGenerateRunStatus {
+  PENDING
+  STREAMING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model CanvasGenerateRun {
+  id                   String                  @id @default(cuid())
+  workspaceId          String
+  projectId            String
+  sourceCanvasObjectId String
+  resultCanvasObjectId String?
+  aiRunId              String?                 @unique
+  inputSnapshotId      String
+  instruction          String                  @db.Text
+  status               CanvasGenerateRunStatus @default(PENDING)
+  createdById          String
+  createdAt            DateTime                @default(now())
+  completedAt          DateTime?
+  workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project              ContentProject          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceCanvasObject   CanvasObject            @relation("CanvasGenerateRunSource", fields: [sourceCanvasObjectId], references: [id], onDelete: Restrict)
+  resultCanvasObject   CanvasObject?           @relation("CanvasGenerateRunResult", fields: [resultCanvasObjectId], references: [id], onDelete: SetNull)
+  aiRun                AIRun?                  @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  inputSnapshot        CanvasObjectSnapshot    @relation(fields: [inputSnapshotId], references: [id], onDelete: Restrict)
+  createdBy            User                    @relation("CanvasGenerateRunCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, projectId, createdAt])
+  @@index([sourceCanvasObjectId, createdAt])
+  @@index([resultCanvasObjectId])
+  @@index([inputSnapshotId])
+  @@index([createdById])
+}
+
+model UnifiedCreativeAnalysis {
+  id               String                        @id @default(cuid())
+  workspaceId      String
+  projectId        String
+  createdById      String
+  aiRunId          String?                       @unique
+  version          Int
+  schemaVersion    String                        @default("unified-creative-analysis-v1")
+  status           UnifiedCreativeAnalysisStatus @default(PROCESSING)
+  inputFingerprint String
+  output           Json?
+  provenance       Json
+  errorCode        String?
+  errorMessage     String?
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+  workspace        Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project          ContentProject                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy        User                          @relation("UnifiedCreativeAnalysisCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  aiRun            AIRun?                        @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, version])
+  @@unique([projectId, inputFingerprint])
+  @@index([workspaceId, projectId, status])
+  @@index([createdById])
+}
+
+enum ResearchRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ResearchSession {
+  id String @id @default(cuid())
+  workspaceId String
+  createdById String
+  projectId String?
+  title String
+  entryTemplate String @default("DIRECT")
+  requestKey String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  project ContentProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  runs ResearchRun[]
+
+  @@index([workspaceId, createdById, updatedAt])
+  @@unique([workspaceId, createdById, requestKey])
+  @@index([projectId])
+}
+
+model ResearchRun {
+  id String @id @default(cuid())
+  workspaceId String
+  sessionId String
+  requestedById String
+  requestKey String
+  requestHash String
+  question String @db.Text
+  version Int
+  status ResearchRunStatus @default(QUEUED)
+  stage String @default("QUEUED")
+  inputScope Json
+  sourceRefs Json @default("[]")
+  coverage Json @default("{}")
+  blocks Json @default("[]")
+  schemaVersion String @default("research-blocks-v1")
+  aiRunId String? @unique
+  savedAt DateTime?
+  resultTitle String?
+  errorCode String?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  startedAt DateTime?
+  finishedAt DateTime?
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  session ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  requestedBy User @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+  aiRun AIRun? @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  sharedArtifacts Artifact[]
+
+  @@unique([sessionId, requestKey])
+  @@unique([sessionId, version])
+  @@index([workspaceId, requestedById, savedAt])
+  @@index([sessionId, createdAt])
+}
+
+// Content governance is optional: general projects and zero-Skill creation remain available.
+model WorkspaceContentPolicy {
+  workspaceId String @id
+  hostUserId String?
+  contentOwnerUserId String?
+  updatedById String
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+}
+model ContentTopic {
+  id String @id @default(cuid())
+  workspaceId String
+  createdById String
+  title String
+  status String @default("DRAFT")
+  revision Int @default(1)
+  projectId String? @unique
+  project ContentProject? @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  versions ContentTopicVersion[]
+  decisions ContentTopicDecision[]
+  @@index([workspaceId, updatedAt])
+}
+model ContentTopicVersion {
+  id String @id @default(cuid())
+  topicId String
+  number Int
+  title String
+  audience String
+  goal String
+  judgement String
+  evidenceIds Json
+  createdById String
+  createdAt DateTime @default(now())
+  topic ContentTopic @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  @@unique([topicId, number])
+}
+model ContentTopicDecision {
+  id String @id @default(cuid())
+  topicId String
+  version Int
+  kind String
+  payload Json
+  actorId String
+  createdAt DateTime @default(now())
+  topic ContentTopic @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  @@index([topicId, version, createdAt])
+}
+model KnowledgeEntry {
+  rootId String @default(cuid())
+  version Int @default(1)
+  @@unique([rootId, version])
+  id String @id @default(cuid())
+  workspaceId String
+  sourceItemId String
+  sourceTitle String
+  sourceSnapshot Json
+  sourceHash String
+  title String
+  body String
+  confidentiality String @default("INTERNAL")
+  createdById String
+  retiredAt DateTime?
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  facts FactRecord[]
+  @@index([workspaceId, createdAt])
+}
+model FactRecord {
+  id String @id @default(cuid())
+  workspaceId String
+  knowledgeId String
+  claim String
+  category String
+  validUntil DateTime?
+  retiredAt DateTime?
+  createdById String
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  knowledge KnowledgeEntry @relation(fields: [knowledgeId], references: [id], onDelete: Restrict)
+  confirmations FactConfirmation[]
+  @@index([workspaceId, createdAt])
+}
+model FactConfirmation {
+  id String @id @default(cuid())
+  factId String
+  hostUserId String
+  contentOwnerUserId String
+  requestedById String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  fact FactRecord @relation(fields: [factId], references: [id], onDelete: Restrict)
+  approvals FactApproval[]
+  @@index([factId, createdAt])
+}
+model FactApproval {
+  id String @id @default(cuid())
+  confirmationId String
+  identity String
+  actorId String
+  decision String
+  reason String
+  createdAt DateTime @default(now())
+  confirmation FactConfirmation @relation(fields: [confirmationId], references: [id], onDelete: Restrict)
+  @@unique([confirmationId, identity])
+}
+model IPContextVersion {
+  id String @id @default(cuid())
+  workspaceId String
+  number Int
+  status String
+  positioning String
+  audience String
+  tone String
+  boundaries String
+  createdById String
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  @@unique([workspaceId, number])
+}
+
+
+// First-platform operating records; platform remains explicit for future adapters.
+model VideoAccount {
+  id String @id @default(cuid())
+  workspaceId String
+  platform String @default("DOUYIN")
+  externalId String
+  handle String
+  archivedAt DateTime?
+  revision Int @default(1)
+  createdAt DateTime @default(now())
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  metrics VideoDailyMetric[]
+  contents VideoContent[]
+  tasks VideoTask[]
+  @@unique([workspaceId, platform, externalId])
+  @@unique([id, workspaceId])
+}
+
+model VideoDailyMetric {
+  id String @id @default(cuid())
+  workspaceId String
+  accountId String
+  day DateTime @db.Date
+  plays Int
+  exposures Int?
+  likes Int
+  comments Int
+  shares Int
+  saves Int
+  netFollowers Int
+  negativeComments Int
+  limited Boolean @default(false)
+  isFinal Boolean @default(false)
+  observedAt DateTime
+  source String
+  revision Int @default(1)
+  updatedById String
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account VideoAccount @relation(fields: [accountId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  @@unique([accountId, day])
+  @@index([workspaceId, day])
+}
+
+model VideoContent {
+  id String @id @default(cuid())
+  workspaceId String
+  accountId String
+  title String
+  projectId String?
+  stage String @default("IDEA")
+  revision Int @default(1)
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account VideoAccount @relation(fields: [accountId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  tasks VideoTask[]
+  @@unique([id, accountId, workspaceId])
+  @@index([workspaceId, stage])
+}
+
+model VideoTask {
+  id String @id @default(cuid())
+  workspaceId String
+  accountId String
+  contentId String?
+  assigneeId String
+  createdById String
+  kind String
+  title String
+  dueAt DateTime
+  status String @default("TODO")
+  note String @default("")
+  completedAt DateTime?
+  revision Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  account VideoAccount @relation(fields: [accountId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  content VideoContent? @relation(fields: [contentId, accountId, workspaceId], references: [id, accountId, workspaceId], onDelete: Restrict)
+  @@index([workspaceId, dueAt, status])
+  @@index([workspaceId, assigneeId])
+}
+
+model FeishuConnection {
+  id String @id @default(cuid())
+  workspaceId String @unique
+  createdById String
+  appId String
+  encryptedSecret String
+  enabled Boolean @default(false)
+  autoSync Boolean @default(true)
+  revision Int @default(1)
+  leaseOwner String?
+  leaseUntil DateTime?
+  lastAttemptAt DateTime?
+  lastSyncedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents FeishuDocument[]
+  @@unique([id, workspaceId])
+}
+model FeishuDocument {
+  id String @id @default(cuid())
+  workspaceId String
+  connectionId String
+  sourceItemId String @unique
+  kind String
+  token String
+  documentId String?
+  originalUrl String
+  category String
+  state String @default("PENDING")
+  revision Int @default(1)
+  contentHash String?
+  remoteRevision String?
+  checkedAt DateTime?
+  syncedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  connection FeishuConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  sourceItem SourceItem @relation(fields: [sourceItemId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  chunks FeishuChunk[]
+  @@unique([sourceItemId, workspaceId])
+  @@unique([connectionId, kind, token])
+  @@unique([id, workspaceId])
+  @@index([workspaceId, state])
+}
+model FeishuChunk {
+  id String @id @default(cuid())
+  workspaceId String
+  documentId String
+  position Int
+  text String
+  terms String[]
+  document FeishuDocument @relation(fields: [documentId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  @@unique([documentId, position])
+  @@index([workspaceId])
+  @@index([terms], type: Gin)
+}
+

@@ -1,0 +1,6 @@
+-- CreateEnum
+CREATE TYPE "DeepContentPackageStatus" AS ENUM ('DRAFT', 'GENERATING', 'READY', 'ARCHIVED');
+CREATE TYPE "MotherContentOrigin" AS ENUM ('HUMAN', 'KIMI', 'GPT_WEB');
+
+-- ExtendEnum
+ALTER TYPE "PromptType" ADD VALUE 'GENERATE_DEEP_CONTENT_PACKAGE';

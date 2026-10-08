@@ -1,0 +1,62 @@
+
+import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import * as ts from "typescript";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+import { chromium, type Browser } from "@playwright/test";
+import { afterAll, beforeAll, expect, it } from "vitest";
+let browser: Browser, bundle: string;
+const output = process.env.MODEL_DIAGNOSIS_OUTPUT!;
+beforeAll(async () => {
+ if (!output?.startsWith("output/model-settings-diagnosis-20261006/")) throw Error("SCOPED_OUTPUT_REQUIRED");
+ const webRequire = createRequire(resolve("apps/web/package.json"));
+ const viteRequire = createRequire(createRequire(import.meta.url).resolve("vitest/config"));
+ const { build } = await import(pathToFileURL(viteRequire.resolve("vite")).href);
+ const entry = "\nimport React from \"react\"; import {createRoot} from \"react-dom/client\";\nimport {IntegrationCard} from \"./apps/web/components/integrations/integration-card\";\nlet saved={provider:\"LLM\",name:\"AI 模型\",status:\"CONFIGURED\",configured:true,publicConfig:{provider:\"DEEPSEEK\",modelId:\"fixture-model\",apiModelId:\"fixture-model\",resolvedModelId:\"fixture-model\",baseUrl:\"https://fixture.example.invalid\"},lastFour:\"test\",updatedAt:\"fixture-0\",description:\"隔离模型配置样例\",usage:[\"研究分析\"],defaults:{},managedBy:\"WORKSPACE\",connectionTest:\"LIVE\",models:[{provider:\"DEEPSEEK\",modelId:\"fixture-model\",label:\"Fixture Model\",defaultBaseUrl:\"https://fixture.example.invalid\",capabilities:{text:true}}]};\nwindow.fixture={policy:true,saveFailure:false,calls:[],reopen:()=>render(),saved:()=>saved};\nconst root=createRoot(document.getElementById(\"root\"));\nwindow.fixtureRefresh=()=>render();\nfunction render(){root.render(<IntegrationCard key={saved.updatedAt} integration={saved} canManage={true} encryptionConfigured={true}/>);}\nwindow.fetch=async(url,opts={})=>{\nwindow.fixture.calls.push({path:String(url),method:opts.method||\"GET\"});\nif(String(url).endsWith(\"/models\"))return Response.json(window.fixture.policy?{error:\"EXTERNAL_CALLS_DISABLED\",message:\"当前本机已暂停外部服务调用；模型配置仍可查看和保存\"}:{items:[{id:\"fixture-remote-model\",label:\"Fixture Remote\"}]},{status:window.fixture.policy?403:200});\nif(String(url).endsWith(\"/test\"))return Response.json(window.fixture.policy?{error:\"EXTERNAL_CALLS_DISABLED\",message:\"本机外部调用暂停\"}:{ok:true,message:\"隔离模拟连接成功\"},{status:window.fixture.policy?403:200});\nif(opts.method===\"PUT\"){if(window.fixture.saveFailure)return Response.json({error:\"INTEGRATION_OPERATION_FAILED\"},{status:500});const config=JSON.parse(opts.body).config;saved={...saved,updatedAt:\"fixture-\"+Date.now(),publicConfig:{...saved.publicConfig,...config,resolvedModelId:config.apiModelId||config.modelId}};return Response.json({updatedAt:saved.updatedAt});}\nthrow Error(\"Unexpected fixture operation\");\n}; render();\n";
+ await mkdir(output,{recursive:true}); const entryPath=resolve(output,"isolated-card-entry.tsx"); await writeFile(entryPath,entry.replace("./apps/web/components/integrations/integration-card",resolve("apps/web/components/integrations/integration-card.tsx").replaceAll("\\","/")));
+ await writeFile(resolve(output,"fixture-router.mjs"),"export function useRouter(){return {refresh:()=>window.fixtureRefresh()}}");
+ const result = await build({ configFile:false,root:process.cwd(),resolve:{alias:{"next/navigation":resolve(output,"fixture-router.mjs")}},define:{"process.env.NODE_ENV":'"development"'},plugins:[{name:"tsx-isolated-transform",enforce:"pre",transform(code: string,id: string){if(!id.endsWith(".tsx"))return null;return {code:ts.transpileModule(code,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,map:null};}},{name:"fixture-router",resolveId(id: string){if(/^react(?:-dom)?(?:\/|$)/.test(id)||id==="@content-center/ui")return webRequire.resolve(id);return id==="next/navigation"?"\\0fixture-router":null;},load(id: string){return id==="\\0fixture-router"?"export function useRouter(){return {refresh:()=>window.fixtureRefresh()}}":null;}}],build:{write:false,lib:{entry:entryPath,name:"FixtureCard",formats:["iife"]},minify:false},logLevel:"error" });
+ const outputs=(Array.isArray(result)?result:[result]) as Array<{output?: Array<{type: string; code?: string}>}>; const chunk=outputs.flatMap(item=>item?.output??[]).find(item=>item.type==="chunk"); if(!chunk?.code)throw Error("BROWSER_BUNDLE_MISSING"); bundle=chunk.code;
+ browser=await chromium.launch({headless:true});
+ await mkdir(output,{recursive:true});
+}, 30000);
+afterAll(async()=>{await browser?.close();});
+it("actual card preserves policy cause and completes only a simulated saved-config lifecycle", async()=>{
+ const context=await browser.newContext({viewport:{width:1100,height:1000}});
+ let networkAttempts=0;
+ await context.route("**/*",route=>{networkAttempts++;return route.abort();});
+ const page=await context.newPage();
+ page.setDefaultTimeout(4000);
+ const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
+ try{
+ await page.setContent('<main id="root"></main>');
+ await page.addScriptTag({content:'window.process={env:{NODE_ENV:"development"}};\n'+bundle});
+ await page.getByRole("button",{name:"读取服务商模型",exact:true}).waitFor();
+ expect(await page.getByLabel("实际请求 Model ID").inputValue()).toBe("fixture-model");
+ await page.getByRole("button",{name:"读取服务商模型",exact:true}).click();
+ await expect.poll(()=>page.getByRole("status").allTextContents()).toContainEqual(expect.stringContaining("已暂停外部服务调用"));
+ await page.getByRole("button",{name:"测试连接",exact:true}).click();
+ await expect.poll(()=>page.getByRole("status").allTextContents()).toContainEqual(expect.stringContaining("恢复真实调用需先确认"));
+ await page.evaluate(()=>{(window as unknown as {fixture:{policy:boolean}}).fixture.policy=false;});
+ await page.getByRole("button",{name:"读取服务商模型",exact:true}).click();
+ await page.getByLabel("服务商真实模型").selectOption("fixture-remote-model");
+ expect(await page.getByLabel("实际请求 Model ID").inputValue()).toBe("fixture-remote-model");
+ await page.getByRole("button",{name:"测试连接",exact:true}).click();
+ await expect.poll(()=>page.getByRole("status").allTextContents()).toContainEqual("隔离模拟连接成功");
+ await page.evaluate(()=>{(window as unknown as {fixture:{saveFailure:boolean}}).fixture.saveFailure=true;});
+ await page.getByRole("button",{name:"保存配置",exact:true}).click();
+ await page.getByRole("alert").waitFor();
+ expect(await page.getByLabel("实际请求 Model ID").inputValue()).toBe("fixture-remote-model");
+ await page.evaluate(()=>{(window as unknown as {fixture:{saveFailure:boolean}}).fixture.saveFailure=false;});
+ await page.getByRole("button",{name:"保存配置",exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as unknown as {fixture:{saved:()=>{publicConfig:{apiModelId:string}}}}).fixture.saved().publicConfig.apiModelId)).toBe("fixture-remote-model");
+ await page.evaluate(()=>{(window as unknown as {fixture:{reopen:()=>void}}).fixture.reopen();});
+ expect(await page.getByLabel("实际请求 Model ID").inputValue()).toBe("fixture-remote-model");
+ expect(await page.getByLabel("模型显示名称").inputValue()).toBe("Fixture Remote");
+ expect(errors).toEqual([]);expect(networkAttempts).toBe(0);
+ await page.screenshot({path:resolve(output,"isolated-model-config-lifecycle.png"),fullPage:true});
+ const calls=await page.evaluate(()=>(window as unknown as {fixture:{calls:unknown[]}}).fixture.calls);
+ await writeFile(resolve(output,"browser-evidence.json"),JSON.stringify({actualComponent:true,mockedConfigPersistence:true,actualDatabasePersistence:false,realProviderCalls:0,userBrowserTouched:false,networkAttempts,pageErrors:errors,calls},null,2));
+ }catch(error){await writeFile(resolve(output,"browser-failure.json"),JSON.stringify({pageErrors:errors,body:await page.locator("body").innerText(),error:String(error)},null,2));await page.screenshot({path:resolve(output,"browser-failure.png"),fullPage:true});throw error;}finally{await context.close();}
+},30000);

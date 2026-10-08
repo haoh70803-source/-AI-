@@ -1,0 +1,1 @@
+ALTER TYPE "AssetType" ADD VALUE 'DOCUMENT';

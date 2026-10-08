@@ -1,0 +1,24 @@
+/* Project workspace extension; excluded from the Sidebar A+B baseline. */
+.xsj-project-tree { margin: 8px 12px 0; border-top: 1px solid rgb(227 226 239 / .8); padding-top: 10px; }
+.xsj-project-tree > header { display: grid; gap: 5px; padding: 0 6px 7px; }
+.xsj-project-tree > header button { display: flex; min-height: 24px; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; color: var(--text-secondary); font-size: 10px; font-weight: 650; text-align: left; }
+.xsj-project-tree > header button svg { transition: transform 150ms ease; }
+.xsj-project-tree:not(.is-open) > header button svg { transform: rotate(-90deg); }
+.xsj-project-tree > header > a { overflow: hidden; color: var(--text-primary); font-size: 11px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.xsj-project-tree-body { display: grid; gap: 2px; }
+.xsj-project-tree-node, .xsj-project-tree details summary, .xsj-project-tree details a { display: flex; min-height: 30px; align-items: center; gap: 7px; border-radius: 7px; color: var(--text-secondary); font-size: 10px; text-decoration: none; }
+.xsj-project-tree-node, .xsj-project-tree details summary { padding: 0 7px; }
+.xsj-project-tree-node:hover, .xsj-project-tree details summary:hover, .xsj-project-tree details a:hover { background: var(--accent-soft); color: var(--accent); }
+.xsj-project-tree-node.is-selected, .xsj-project-tree details a.is-selected { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.xsj-project-tree details { min-width: 0; }
+.xsj-project-tree details summary { cursor: pointer; list-style: none; }
+.xsj-project-tree details summary::-webkit-details-marker { display: none; }
+.xsj-project-tree details summary svg:first-child { transition: transform 150ms ease; }
+.xsj-project-tree details:not([open]) summary svg:first-child { transform: rotate(-90deg); }
+.xsj-project-tree details summary span { flex: 1; }
+.xsj-project-tree details summary small { display: grid; min-width: 17px; height: 17px; place-items: center; border-radius: 999px; background: var(--accent-soft); color: var(--text-secondary); font-size: 9px; }
+.xsj-project-tree details > div { display: grid; gap: 1px; margin-left: 17px; border-left: 1px solid var(--accent-border); padding-left: 7px; }
+.xsj-project-tree details a { min-width: 0; padding: 0 6px; }
+.xsj-project-tree details a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xsj-app-sidebar.is-collapsed #xsj-project-tree-slot { display: none; }
+@media (max-width: 900px) { .xsj-project-tree { margin-inline: 8px; } }

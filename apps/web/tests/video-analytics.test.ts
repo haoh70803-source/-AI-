@@ -77,3 +77,13 @@ describe('video analytics integrity', () => {
     expect(selectVideoAnalytics(source, filter).metrics).toBeNull();
   });
 });
+
+it('custom ranges include both endpoints and compare with an equal preceding period', () => {
+  const data = createVideoDemo('2026-10-08');
+  const view = selectVideoAnalytics(data, { ...filter, start: '2026-09-01', end: '2026-09-03' });
+  expect(view.start).toBe('2026-09-01'); expect(view.end).toBe('2026-09-03');
+  expect(view.trend.map(p => p.day)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03']);
+  expect(view.metrics!.plays).toBe(data.points.filter(p => p.day >= view.start && p.day <= view.end).reduce((sum, p) => sum + p.plays, 0));
+  const previous = data.points.filter(p => p.day >= '2026-08-29' && p.day < view.start).reduce((sum, p) => sum + p.plays, 0);
+  expect(view.growth).toBeCloseTo((view.metrics!.plays / previous - 1) * 100);
+});

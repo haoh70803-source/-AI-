@@ -14,6 +14,7 @@ type Options = {
   queryTimeoutMs?: number;
   pollIntervalMs?: number;
   overallTimeoutMs?: number;
+  signal?: AbortSignal;
 };
 
 function failure(response: Response, statusCode: string | null, logId: string | null) {
@@ -60,14 +61,16 @@ export class DoubaoRecordingFileClient {
 
   async recognize(input: TranscriptionInput): Promise<DoubaoFlashResponse> {
     if (input.audio.mode !== "REMOTE_URL") {
-      throw new DoubaoError("ASR_AUDIO_NOT_PUBLICLY_REACHABLE", "录音文件识别 2.0 需要可下载的音频地址。", false);
+      throw new DoubaoError("ASR_AUDIO_NOT_PUBLICLY_REACHABLE", "录音文件识别 2.0 需要公网可下载的音频地址。请配置公网对象存储或媒体中转服务，或开通极速版后切换接口。", false);
     }
     const requestId = randomUUID();
     const uid = this.config.authMode === "API_KEY" ? requestId : this.config.appId;
-    const body = { user: { uid }, audio: { url: input.audio.url }, request: { model_name: "bigmodel", show_utterances: true } };
+    const formats: Record<string, string> = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg", "audio/aac": "aac", "audio/mp4": "m4a" };
+    const format = input.contentType ? formats[input.contentType.split(";")[0]!.trim().toLowerCase()] : undefined;
+    const body = { user: { uid }, audio: { url: input.audio.url, ...(format ? { format } : {}) }, request: { model_name: "bigmodel", show_utterances: true } };
     let submitted: Response;
     try {
-      submitted = await this.fetcher(this.endpoint("submit"), { method: "POST", headers: { ...this.headers(requestId), "X-Api-Sequence": "-1" }, body: JSON.stringify(body), signal: AbortSignal.timeout(this.options.submissionTimeoutMs ?? 30_000) });
+      submitted = await this.fetcher(this.endpoint("submit"), { method: "POST", headers: { ...this.headers(requestId), "X-Api-Sequence": "-1" }, body: JSON.stringify(body), signal: AbortSignal.any([AbortSignal.timeout(this.options.submissionTimeoutMs ?? 30_000), ...(this.options.signal ? [this.options.signal] : [])]) });
     } catch (error) {
       if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) throw new DoubaoError("DOUBAO_TIMEOUT", "豆包任务提交超时。", true);
       throw new DoubaoError("DOUBAO_SERVER_ERROR", "豆包任务提交失败。", true);
@@ -80,11 +83,12 @@ export class DoubaoRecordingFileClient {
     const started = Date.now();
     let pollCount = 0;
     while (Date.now() - started < (this.options.overallTimeoutMs ?? 15 * 60_000)) {
+      if (this.options.signal?.aborted) throw new DoubaoError("DOUBAO_TIMEOUT", "识别已取消，请重试。", false);
       if (pollCount > 0) await this.sleep(Math.min((this.options.pollIntervalMs ?? 1_000) * 2 ** Math.min(pollCount - 1, 3), 8_000));
       pollCount += 1;
       let response: Response;
       try {
-        response = await this.fetcher(this.endpoint("query"), { method: "POST", headers: this.headers(requestId, logId ?? undefined), body: "{}", signal: AbortSignal.timeout(this.options.queryTimeoutMs ?? 30_000) });
+        response = await this.fetcher(this.endpoint("query"), { method: "POST", headers: this.headers(requestId, logId ?? undefined), body: "{}", signal: AbortSignal.any([AbortSignal.timeout(this.options.queryTimeoutMs ?? 30_000), ...(this.options.signal ? [this.options.signal] : [])]) });
       } catch (error) {
         if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) throw new DoubaoError("DOUBAO_TIMEOUT", "豆包任务查询超时。", true);
         throw new DoubaoError("DOUBAO_SERVER_ERROR", "豆包任务查询失败。", true);

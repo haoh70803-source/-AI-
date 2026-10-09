@@ -91,28 +91,35 @@ export class S3CompatibleStorageProvider implements StorageProvider {
     });
   }
 
-  async ensureBucket(): Promise<void> {
+  async ensureBucket(signal = AbortSignal.timeout(30_000)): Promise<void> {
     try {
-      await this.client.send(new HeadBucketCommand({ Bucket: this.config.bucket }));
+      await this.client.send(new HeadBucketCommand({ Bucket: this.config.bucket }), { abortSignal: signal });
     } catch {
-      await this.client.send(new CreateBucketCommand({ Bucket: this.config.bucket }));
+      signal.throwIfAborted();
+      await this.client.send(new CreateBucketCommand({ Bucket: this.config.bucket }), { abortSignal: signal });
     }
   }
 
   async upload(input: Parameters<StorageProvider["upload"]>[0]) {
-    await this.ensureBucket();
+    const signal = input.signal ? AbortSignal.any([input.signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000);
+    try {
+    await this.ensureBucket(signal);
     await this.client.send(new PutObjectCommand({
       Bucket: this.config.bucket,
       Key: input.key,
       Body: input.body,
       ContentType: input.contentType,
       ContentLength: input.contentLength,
-    }));
+    }), { abortSignal: signal });
+    } catch (error) {
+      if (!(input.body instanceof Uint8Array)) input.body.destroy();
+      throw error;
+    }
     return { providerMode: "REAL" as const, data: { key: input.key } };
   }
 
   async delete(key: string) {
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: key }));
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: key }), { abortSignal: AbortSignal.timeout(10_000) });
     return { providerMode: "REAL" as const, data: { key } };
   }
 

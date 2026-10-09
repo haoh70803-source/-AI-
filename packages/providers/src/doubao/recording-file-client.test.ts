@@ -20,6 +20,7 @@ describe("Doubao Recording File Recognition 2.0", () => {
       "https://openspeech.bytedance.com/api/v3/auc/bigmodel/query",
     ]);
     expect(client.getLastRequestMetadata()).toMatchObject({ providerRequestId: "safe-log-id", pollCount: 2 });
+    expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toMatchObject({ audio: { url: input.audio.url, format: "mp3" }, request: { model_name: "bigmodel" } });
   });
 
   it("classifies provider failure without exposing credentials", async () => {

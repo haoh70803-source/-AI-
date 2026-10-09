@@ -9,6 +9,8 @@ const HARD_REFRESH_AFTER_MS = 10_000;
 
 export type SourceProcessingSnapshot = {
   busy: boolean;
+  sourceStatus?: string;
+  processingError?: string | null;
   fingerprint: string;
   transcriptionStatus: string | null;
   hasTranscript: boolean;
@@ -48,7 +50,7 @@ export function SourceProcessingPoller({ sourceId, active, onSnapshot }: {
       controller = new AbortController();
       try {
         const response = await fetch(`/api/source-items/${sourceId}/processing`, {
-          cache: "no-store", signal: controller.signal,
+          cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]),
         });
         if (!response.ok) return;
         const snapshot = await response.json() as SourceProcessingSnapshot;

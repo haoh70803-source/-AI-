@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type RefObject } from "react";
 import type { ProjectListView } from "@/server/sidebar/view-model";
-import { GlobalSearch } from "./global-search";
 import { LogoutButton } from "./logout-button";
 import { NewProjectDialog } from "./sidebar/new-project-dialog";
 import { SidebarProjectSections } from "./sidebar/project-sections";
@@ -81,13 +80,12 @@ export function SidebarFoundation({
     <header className="app-sidebar-header">
       <div className="app-sidebar-brand-row">
         <Link href="/home" aria-label="鑫世界工作台" className="app-sidebar-brand">
-          <span className="app-sidebar-icon-slot"><img src="/fusion/founder-os-mark.png" alt="" /></span>
+          <span className="app-sidebar-icon-slot"><img src="/brand/xin-world-mark-dark.svg" alt="" /></span>
           <span className="app-sidebar-copy"><strong>鑫世界工作台</strong><small className="fusion-brand-caption">CONTENT OS · 1.2</small></span>
         </Link>
         <button type="button" className="app-sidebar-pin app-sidebar-icon-slot" aria-label={controlLabel} aria-pressed={pinned} onClick={toggle}>
           {pinned ? <PanelLeftClose /> : <PanelLeftOpen />}
         </button>
-        <div className="app-sidebar-search"><GlobalSearch compact onOpenChange={(open) => onInteractionLockChange("SEARCH", open)} /></div>
       </div>
     </header>
 

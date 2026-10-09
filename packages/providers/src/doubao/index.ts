@@ -5,3 +5,4 @@ export * from "./provider";
 export * from "./recording-file-client";
 export * from "./recording-file-provider";
 export * from "./schemas";
+export * from "./streaming-client";

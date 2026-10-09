@@ -90,7 +90,8 @@ describe("OpenAICompatibleLLMProvider HTTP fixture", () => {
 
   it("streams OpenAI-compatible text deltas and returns the final usage", async () => {
     const chunks: string[] = [];
-    const result = await provider().streamText({ prompt: "STREAM_SUCCESS" }, { onDelta: (delta) => { chunks.push(delta); } });
+    const result = await provider().streamText({ systemPrompt: "policy", messages: [{ role: "user", content: "写朋友圈" }, { role: "assistant", content: "发生了什么？" }], prompt: "STREAM_SUCCESS" }, { onDelta: (delta) => { chunks.push(delta); } });
+    expect(lastRequestBody.messages).toEqual([{ role: "system", content: "policy" }, { role: "user", content: "写朋友圈" }, { role: "assistant", content: "发生了什么？" }, { role: "user", content: "STREAM_SUCCESS" }]);
     expect(chunks).toEqual(["流式", "回复"]);
     expect(result).toMatchObject({ providerMode: "REAL", data: { text: "流式回复", model: "fixture-model", providerRequestId: "fixture-stream-id", finishReason: "stop", usage: { inputTokens: 9, outputTokens: 2 } } });
     expect(lastRequestBody).toMatchObject({ stream: true, stream_options: { include_usage: true } });

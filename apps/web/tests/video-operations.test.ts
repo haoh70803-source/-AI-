@@ -2,10 +2,13 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 vi.mock('server-only', () => ({}));
 import { db } from '@content-center/db';
-import { businessDay, dayOffset, daySchema, comparison, taskState, parseCsv, csvHeaders, csvNumber, csvCell, metricSchema, validateObservation, type Metric } from '../server/video-operations/policy';
+import { businessDay, dayOffset, daySchema, videoRange, inputSchema, comparison, taskState, parseCsv, csvHeaders, csvNumber, csvCell, metricSchema, validateObservation, type Metric } from '../server/video-operations/policy';
 import { mutateVideo, readVideo } from '../server/video-operations/service';
 const fixed = new Date('2026-10-08T02:00:00Z'), base: Metric = { accountId: 'a', day: '2026-10-08', plays: 1200, exposures: null, likes: 20, comments: 10, shares: 3, saves: 5, netFollowers: -2, negativeComments: 2, limited: false, isFinal: false, observedAt: fixed.toISOString(), revision: 0 };
 describe('video operating policy', () => {
+    it.each([['2026-10-09', '2026-10-09'], ['2026-10-08', '2026-10-07'], ['2026-02-30', '2026-03-01'], ['2020-01-01', '2026-10-08'], ['2026-10-01', undefined]])('rejects invalid custom range %s to %s', (start, end) => expect(() => videoRange(30, start, end, '2026-10-08')).toThrow());
+    it('counts leap day and same-day ranges inclusively', () => { expect(videoRange(30, '2024-02-28', '2024-03-01', '2026-10-08').days).toBe(3); expect(videoRange(7, '2026-10-08', '2026-10-08', '2026-10-08').days).toBe(1); });
+    it('rejects unknown account platforms', () => expect(inputSchema.safeParse({ action: 'account.create', platform: 'UNKNOWN', handle: 'test', externalId: 'test' }).success).toBe(false));
     it('uses Beijing day across UTC midnight', () => expect(businessDay(new Date('2026-10-07T17:00:00Z'))).toBe('2026-10-08'));
     it('offsets days across month boundary', () => expect(dayOffset('2026-03-01', -1)).toBe('2026-02-28'));
     it.each(['2026-02-30', '2026-13-01', '2026-00-01'])('rejects nonexistent date %s', d => expect(daySchema.safeParse(d).success).toBe(false));
@@ -60,6 +63,25 @@ describe('video operations real database', () => {
     it('completed task cannot be postponed until reopened', async () => await expect(mutateVideo(actor(), { action: 'task.update', id: taskId, revision: 2, dueAt: new Date(Date.now() + 600000).toISOString() })).rejects.toMatchObject({ status: 409 }));
     it('reopens and postpones with optimistic concurrency', async () => { await mutateVideo(actor(), { action: 'task.update', id: taskId, revision: 2, status: 'TODO' }); await mutateVideo(actor(), { action: 'task.update', id: taskId, revision: 3, dueAt: new Date(Date.now() + 600000).toISOString() }); expect((await readVideo(actor(), { taskId })).tasks[0]!.state).toBe('TODO'); });
     it('task revisions and workspaces prevent unsafe updates', async () => { await expect(mutateVideo(actor(), { action: 'task.update', id: taskId, revision: 1, status: 'DONE' })).rejects.toMatchObject({ status: 409 }); await expect(readVideo({ workspaceId: otherWorkspace, userId: otherId }, { taskId })).rejects.toMatchObject({ status: 404 }); });
+    it('filters real platforms and historical ranges without mixing CSV identities', async () => {
+        const xhs = await mutateVideo(actor(), { action: 'account.create', platform: 'XIAOHONGSHU', handle: 'XHS test', externalId: 'qa-' + key }) as { id: string };
+        try {
+            const historic = dayOffset(businessDay(), -100);
+            await mutateVideo(actor(), { action: 'metrics.save', source: 'MANUAL', rows: [{ ...row(historic, 321), accountId: xhs.id }] });
+            const v = await readVideo(actor(), { platform: 'XIAOHONGSHU', start: historic, end: historic });
+            expect(v.records).toHaveLength(1); expect(v.records[0]!.accountId).toBe(xhs.id); expect(v.trend[0]!.plays).toBe(321); expect(v.trend).toHaveLength(1);
+            expect((await readVideo(actor(), { platform: 'DOUYIN', start: historic, end: historic })).records).toHaveLength(0);
+            await expect(readVideo(actor(), { platform: 'XIAOHONGSHU', accountId })).rejects.toMatchObject({ status: 404 });
+            await expect(readVideo(actor(), { start: businessDay(), end: dayOffset(businessDay(), 1) })).rejects.toMatchObject({ status: 400 });
+            const csv = csvHeaders.join(',') + '\n' + ['qa-' + key, historic, 888, '', 1, 2, 3, 4, 0, 0, '否', '否', new Date().toISOString()].join(',');
+            const preview = await mutateVideo(actor(), { action: 'csv.preview', platform: 'XIAOHONGSHU', csv }) as { preview: Metric[] };
+            expect(preview.preview[0]!.accountId).toBe(xhs.id);
+            expect(preview.preview[0]!.revision).toBe(1);
+            const task = await mutateVideo(actor(), { action: 'task.create', accountId: xhs.id, contentId: null, assigneeId: ownerId, kind: 'EDIT', title: 'XHS task', dueAt: new Date().toISOString(), note: '' }) as { id: string };
+            expect((await readVideo(actor(), { platform: 'XIAOHONGSHU' })).tasks.map(t => t.id)).toContain(task.id);
+            expect((await readVideo(actor(), { platform: 'DOUYIN' })).tasks.map(t => t.id)).not.toContain(task.id);
+        } finally { await db.videoTask.deleteMany({ where: { accountId: xhs.id } }); await db.videoDailyMetric.deleteMany({ where: { accountId: xhs.id } }); await db.videoAccount.delete({ where: { id: xhs.id } }); }
+    });
     it('archived accounts keep historical rows while exiting active totals', async () => { await mutateVideo(actor(), { action: 'account.archive', id: accountId, revision: 1, archived: true }); expect((await readVideo(actor())).metrics.plays).toBeNull(); expect(await db.videoDailyMetric.count({ where: { accountId } })).toBe(3); });
     it('disabled members are rejected by service boundaries', async () => { await db.workspaceMember.update({ where: { workspaceId_userId: { workspaceId, userId: editorId } }, data: { disabledAt: new Date() } }); await expect(readVideo({ workspaceId, userId: editorId })).rejects.toMatchObject({ status: 403 }); });
 });

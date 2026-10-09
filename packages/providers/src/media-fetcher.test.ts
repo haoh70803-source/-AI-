@@ -1,6 +1,8 @@
 import { createServer, type Server } from "node:http";
 import type { Readable } from "node:stream";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+// Only this loopback fixture bypasses the review outbound gate; SSRF checks stay real.
+vi.mock("./review-policy", () => ({ assertReviewExternalAllowed: () => undefined }));
 import type { StorageProvider } from "./contracts";
 import { MediaFetcher } from "./media-fetcher";
 

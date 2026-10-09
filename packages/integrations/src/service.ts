@@ -145,7 +145,7 @@ export class IntegrationService {
     const existingPublicConfig = existing ? normalizePublicProviderConfig(input.provider, jsonObject(existing.publicConfig)) : {};
     const publicConfig = input.provider === "DOUBAO_ASR"
       && parsedPublicConfig.protocol === undefined
-      && (existingPublicConfig.protocol === "FLASH" || existingPublicConfig.protocol === "RECORDING_FILE_2_0")
+      && (existingPublicConfig.protocol === "FLASH" || existingPublicConfig.protocol === "RECORDING_FILE_2_0" || existingPublicConfig.protocol === "STREAMING_2_0")
       ? { ...parsedPublicConfig, protocol: existingPublicConfig.protocol }
       : parsedPublicConfig;
     const llmProviderChanged = Boolean(existing && (

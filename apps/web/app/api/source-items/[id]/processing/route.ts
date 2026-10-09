@@ -1,3 +1,4 @@
+import { expireMaterialProcessing } from "@content-center/worker/job-recovery";
 import { db } from "@content-center/db";
 import { NextResponse } from "next/server";
 import { apiError, getApiWorkspaceContext } from "@/server/api-access";
@@ -7,6 +8,9 @@ export async function GET(_request: Request, route: { params: Promise<{ id: stri
   const context = await getApiWorkspaceContext();
   if (!context) return apiError("UNAUTHORIZED", 401);
   const { id } = await route.params;
+  const permitted = await db.sourceItem.findFirst({ where: { id, workspaceId: context.workspace.id }, select: { id: true } });
+  if (!permitted) return apiError("NOT_FOUND", 404);
+  await expireMaterialProcessing({ workspaceId: context.workspace.id, sourceItemId: id });
   const source = await db.sourceItem.findFirst({
     where: { id, workspaceId: context.workspace.id },
     select: {
@@ -36,6 +40,7 @@ export async function GET(_request: Request, route: { params: Promise<{ id: stri
   return NextResponse.json({
     busy,
     sourceStatus: source.status,
+    processingError: latestReadJob?.status === "FAILED" ? latestReadJob.errorMessage?.slice(0, 200) ?? null : source.status === "FAILED" ? "文件上传或读取未完成，请重新上传或重试。" : null,
     transcriptionStatus: latestTranscription?.status ?? null,
     transcription: latestTranscription ? {
       status: latestTranscription.status,

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { db } from "@content-center/db";
 import { IntegrationService } from "@content-center/integrations";
-import { buildSourceAssetObjectKey, LocalAsrError, minioStorageFromEnv } from "@content-center/providers";
+import { buildSourceAssetObjectKey, minioStorageFromEnv } from "@content-center/providers";
 import { QueueEvents } from "bullmq";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -16,7 +16,7 @@ import {
   TRANSCRIBE_SOURCE,
   TRANSCRIBE_SOURCE_QUEUE,
 } from "./queue";
-import { createRedisConnection } from "./redis-connection";
+import { createRedisConnection, queuePrefix } from "./redis-connection";
 import { cleanupExpiredAsrAudio, requestSourceTranscription, resolveWorkspaceTranscriptionPlan, TranscriptionAlreadyRunningError } from "./transcription";
 
 const execFileAsync = promisify(execFile);
@@ -34,7 +34,7 @@ describe("TRANSCRIBE_SOURCE integration", () => {
   let fixtureMode: "SUCCESS" | "EMPTY" = "SUCCESS";
   let completedSourceId = "";
   const worker = createTranscribeSourceWorker();
-  const events = new QueueEvents(TRANSCRIBE_SOURCE_QUEUE, { connection: createRedisConnection() });
+  const events = new QueueEvents(TRANSCRIBE_SOURCE_QUEUE, { connection: createRedisConnection(), prefix: queuePrefix() });
 
   beforeAll(async () => {
     process.env.INTEGRATION_ENCRYPTION_KEY = randomBytes(32).toString("base64");
@@ -115,7 +115,7 @@ describe("TRANSCRIBE_SOURCE integration", () => {
     else process.env.INTEGRATION_ENCRYPTION_KEY = originalEncryptionKey;
   });
 
-  it("never falls back implicitly and uses Doubao only when the workspace explicitly enables fallback", async () => {
+  it("prefers configured Doubao even when legacy settings select local and local is offline", async () => {
     const service = new IntegrationService();
     try {
       await service.saveIntegrationConfig({
@@ -130,7 +130,7 @@ describe("TRANSCRIBE_SOURCE integration", () => {
           endpoint: "http://127.0.0.1:1",
         },
       });
-      await expect(resolveWorkspaceTranscriptionPlan(workspaceId)).rejects.toBeInstanceOf(LocalAsrError);
+      await expect(resolveWorkspaceTranscriptionPlan(workspaceId)).resolves.toMatchObject({ provider: "DOUBAO_ASR", fallbackToLocal: true });
 
       await service.saveIntegrationConfig({
         workspaceId,
@@ -146,8 +146,8 @@ describe("TRANSCRIBE_SOURCE integration", () => {
       });
       await expect(resolveWorkspaceTranscriptionPlan(workspaceId)).resolves.toMatchObject({
         provider: "DOUBAO_ASR",
-        fallbackToDoubao: true,
-        fallbackUsed: true,
+        fallbackToLocal: true,
+        fallbackToDoubao: false,
       });
     } finally {
       await service.saveIntegrationConfig({

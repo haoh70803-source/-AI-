@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import tempfile
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
 
 from hardware import hardware_capabilities
+from bounded_runtime import BoundedModelRuntime, BoundedRuntimeError
 from runtime import LocalAsrRuntimeError, ModelRuntime
 
 
@@ -21,6 +23,8 @@ if HOST not in {"127.0.0.1", "localhost", "::1"}:
 
 app = FastAPI(title="AI Content Center Local ASR", version="1.0.0")
 runtime = ModelRuntime()
+inference = BoundedModelRuntime()
+atexit.register(inference.close)
 
 
 def http_error(error: LocalAsrRuntimeError) -> HTTPException:
@@ -31,19 +35,28 @@ def http_error(error: LocalAsrRuntimeError) -> HTTPException:
     return HTTPException(status_code=status, detail={"code": error.code, "message": str(error)})
 
 
+def model_statuses():
+    statuses = runtime.model_statuses()
+    cached = {item["key"]: item.get("loadedDevices", []) for item in inference.loaded_models} if inference.process and inference.process.is_alive() else {}
+    for item in statuses:
+        item["loadedDevices"] = cached.get(item["key"], [])
+        item["loaded"] = bool(item["loadedDevices"])
+    return statuses
+
+
 @app.get("/health")
 def health() -> dict:
     return {
         "status": "NORMAL",
         "service": "LOCAL_FUNASR",
         "hardware": hardware_capabilities(),
-        "models": runtime.model_statuses(),
+        "models": model_statuses(),
     }
 
 
 @app.get("/models")
 def models() -> dict:
-    return {"models": runtime.model_statuses()}
+    return {"models": model_statuses()}
 
 
 @app.post("/models/{model_key}/install")
@@ -56,6 +69,7 @@ def install_model(model_key: str) -> dict:
 
 @app.post("/transcribe")
 async def transcribe(
+    request: Request,
     file: UploadFile = File(...),
     model: str = Form(...),
     device: str = Form(...),
@@ -86,8 +100,8 @@ async def transcribe(
                 if total > MAX_UPLOAD_BYTES:
                     raise HTTPException(status_code=413, detail={"code": "LOCAL_ASR_AUDIO_TOO_LARGE", "message": "音频超过本地服务限制。"})
                 temporary.write(chunk)
-        return runtime.transcribe(temporary_path, model, device, language, parsed_hotwords)
-    except LocalAsrRuntimeError as error:
+        return await inference.transcribe((str(temporary_path), model, device, language, parsed_hotwords), request.is_disconnected)
+    except (LocalAsrRuntimeError, BoundedRuntimeError) as error:
         raise http_error(error) from error
     finally:
         await file.close()

@@ -1,0 +1,55 @@
+import { randomUUID } from "node:crypto";
+import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { chromium, type Browser, type BrowserContext } from "@playwright/test";
+import { afterAll, beforeAll, expect, it, vi } from "vitest";
+vi.mock("server-only", () => ({}));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), transcribe: vi.fn() }));
+vi.mock("@/server/api-access", () => ({ getApiWorkspaceContext: mocks.context, apiError: (error: string, status: number, message?: string) => Response.json({ error, message }, { status }) }));
+vi.mock("@content-center/worker/transcription", () => ({ prepareVoiceTranscription: async () => mocks.transcribe }));
+import { db } from "@content-center/db";
+import { auth } from "../lib/auth";
+import { POST } from "../app/api/voice-input/route";
+const origin = "http://localhost:3022", output = resolve("output/feature-verification-20261008/real-recording");
+let browser: Browser, context: BrowserContext, userId = "", workspaceId = "";
+beforeAll(async () => {
+  if (process.env.ENVIRONMENT_ID !== "LOCAL_REVIEW" || new URL(process.env.DATABASE_URL!).port !== "55438") throw Error("ISOLATED_REVIEW_REQUIRED");
+  const email = `voice-format-${randomUUID()}@example.test`, password = randomUUID();
+  userId = (await auth.api.signUpEmail({ body: { name: "录音格式验收", email, password } })).user.id;
+  workspaceId = (await db.workspace.create({ data: { name: "录音格式验收", slug: randomUUID(), members: { create: { userId, role: "OWNER" } } } })).id;
+  mocks.context.mockResolvedValue({ workspace: { id: workspaceId }, session: { user: { id: userId } }, role: "OWNER" }); mocks.transcribe.mockResolvedValue("识别返回的验收文字");
+  const response = await auth.api.signInEmail({ body: { email, password }, asResponse: true }); expect(response.ok).toBe(true);
+  browser = await chromium.launch({ channel: "msedge", headless: true, args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", `--use-file-for-fake-audio-capture=${resolve("services/local-asr/benchmark/audio/normal_zh.wav")}`] });
+  context = await browser.newContext({ permissions: ["microphone"], viewport: { width: 1280, height: 900 } });
+  await context.addCookies(response.headers.getSetCookie().map(value => { const pair = value.split(";")[0]!, index = pair.indexOf("="); return { name: pair.slice(0, index), value: pair.slice(index + 1), url: origin }; }));
+  await mkdir(output, { recursive: true });
+}, 60000);
+afterAll(async () => { await context?.close(); await browser?.close(); if (workspaceId) await db.workspace.delete({ where: { id: workspaceId } }); if (userId) await db.user.delete({ where: { id: userId } }); await db.$disconnect(); });
+
+it("decodes real MediaRecorder WebM with FFmpeg and fills the draft without sending", async () => {
+  const page = await context.newPage(); page.setDefaultTimeout(30000);
+  let contentType = "", status = 0, uploadSize = 0;
+  await page.route("**/api/voice-input", async route => {
+    if (route.request().method() === "GET") return route.fulfill({ contentType: "application/json", body: JSON.stringify({ available: true }) });
+    contentType = route.request().headers()["content-type"]!;
+    const body = route.request().postDataBuffer()!; uploadSize = body.length;
+    const response = await POST(new Request(origin + "/api/voice-input", { method: "POST", headers: { "content-type": contentType }, body: new Uint8Array(body).buffer }));
+    status = response.status; await route.fulfill({ status, contentType: "application/json", body: await response.text() });
+  });
+  await page.goto(origin + "/dashboard", { waitUntil: "domcontentloaded", timeout: 60000 });
+  const input = page.getByRole("textbox", { name: "描述你想完成的事情" }); await input.fill("已有输入");
+  await page.getByRole("button", { name: "语音输入", exact: true }).click();
+  await page.getByRole("button", { name: "停止录音并识别" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "2/60 秒" }).waitFor();
+  await page.getByRole("button", { name: "停止录音并识别" }).click();
+  await page.getByText("已加入输入框，可修改后发送。", { exact: true }).waitFor();
+  expect(status).toBe(200); expect(uploadSize).toBeGreaterThan(1000); expect(contentType).toContain("multipart/form-data");
+  expect(await input.inputValue()).toBe("已有输入\n识别返回的验收文字");
+  expect(mocks.transcribe).toHaveBeenCalledOnce();
+  const [audio, actor, duration] = mocks.transcribe.mock.calls[0]!;
+  expect(actor).toBe(userId); expect(audio.audio.mode).toBe("BINARY_DATA"); expect(audio.audio.data.byteLength).toBeGreaterThan(1000); expect(duration).toBeGreaterThan(1000); expect(duration).toBeLessThan(60000);
+  expect(await db.ingestJob.count({ where: { workspaceId } })).toBe(0);
+  await page.screenshot({ path: resolve(output, "真实录音转换回填.png") });
+  await writeFile(resolve(output, "evidence.json"), JSON.stringify({ browserMediaRecorder: true, fakeAudioDeviceOnly: true, realFFmpeg: true, realEndpointValidationAndLock: true, recognitionResponseMocked: true, paidCalls: 0, status, uploadSize, decodedDurationMs: duration }, null, 2));
+  await page.close();
+}, 90000);

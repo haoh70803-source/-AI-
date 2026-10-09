@@ -15,7 +15,7 @@ describe("project agent core", () => {
   let workspaceId = ""; let projectId = ""; let materialId = ""; let runId = ""; let skillId = "";
   const prompts: string[] = [];
   let answer = "这是完整正文，依据来源 [1]。";
-  const provider = new MockLLMProvider(input => { prompts.push(input.prompt); return answer; });
+  const provider = new MockLLMProvider(input => { prompts.push(JSON.stringify(input.messages ?? []) + input.prompt); return answer; });
   const runtime = { provider, providerName: "MOCK", model: "agent-fixture", mode: "MOCK" as const };
   const actor = () => ({ workspaceId, projectId, userId });
   beforeAll(async () => {

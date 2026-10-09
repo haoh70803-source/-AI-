@@ -5,14 +5,16 @@ import { z } from "zod";
 import { apiError, getApiWorkspaceContext } from "@/server/api-access";
 import { listLibrarySources } from "@/server/library";
 import { createSourceAndJob, SourceServiceError } from "@/server/source-service";
-import { extractDouyinShareUrl, extractRedFoxContentUrl, RedFoxError } from "@content-center/providers";
+import { extractDouyinShareUrl, extractRedFoxContentUrl, RedFoxError, DoubaoError, LocalAsrError, resolvePublicAddress } from "@content-center/providers";
 
 const createSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("TEXT"), title: z.string().trim().max(200).optional(), text: z.string().trim().min(1).max(500_000), notes: z.string().trim().max(2_000).optional() }),
   z.object({ kind: z.literal("URL"), url: z.string().trim().url().max(2_000) }),
-  z.object({ kind: z.literal("DOUYIN"), shareText: z.string().trim().min(1).max(10_000) }),
+  z.object({ kind: z.literal("MEDIA_URL"), url: z.string().trim().url().max(2_000), autoTranscribe: z.boolean().optional() }),
+  z.object({ kind: z.literal("DOUYIN"), autoTranscribe: z.boolean().optional(), shareText: z.string().trim().min(1).max(10_000) }),
   z.object({
     kind: z.literal("REDFOX"),
+    autoTranscribe: z.boolean().optional(),
     url: z.string().trim().url().max(2_000),
     externalId: z.string().trim().max(300).optional(),
     title: z.string().trim().max(500).optional(),
@@ -39,12 +41,13 @@ export async function POST(request: Request) {
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return apiError("INVALID_INPUT", 400, "采集输入不完整或格式不正确。");
   const requestKeyRecord = clientRequestId ? await db.ingestJob.findFirst({where:{workspaceId:context.workspace.id,requestedById:context.session.user.id,metadata:{path:["clientRequestId"],equals:clientRequestId}},select:{id:true}}) : null;
-  if (parsed.data.kind === "URL") {
+  if (parsed.data.kind === "URL" || parsed.data.kind === "MEDIA_URL") {
     let canonicalUrl: string;
     try {
       canonicalUrl = normalizeSourceUrl(parsed.data.url);
+      if (parsed.data.kind === "MEDIA_URL") await resolvePublicAddress(canonicalUrl);
     } catch {
-      return apiError("INVALID_URL", 400);
+      return apiError("INVALID_URL", 400, "请输入可公开下载的视频地址，不能使用本机或内网地址。");
     }
     const duplicate = await db.sourceItem.findFirst({ where: { workspaceId: context.workspace.id, canonicalUrl }, select: { id: true } });
     if (duplicate && !requestKeyRecord) return NextResponse.json({ error: "DUPLICATE_URL", sourceItemId: duplicate.id }, { status: 409 });
@@ -89,9 +92,10 @@ export async function POST(request: Request) {
     }
   }
   try {
-    const created = await createSourceAndJob({ workspaceId: context.workspace.id, userId: context.session.user.id, source: parsed.data, clientRequestId });
+    const created = await createSourceAndJob({ workspaceId: context.workspace.id, userId: context.session.user.id, source: parsed.data, autoTranscribe: "autoTranscribe" in parsed.data ? parsed.data.autoTranscribe : false, clientRequestId });
     return NextResponse.json({ sourceItemId: created.sourceItem.id, jobId: created.ingestJob.id, status: created.ingestJob.status }, { status: 202 });
   } catch (error) {
+    if (error instanceof DoubaoError || error instanceof LocalAsrError) return apiError(error.code, 409, error.message);
     if (error instanceof SourceServiceError) {
       if(error.code==="IDEMPOTENCY_KEY_REUSED")return apiError(error.code,409,"同一请求标识不能用于不同内容。");
       return apiError(

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="180 88 332 218" width="40" height="40"><title>鑫世界公司图标</title><g xmlns="http://www.w3.org/2000/svg" id="mark">
+    <circle id="sun" cx="345.5" cy="114.5" r="16.5" fill="#c53532" />
+    <g id="horizons" fill="#f2f6fc">
+      <path id="horizon-1" d="M286 176.5C318 174 373 174 406 176.5C373 179 318 179 286 176.5Z" />
+      <path id="horizon-2" d="M249.5 223.2C298 218.7 394 218.7 442.5 223.2C394 227.7 298 227.7 249.5 223.2Z" />
+      <path id="horizon-3" d="M195 284.8C268 274.2 424 274.2 497 284.8C424 295.4 268 295.4 195 284.8Z" />
+    </g>
+  </g>
+  </svg>

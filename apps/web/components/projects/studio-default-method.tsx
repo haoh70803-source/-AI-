@@ -16,6 +16,7 @@ import type { ContextReference, ReferenceOption, ResearchCreationDraft } from "@
 import type { LLMModelSelection } from "@/server/ai/llm-runtime";
 import { cleanResearchDrafts, readProjectInput, writeProjectInput, readResearchHandoff, clearResearchHandoff } from "@/lib/research-creation-draft";
 import { uploadSourceFiles } from "@/lib/source-upload-client";
+import { VoiceInput } from "../voice-input";
 import "./project-agent.css";
 import type { ProjectMethodStateDTO } from "@/server/project-methods/service";
 import type { ArtifactView } from "@/lib/contracts/artifacts";
@@ -64,6 +65,7 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
   const startedProject = useRef<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessageDTO[]>([]);
   const [input, setInput] = useState("");
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -189,7 +191,7 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
 
   const send = async (override?: string, retryBody?: Record<string, unknown>) => {
     const content = (override ?? input).trim();
-    if (!content || sending || uploading || !configured || conversationUnavailable || (selectedObject && !editable)) return;
+    if (!content || sending || voiceBusy || uploading || !configured || conversationUnavailable || (selectedObject && !editable)) return;
     followOutput.current = true; setShowScrollDown(false);
     setSending(true); setError(""); setNotice(""); lastPromptRef.current = content;
     const controller = new AbortController(); abortRef.current = controller;
@@ -272,7 +274,7 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
       {messages.map((message, index) => <article key={message.id} className={`studio-assistant-message is-${message.role.toLowerCase()} is-${message.status.toLowerCase()} ${message.role === "ASSISTANT" && message.structuredResult ? "has-structured-result" : ""}`}>
         <header className="agent-message-meta"><strong>{message.role === "USER" ? "你" : "鑫小助"}</strong><time>{new Date(message.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time>{message.status === "STREAMING" ? <span><i />正在回复</span> : message.status === "STOPPED" ? <span>已停止</span> : message.status === "FAILED" ? <span>未完成</span> : null}</header>
         {message.role === "ASSISTANT" && !selectedObject ? <AssistantMarkdown message={message} /> : message.role === "ASSISTANT" ? <AssistantResultRenderer message={message} onContinue={(instruction) => void send(instruction)} onTopicContinue={(topic) => void send(`继续展开这个选题：${topic.title}${topic.angle ? `。切入角度：${topic.angle}` : ""}`)} onTopicSave={(topicIndex) => void saveResult(message, "TEXT", topicIndex)} /> : <div className="studio-assistant-message-content">{message.content || (message.status === "PENDING" ? "正在准备项目上下文…" : "")}</div>}
-        {message.warnings.length ? <div className="studio-assistant-warnings" role="alert"><strong>需要确认</strong>{message.warnings.map((warning) => <p key={warning}>{warning}</p>)}</div> : null}
+        {message.warnings.length ? <div className="studio-assistant-warnings" role="alert"><strong>资料与结果提示</strong>{message.warnings.map((warning) => <p key={warning}>{warning}</p>)}</div> : null}
         {message.sources.length ? <details id={`sources-${message.id}`} className="studio-assistant-citations"><summary>已参考 {message.sources.length} 个来源<ChevronDown size={14} /></summary><div>{message.sources.map((source, sourceIndex) => <section id={`source-${message.id}-${source.citation}`} key={`${source.title}-${sourceIndex}`}><span>[{source.citation || sourceIndex + 1}] {source.type}</span><strong>{source.reference ? <a href={source.reference.href}>{source.title}</a> : source.title}</strong><p title={source.excerpt}>{source.reference?.anchor || source.excerpt}</p></section>)}</div></details> : null}
         {message.role === "ASSISTANT" ? <footer className="agent-actions">
           <button type="button" aria-label="复制回答" title="复制回答" disabled={!message.content} onClick={() => void navigator.clipboard.writeText(message.content).then(() => setNotice("已复制。")).catch(() => setError("复制失败，请手动选择文本。"))}><Copy size={15} /></button>
@@ -319,7 +321,8 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
         <button type="button" aria-label="引用已有内容" title="引用已有内容" aria-expanded={materialOpen} onClick={() => setMaterialOpen(v => !v)}><AtSign size={17} /></button>
         <select aria-label="选择 Skill" value={skillId} onChange={e => setSkillId(e.target.value)}><option value="">不使用专业技能</option>{[...new Map([...methods.selected, ...methods.available].map(m => [m.methodVersionId, m])).values()].map(m => <option key={m.methodVersionId} value={m.methodVersionId}>{m.title}</option>)}</select>
         <select className="agent-model" aria-label="选择模型" value={modelId} onChange={e => setModelId(e.target.value)}><option value="">{defaultModelLabel}</option>{modelOptions.map(m => <option key={m.modelId} value={m.modelId}>{m.label}</option>)}</select>
-        {sending ? <button type="button" aria-label="停止生成" title="停止生成" onClick={() => abortRef.current?.abort()}><Square size={16} /></button> : <Button aria-label="发送给鑫小助" disabled={!input.trim() || uploading || !configured || Boolean(conversationUnavailable)} onClick={() => void send()}><Send size={16} /></Button>}
+        <VoiceInput key={`${projectId}:${selectedObject?.objectId ?? "chat"}`} disabled={!editable || sending || Boolean(conversationUnavailable)} onBusyChange={setVoiceBusy} onText={text => { setInput(value => { const joined = value ? `${value}\n${text}` : text; if (joined.length > 4000) { setError("语音加入后超过 4000 字，已保留前 4000 字，请检查后再发送。"); } return joined.slice(0, 4000); }); composerRef.current?.focus(); }} />
+        {sending ? <button type="button" aria-label="停止生成" title="停止生成" onClick={() => abortRef.current?.abort()}><Square size={16} /></button> : <Button aria-label="发送给鑫小助" disabled={voiceBusy || !input.trim() || uploading || !configured || Boolean(conversationUnavailable)} onClick={() => void send()}><Send size={16} /></Button>}
       </div>
     </footer>
     <button type="button" className="studio-assistant-mobile-close" onClick={onClose}>收起鑫小助</button>

@@ -41,12 +41,12 @@
   & .console-kpi-description { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
   & .va-delta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
   & .va-metrics > .va-note { grid-column: 1 / -1; }
-  & .va-panel { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--gradient-panel); box-shadow: var(--shadow-card); backdrop-filter: blur(16px) saturate(1.2); }
+  & .va-panel { min-width: 0; padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--gradient-panel); box-shadow: var(--shadow-card); }
   & .va-panel > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
   & .va-panel > header .console-card-title { margin-top: 4px; }
   & .va-panel p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
   & .va-panel .va-note, & .va-note { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
-  & .va-review > header { color: var(--accent); }
+  & .va-review > header { color: var(--accent-strong); }
   & .va-review > h3 { margin-bottom: 8px; }
   & .va-review > p { margin: 8px 0; }
   & .va-reason { border-left: 1px solid var(--border-strong); padding-left: 12px; margin: 12px 0; }
@@ -79,7 +79,7 @@
   & .va-distribution-row i { display: block; height: 100%; background: var(--gradient-brand); }
   & .va-distribution-row b { text-align: right; font-weight: 600; color: var(--text); }
   & .va-hours > div { display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; }
-  & .va-hours > div span { min-width: 0; height: 16px; border-radius: 4px; background: var(--data-1); }
+  & .va-hours > div span { min-width: 0; height: 16px; border-radius: 4px; background: var(--data-1, var(--accent)); }
   & .va-hours small { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
   & .va-hours footer { display: flex; justify-content: space-between; margin-top: 4px; color: var(--text-tertiary); font-size: 12px; }
   & .va-hours p { margin: 8px 0; font-size: 12px; }
@@ -130,11 +130,73 @@
   & .video-center .video-modal { padding: 20px; border-radius: var(--radius-panel); }
 }
 
-@media (min-width: 1200px) {
-  .va-workspace[data-surface="console-dark"] .va-top-grid .va-review .va-reason { display: none; }
-}
 @media (max-width: 1200px) {
   .va-workspace[data-surface="console-dark"] .va-top-grid { grid-template-columns: 1fr; }
+}
+
+/* Twelve-column cockpit with four truthful, data-driven KPI cards. */
+.va-workspace[data-surface="console-dark"] {
+  max-width: 1760px;
+  margin-inline: auto;
+  padding: var(--space-5);
+  background: transparent;
+  & .va-page-header { margin-bottom: var(--space-5); }
+  & .va-filter-bar { padding: var(--space-4); background: var(--gradient-panel); }
+  & .va-filter-bar select { background: var(--surface); border-radius: var(--radius-control); }
+  & .va-tabs { margin-bottom: var(--space-4); }
+  & .va-tabs button[aria-pressed="true"] { color: var(--accent-strong); background: var(--nav-active); border-color: color-mix(in srgb, var(--data-2) 40%, transparent); }
+  & .va-cockpit { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: stretch; }
+  & .va-cockpit :is(.va-top-grid, .va-main-grid) { display: contents; }
+  & .va-cockpit .va-metrics { grid-column: 1 / -1; grid-row: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+  & .va-cockpit .va-trend { grid-column: 1 / 8; grid-row: 2; display: flex; flex-direction: column; }
+  & .va-cockpit .va-review { grid-column: 8 / 13; grid-row: 2; }
+  & .va-cockpit .va-audience { grid-column: 8 / 13; grid-row: 3; }
+  & .va-cockpit .va-bottom-grid { display: contents; }
+  & .va-cockpit .va-account-panel { grid-column: 1 / 8; grid-row: 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); column-gap: var(--space-5); align-content: start; }
+  & .va-account-panel > header { grid-column: 1 / -1; }
+  & .va-account-distribution { align-self: center; text-align: center; }
+  & .va-account-distribution svg { display: block; width: 100%; max-width: 280px; margin: auto; }
+  & .va-donut-value { fill: var(--text); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  & .va-donut-label { fill: var(--text-secondary); font-size: 10px; }
+  & .va-account-list { min-width: 0; }
+  & .va-account-list:only-of-type { grid-column: 1 / -1; }
+  & .va-cockpit .va-works-panel { grid-column: 1 / -1; grid-row: 4; }
+  & .console-kpi { padding: var(--space-5); display: flex; flex-direction: column; overflow: hidden; }
+  & .console-card-title > span:first-child { display: none; }
+  & .console-kpi-value { margin-block: var(--space-4) var(--space-2); }
+  & .console-kpi-value strong { font-size: clamp(28px, 2.8vw, 42px); letter-spacing: -.035em; }
+  & .console-kpi-unit { font-size: 16px; }
+  & .console-kpi-description { min-height: 36px; }
+  & .console-kpi-visual { height: 80px; margin: var(--space-4) calc(-1 * var(--space-5)) calc(-1 * var(--space-5)); }
+  & .console-kpi-visual svg { display: block; width: 100%; height: 100%; }
+  & .va-kpi-coverage .console-kpi-value::after { content: "%"; color: var(--text-secondary); font-size: 16px; }
+  & .va-coverage-track { height: 6px; margin: var(--space-6) var(--space-5); background: var(--surface-elevated); border-radius: var(--radius-control); overflow: hidden; }
+  & .va-coverage-track i { display: block; height: 100%; background: var(--gradient-brand); }
+  & .va-delta.is-positive { color: var(--success); }
+  & .va-delta.is-negative { color: var(--danger); }
+  & .va-cockpit .va-trend .va-chart { flex: 1; min-height: 240px; max-height: 360px; margin-block: var(--space-5) var(--space-4); }
+  & .va-series-line { filter: none; }
+  & .va-distribution-row > div { height: 6px; }
+  & .va-distribution-row i { border-radius: var(--radius-control); }
+  & .va-empty { border: 1px dashed var(--border-strong); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface) 45%, transparent); padding: var(--space-5) var(--space-4); }
+  & :is(button, a, select, input, textarea, [tabindex]):focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 4px var(--accent-ring); }
+}
+@media (max-width: 1200px) {
+  .va-workspace[data-surface="console-dark"] .va-cockpit { grid-template-columns: 1fr; }
+  .va-workspace[data-surface="console-dark"] .va-cockpit :is(.va-metrics, .va-review, .va-trend, .va-audience, .va-account-panel, .va-works-panel) { grid-column: 1; grid-row: auto; }
+}
+@media (max-width: 900px) {
+  .va-workspace[data-surface="console-dark"] .va-cockpit .va-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .va-workspace[data-surface="console-dark"] .va-cockpit .va-bottom-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .va-workspace[data-surface="console-dark"] { padding: var(--space-4); }
+  .va-workspace[data-surface="console-dark"] .va-cockpit .va-metrics { grid-template-columns: 1fr; }
+  .va-workspace[data-surface="console-dark"] .va-cockpit .va-trend .va-chart { min-height: 240px; }
+  .va-workspace[data-surface="console-dark"] .va-cockpit .va-account-panel { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .va-workspace[data-surface="console-dark"] *, .va-workspace[data-surface="console-dark"] *::before { animation: none !important; transition: none !important; }
 }
 @media (max-width: 900px) {
   .va-workspace[data-surface="console-dark"] :is(.va-main-grid, .va-bottom-grid) { grid-template-columns: 1fr; }
@@ -148,4 +210,14 @@
   .va-workspace[data-surface="console-dark"] .va-filter-bar select { max-width: 180px; }
   .va-workspace[data-surface="console-dark"] .va-trend footer { flex-direction: column; }
   .va-workspace[data-surface="console-dark"] .va-detail-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Absolute placement preserves the original card and cockpit dimensions. */
+.va-workspace[data-surface="console-dark"] {
+  & .va-review { position: relative; isolation: isolate; overflow: visible; }
+  & .va-review-mascot {
+    position: absolute; left: 100%; top: 50%;
+    transform: translate(-16%, -50%) scaleX(-1);
+    width: 0; height: auto; pointer-events: none; user-select: none;
+    filter: drop-shadow(0 8px 14px rgb(0 0 0 / .22));
+  }
 }

@@ -2,6 +2,7 @@ import type { TranscriptionProvider } from "../contracts";
 import type { TranscriptionInput } from "../types";
 import { DoubaoClient } from "./client";
 import { normalizeDoubaoTranscript } from "./normalize";
+import { DoubaoStreamingClient } from "./streaming-client";
 
 export class DoubaoTranscriptionProvider implements TranscriptionProvider {
   constructor(private readonly client: DoubaoClient) {}
@@ -14,4 +15,12 @@ export class DoubaoTranscriptionProvider implements TranscriptionProvider {
   getLastRequestMetadata() {
     return this.client.getLastRequestMetadata();
   }
+}
+
+export class DoubaoStreamingTranscriptionProvider implements TranscriptionProvider {
+  constructor(private readonly client: DoubaoStreamingClient) {}
+  async transcribe(input: TranscriptionInput) {
+    return { providerMode: "REAL" as const, data: normalizeDoubaoTranscript(await this.client.recognize(input)) };
+  }
+  getLastRequestMetadata() { return this.client.getLastRequestMetadata(); }
 }

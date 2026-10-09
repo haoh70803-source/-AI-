@@ -1,23 +1,24 @@
-import { businessDay, dayOffset } from '@/server/video-operations/policy';
+import { businessDay, dayOffset, videoRange, platforms } from '@/server/video-operations/policy';
 
 export type AnalyticsAccount = { id: string; handle: string; platform: string; followers: number | null; updatedAt: string; source: string };
 export type Work = { id: string; accountId: string; title: string; topic: string; publishedAt: string; projectId: string | null };
 export type MetricPoint = { accountId: string; workId?: string; day: string; plays: number; likes: number; comments: number; saves: number; shares: number; netFollowers: number; exposures: number | null };
 export type Audience = { accountId: string; observedAt: string; ages: Record<string, number>; cities: Record<string, number>; hours: number[]; gender: Record<string, number> };
 export type AnalyticsDataset = { source: 'DEMO' | 'MANUAL'; accounts: AnalyticsAccount[]; works: Work[]; points: MetricPoint[]; audiences: Audience[]; today: string; updatedAt: string | null; projects: { id: string; title: string }[]; canCreate: boolean };
-export type AnalyticsFilter = { platform: string; accountId: string; days: number };
+export type AnalyticsFilter = { platform: string; accountId: string; days: number; start?: string; end?: string };
 export type RankedWork = Work & { account: string; platform: string; plays: number; likes: number; comments: number; saves: number; shares: number; netFollowers: number; interactions: number };
 export type RealVideoData = {
   today: string; observedAt: string | null; role: string;
   accounts: { id: string; handle: string; platform: string; archivedAt: string | null }[];
   records: (MetricPoint & { observedAt: string; source: string })[];
+  comparisonRecords?: (MetricPoint & { observedAt: string; source: string })[];
   projects: { id: string; title: string }[];
 };
 
 export function fromVideoRecords(data: RealVideoData): AnalyticsDataset {
   const accounts = data.accounts.filter(a => !a.archivedAt).map(a => ({ id: a.id, handle: a.handle, platform: a.platform, followers: null, source: '手工 / CSV', updatedAt: data.observedAt ?? '' }));
   const ids = new Set(accounts.map(a => a.id));
-  return { source: 'MANUAL', today: data.today, updatedAt: data.observedAt, accounts, points: data.records.filter(p => ids.has(p.accountId)), works: [], audiences: [], projects: data.projects, canCreate: data.role !== 'VIEWER' };
+  return { source: 'MANUAL', today: data.today, updatedAt: data.observedAt, accounts, points: [...data.records, ...(data.comparisonRecords ?? [])].filter(p => ids.has(p.accountId)), works: [], audiences: [], projects: data.projects, canCreate: data.role !== 'VIEWER' };
 }
 
 // Isolated, deterministic fixtures. Nothing here writes to operating tables.
@@ -51,11 +52,11 @@ export function createVideoDemo(today = businessDay(), update = 0): AnalyticsDat
 const total = (rows: MetricPoint[]) => rows.reduce((s, r) => ({ plays: s.plays + r.plays, likes: s.likes + r.likes, comments: s.comments + r.comments, saves: s.saves + r.saves, shares: s.shares + r.shares, netFollowers: s.netFollowers + r.netFollowers, interactions: s.interactions + r.likes + r.comments + r.saves + r.shares }), { plays: 0, likes: 0, comments: 0, saves: 0, shares: 0, netFollowers: 0, interactions: 0 });
 
 export function selectVideoAnalytics(data: AnalyticsDataset, filter: AnalyticsFilter) {
-  const days = [7, 30, 90].includes(filter.days) ? filter.days : 30;
-  const start = dayOffset(data.today, 1 - days), priorStart = dayOffset(start, -days);
+  const { start, end, days } = videoRange(filter.days, filter.start, filter.end, data.today);
+  const priorStart = dayOffset(start, -days);
   const accounts = data.accounts.filter(a => (!filter.platform || a.platform === filter.platform) && (!filter.accountId || a.id === filter.accountId));
   const ids = new Set(accounts.map(a => a.id));
-  const all = data.points.filter(p => ids.has(p.accountId) && p.day <= data.today);
+  const all = data.points.filter(p => ids.has(p.accountId) && p.day <= end);
   const points = all.filter(p => p.day >= start), prior = all.filter(p => p.day >= priorStart && p.day < start);
   const metrics = points.length ? total(points) : null;
   const trend = Array.from({ length: days }, (_, index) => {
@@ -79,9 +80,9 @@ export function selectVideoAnalytics(data: AnalyticsDataset, filter: AnalyticsFi
   const profile = samples.length === accounts.length && weight > 0 ? { ages: weighted('ages')!, cities: weighted('cities')!, gender: weighted('gender')!, hours: Array.from({ length: 24 }, (_, h) => samples.reduce((sum, a) => sum + a.hours[h]! * (accounts.find(x => x.id === a.accountId)?.followers ?? 0), 0) / weight), followers: weight } : null;
   const best = [...works].filter(w => w.plays > 0).sort((a, b) => (b.plays ? b.saves / b.plays : 0) - (a.plays ? a.saves / a.plays : 0))[0];
   const insight = best ? { title: '收藏表现值得关注', evidence: `《${best.title}》在本周期获得 ${best.saves.toLocaleString('zh-CN')} 次收藏，收藏/播放为 ${(best.saves / best.plays * 100).toFixed(1)}%。`, hypothesis: '可能与内容的实用性有关，仍需结合评论和后续作品验证。', suggestion: '围绕这一主题整理后续答疑选题，并在下一周期复盘表现。', workId: best.id } : { title: metrics ? '先建立作品级复盘依据' : '等待可分析的数据', evidence: metrics ? `当前范围已记录 ${metrics.plays.toLocaleString('zh-CN')} 次播放；尚未接入作品级数据与粉丝画像。` : '当前筛选范围没有记录；未录入不代表零流量。', hypothesis: '现有数据不足以判断具体内容的贡献。', suggestion: '录入账号数据，或使用隔离的演示模式查看完整流程。', workId: null };
-  return { accounts, metrics, trend, works, stats, profile, insight, growth, start, end: data.today, days, coverage: { actual: new Set(points.map(p => `${p.accountId}:${p.day}`)).size, expected: accounts.length * days } };
+  return { accounts, metrics, trend, works, stats, profile, insight, growth, start, end, days, coverage: { actual: new Set(points.map(p => `${p.accountId}:${p.day}`)).size, expected: accounts.length * days } };
 }
 
 export type VideoAnalytics = ReturnType<typeof selectVideoAnalytics>;
-export const platformLabel = (platform: string) => ({ DOUYIN: '抖音', XIAOHONGSHU: '小红书' })[platform] ?? platform;
+export const platformLabel = (platform: string) => (platforms as Record<string, string>)[platform] ?? platform;
 export const rankWorks = (works: RankedWork[], rank: 'plays' | 'interactions' | 'netFollowers') => [...works].sort((a, b) => b[rank] - a[rank] || a.id.localeCompare(b.id));

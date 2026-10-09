@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { resolveWorkspaceTranscriptionPlan } from "@content-center/worker/transcription";
 import { markDispatchPending } from "@content-center/worker/job-recovery";
 import { reserveExperienceUsage } from "@content-center/worker/experience-limits";
 import "server-only";
@@ -17,6 +18,7 @@ import {
 export type CreateSourceInput =
   | { kind: "TEXT"; title?: string; text: string; notes?: string }
   | { kind: "URL"; url: string }
+  | { kind: "MEDIA_URL"; url: string }
   | { kind: "DOUYIN"; shareText: string }
   | {
       kind: "REDFOX";
@@ -46,6 +48,7 @@ export async function createSourceAndJob(input: {
   autoTranscribe?: boolean;
   clientRequestId?: string;
 }, dependencies: { enqueue?: typeof enqueueContentIngest } = {}) {
+  if (input.autoTranscribe) await resolveWorkspaceTranscriptionPlan(input.workspaceId);
   const redFoxSource = input.source.kind === "DOUYIN" || input.source.kind === "REDFOX";
   if (redFoxSource) {
     const integration = await integrationService.getIntegrationStatus(input.workspaceId, "REDFOX");
@@ -55,7 +58,7 @@ export async function createSourceAndJob(input: {
   const rawText = input.source.kind === "TEXT" ? input.source.text.trim() : null;
   const sourceUrl = input.source.kind === "TEXT"
     ? null
-    : input.source.kind === "URL"
+    : (input.source.kind === "URL" || input.source.kind === "MEDIA_URL")
       ? input.source.url.trim()
       : input.source.kind === "DOUYIN"
         ? extractDouyinShareUrl(input.source.shareText)
@@ -69,7 +72,7 @@ export async function createSourceAndJob(input: {
         ? "IMAGE"
         : "VIDEO";
   const sourcePlatform = input.source.kind === "TEXT" ? "GENERIC" : detectSourcePlatform(sourceUrl ?? "");
-  const provider = input.source.kind === "TEXT" ? "MANUAL" : input.source.kind === "URL" ? "GENERIC_URL" : "REDFOX";
+  const provider = input.source.kind === "TEXT" ? "MANUAL" : input.source.kind === "URL" ? "GENERIC_URL" : input.source.kind === "MEDIA_URL" ? "DIRECT_MEDIA" : "REDFOX";
   const providerMode = "REAL";
   const jobType = input.source.kind === "TEXT" ? "EXTRACT_TEXT" : input.source.kind === "URL" ? "FETCH_URL" : "PROCESS_MEDIA";
   const title = input.source.kind === "TEXT"

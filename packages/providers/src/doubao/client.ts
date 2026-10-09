@@ -14,6 +14,7 @@ export type DoubaoRequestMetadata = {
 export type DoubaoClientOptions = {
   fetch?: typeof fetch;
   timeoutMs?: number;
+  signal?: AbortSignal;
 };
 
 function requestError(
@@ -42,6 +43,7 @@ export class DoubaoClient {
   private readonly fetcher: typeof fetch;
   private readonly timeoutMs: number;
   private lastRequestMetadata: DoubaoRequestMetadata = {};
+  private readonly signal?: AbortSignal;
 
   constructor(
     private readonly config: DoubaoRuntimeConfig,
@@ -49,6 +51,7 @@ export class DoubaoClient {
   ) {
     this.fetcher = options.fetch ?? providerFetch;
     this.timeoutMs = options.timeoutMs ?? DOUBAO_FLASH_TIMEOUT_MS;
+    this.signal = options.signal;
   }
 
   getLastRequestMetadata() {
@@ -105,7 +108,7 @@ export class DoubaoClient {
         method: "POST",
         headers,
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: AbortSignal.any([AbortSignal.timeout(this.timeoutMs), ...(this.signal ? [this.signal] : [])]),
       });
     } catch (error) {
       if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {

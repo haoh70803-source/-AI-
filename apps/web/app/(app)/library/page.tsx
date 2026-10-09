@@ -15,7 +15,7 @@ import "@/components/library/feishu-library.css";
 type Source = Awaited<ReturnType<typeof listLibrarySources>>["items"][number];
 const types: Array<[string, string, LucideIcon]> = [["", "全部", FileText], ["DOCUMENT", "文档", FileText], ["IMAGE", "图片", ImageIcon], ["VIDEO", "视频", Video], ["AUDIO", "音频", AudioLines], ["URL", "链接", Link2], ["TEXT", "文字", FileText]];
 
-function href(query: LibraryQuery & { layout?: string }, updates: Record<string, string>) {
+function href(query: LibraryQuery & { layout?: string; upload?: string }, updates: Record<string, string>) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries({ ...query, ...updates })) if (value) params.set(key, value);
   return `/library?${params}`;
@@ -41,14 +41,14 @@ function AssetCard({ item, canManage }: { item: Source; canManage: boolean }) {
   </article>;
 }
 
-export default async function LibraryPage({ searchParams }: { searchParams: Promise<LibraryQuery & { layout?: string }> }) {
+export default async function LibraryPage({ searchParams }: { searchParams: Promise<LibraryQuery & { layout?: string; upload?: string }> }) {
   const { workspace, role } = await requireWorkspace();
   const query = await searchParams;
   const result = await listLibrarySources(workspace.id, { ...query, pageSize: "30", ...(query.view === "RECENT" ? { sort: "newest" } : {}) });
   const canManage = role !== "VIEWER";
   return <div className="asset-library-page">
     <LibraryPoller active={result.items.some((item) => state(item).busy)} />
-    <header className="asset-library-header"><div><span className="asset-library-eyebrow"><FileText size={16} />你的内容资产</span><h1>资料库</h1><p>让视频、文档和灵感，在这里汇聚。</p></div><div className="feishu-library-header-actions"><Link href="/library/feishu" className="feishu-library-entry"><Link2 size={14}/>飞书资料</Link>{canManage ? <IngestDialog /> : null}</div></header>
+    <header className="asset-library-header"><div><span className="asset-library-eyebrow"><FileText size={16} />你的内容资产</span><h1>资料库</h1><p>让视频、文档和灵感，在这里汇聚。</p></div><div className="feishu-library-header-actions"><Link href="/library/feishu" className="feishu-library-entry"><Link2 size={14}/>飞书资料</Link>{canManage ? <IngestDialog initialOpen={query.upload === "1"} /> : null}</div></header>
     <nav className="asset-library-views" aria-label="资料范围">{[["ALL", "全部资料"], ["RECENT", "最近加入"], ["ARCHIVED", "已归档"]].map(([value, label]) => <Link key={value} href={href(query, { view: value === "ARCHIVED" ? "ALL" : value!, status: value === "ARCHIVED" ? "ARCHIVED" : "", page: "1" })} aria-current={(query.status === "ARCHIVED" ? "ARCHIVED" : query.view || "ALL") === value ? "page" : undefined}>{label}</Link>)}</nav>
     <LibraryToolbar count={result.total} />
     <nav className="asset-library-types" aria-label="资料类型">{types.map(([value, label, Icon]) => <Link key={value} href={href(query, { sourceType: value, page: "1" })} aria-current={(query.sourceType || "") === value ? "page" : undefined}><Icon size={14} />{label}</Link>)}</nav>

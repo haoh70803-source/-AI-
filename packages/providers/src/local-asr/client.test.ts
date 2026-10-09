@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+// All requests below use injected fetch doubles, never the running speech service.
+vi.mock("../review-policy", () => ({ isLocalReviewOffline: vi.fn(() => false) }));
 import { LocalAsrClient } from "./client";
 import { LocalFunASRTranscriptionProvider } from "./provider";
 
@@ -40,6 +42,14 @@ describe("LocalAsrClient", () => {
   it("reports an unavailable local service explicitly", async () => {
     const client = new LocalAsrClient(config, { fetch: vi.fn(async () => { throw new TypeError("connect failed"); }) as typeof fetch });
     await expect(client.health()).rejects.toMatchObject({ code: "LOCAL_ASR_NOT_RUNNING", retryable: true });
+  });
+
+  it("aborts inference when its caller cancels, keeping a finite deadline", async () => {
+    const controller = new AbortController();
+    const fetcher = vi.fn(async (_url: URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")), { once: true })));
+    const client = new LocalAsrClient(config, { fetch: fetcher as typeof fetch, signal: controller.signal, timeoutMs: 1000 });
+    const result = client.transcribe({ audio: { mode: "BINARY_DATA", data: new Uint8Array([1]) } });
+    controller.abort(); await expect(result).rejects.toMatchObject({ code: "LOCAL_ASR_TIMEOUT" }); expect(fetcher).toHaveBeenCalledOnce();
   });
 });
 

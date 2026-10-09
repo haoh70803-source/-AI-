@@ -51,7 +51,7 @@ describe("Material upload API", () => {
     mocks.upload.mockRejectedValueOnce(new Error("storage offline"));
     const form = new FormData(); form.append("files", new File(["failed original"], "fail.txt", { type: "text/plain" }));
     expect((await POST(new Request("http://localhost/upload", { method: "POST", body: form }))).status).toBe(400);
-    expect(await db.sourceItem.count({ where: { workspaceId, title: "fail" } })).toBe(0);
+    expect(await db.sourceItem.findFirst({ where: { workspaceId, title: "fail" }, select: { status: true, assets: { select: { status: true } } } })).toMatchObject({ status: "FAILED", assets: [{ status: "FAILED" }] });
     mocks.context.mockResolvedValueOnce({ role: "VIEWER" });
     expect((await POST(new Request("http://localhost/upload", { method: "POST" }))).status).toBe(403);
     mocks.context.mockResolvedValueOnce({ role: "VIEWER" });

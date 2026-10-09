@@ -3,5 +3,5 @@ import { requireWorkspace } from "@/server/access";
 
 export default async function HomePage() {
   await requireWorkspace();
-  return <VideoAnalyticsWorkspace />;
+  return <VideoAnalyticsWorkspace initialDemo showDataSource={false} />;
 }

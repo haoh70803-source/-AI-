@@ -161,6 +161,7 @@ export function IntegrationCard({ integration, canManage, encryptionConfigured }
         appId: String(formData.get("appId") || ""),
         ...(doubaoAccessToken ? { accessToken: doubaoAccessToken } : {}),
         resourceId: String(formData.get("resourceId") || ""),
+        protocol: String(formData.get("protocol") || "FLASH"),
         boostingTableId: String(formData.get("boostingTableId") || ""),
         boostingTableName: String(formData.get("boostingTableName") || ""),
       };
@@ -209,6 +210,7 @@ export function IntegrationCard({ integration, canManage, encryptionConfigured }
                 </>
               ) : null}
               <label className="grid gap-1.5 text-sm">Resource ID<Input name="resourceId" aria-label="豆包语音识别 Resource ID" required defaultValue={value(integration.publicConfig, "resourceId") || integration.defaults.resourceId} /></label>
+              <label className="grid gap-1.5 text-sm">识别接口<select name="protocol" aria-label="豆包语音识别接口" defaultValue={value(integration.publicConfig, "protocol") || "FLASH"} className="h-10 rounded-[var(--radius)] border bg-transparent px-3"><option value="FLASH">录音文件极速识别</option><option value="RECORDING_FILE_2_0">录音文件识别 2.0</option><option value="STREAMING_2_0">流式语音识别 2.0</option></select><span className="text-xs text-[var(--text-secondary)]">请选择 Resource ID 对应的已开通服务。流式 2.0 可直接发送本机音频；录音文件 2.0 需要云端可访问的音频地址。</span></label>
               <details className="rounded-xl border border-[color-mix(in_srgb,var(--border)_65%,transparent)] p-4" open={authMode === "LEGACY_APP_TOKEN"}>
                 <summary className="cursor-pointer text-sm font-medium">高级设置</summary>
                 <div className="mt-4 grid gap-4">

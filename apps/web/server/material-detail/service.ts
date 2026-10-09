@@ -2,9 +2,9 @@ import "server-only";
 import {ensureFeishuSource,FeishuError} from "@content-center/integrations";
 
 import { db, findSourceForUser, type Prisma } from "@content-center/db";
-import { IntegrationService, parseProviderConfig } from "@content-center/integrations";
+import { IntegrationService } from "@content-center/integrations";
 import { getStorageProvider, readSourceMetadataEnvelope, type SourceExternalMetrics } from "@content-center/providers";
-import { getLocalAsrDisplay } from "../local-asr";
+import { resolveWorkspaceTranscriptionPlan } from "@content-center/worker/transcription";
 import { getMaterialAnalysis, type MaterialAnalysisDTO } from "../material-analysis/service";
 import { getMaterialDistillation, type MaterialDistillationDTO } from "../material-distillation/service";
 import { getMaterialKnowledge } from "../material-knowledge/service";
@@ -202,14 +202,12 @@ export async function getMaterialDetailView(input: { workspaceId: string; userId
   if (!source) return null;
 
   const integrations = new IntegrationService();
-  const [analysis, distillation, llm, knowledge, transcriptionIntegration, doubao, localAsr] = await Promise.all([
+  const [analysis, distillation, llm, knowledge, transcriptionPlan] = await Promise.all([
     getMaterialAnalysis({ workspaceId: input.workspaceId, sourceItemId: source.id }),
     getMaterialDistillation({ workspaceId: input.workspaceId, sourceItemId: source.id }),
     integrations.getIntegrationStatus(input.workspaceId, "LLM"),
     getMaterialKnowledge({ workspaceId: input.workspaceId, userId: input.userId, sourceItemId: source.id }),
-    source.sourceType === "VIDEO" || source.sourceType === "AUDIO" ? integrations.getIntegrationStatus(input.workspaceId, "TRANSCRIPTION") : Promise.resolve(null),
-    source.sourceType === "VIDEO" || source.sourceType === "AUDIO" ? integrations.getIntegrationStatus(input.workspaceId, "DOUBAO_ASR") : Promise.resolve(null),
-    source.sourceType === "VIDEO" || source.sourceType === "AUDIO" ? getLocalAsrDisplay(input.workspaceId) : Promise.resolve(null),
+    source.sourceType === "VIDEO" || source.sourceType === "AUDIO" ? resolveWorkspaceTranscriptionPlan(input.workspaceId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const envelope = readSourceMetadataEnvelope(source.metadata);
@@ -293,10 +291,8 @@ export async function getMaterialDetailView(input: { workspaceId: string; userId
   const actionKeys = new Set(actions.map((action) => action.key));
   if (!actionKeys.has(recommendedAction.key)) actions.unshift(recommendedAction);
 
-  const transcriptionConfig = parseProviderConfig("TRANSCRIPTION", transcriptionIntegration?.publicConfig ?? {}) as { source: "LOCAL_FUNASR" | "DOUBAO"; qualityMode: "FAST" | "BALANCED" | "QUALITY" };
-  const selectedQuality = localAsr?.qualityModes[transcriptionConfig.qualityMode];
   const isMediaSource = source.sourceType === "VIDEO" || source.sourceType === "AUDIO";
-  const transcriptionConfigured = !isMediaSource || (transcriptionConfig.source === "DOUBAO" ? doubao?.status === "CONFIGURED" : localAsr?.status === "NORMAL" && selectedQuality?.available === true && selectedQuality.installed);
+  const transcriptionConfigured = !isMediaSource || transcriptionPlan !== null;
   const latestTranscription = source.ingestJobs.find((job) => job.jobType === "TRANSCRIBE");
   const readingJob = source.ingestJobs.find((job) => job.jobType !== "TRANSCRIBE");
   const transcriptionBusy = latestTranscription?.status === "QUEUED" || latestTranscription?.status === "RUNNING";

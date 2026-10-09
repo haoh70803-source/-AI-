@@ -162,7 +162,7 @@ export class OpenAICompatibleLLMProvider implements LLMProvider {
         headers: { authorization: `Bearer ${this.config.apiKey}`, "content-type": "application/json", accept: "text/event-stream" },
         body: JSON.stringify({
           model: this.config.model,
-          messages: [...(input.systemPrompt ? [{ role: "system", content: input.systemPrompt }] : []), { role: "user", content: userContent }],
+          messages: [...(input.systemPrompt ? [{ role: "system", content: input.systemPrompt }] : []), ...(input.messages ?? []), { role: "user", content: userContent }],
           ...(capabilities.supportsTemperature ? { temperature: input.temperature ?? 0.4 } : {}),
           ...(capabilities.thinking ? { thinking: capabilities.thinking } : {}),
           ...(capabilities.reasoningEffort ? { reasoning_effort: capabilities.reasoningEffort } : {}),
@@ -272,6 +272,7 @@ export class OpenAICompatibleLLMProvider implements LLMProvider {
           model: this.config.model,
           messages: [
             ...(input.systemPrompt ? [{ role: "system", content: input.systemPrompt }] : []),
+            ...(input.messages ?? []),
             { role: "user", content: userContent },
           ],
           ...(capabilities.supportsTemperature ? { temperature: input.temperature ?? 0.4 } : {}),

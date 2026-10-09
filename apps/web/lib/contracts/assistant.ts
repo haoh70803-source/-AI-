@@ -20,7 +20,7 @@ export type AssistantMessageDTO = { id: string; role: "USER" | "ASSISTANT"; cont
 
 export type AssistantThreadDTO = { id: string; messages: AssistantMessageDTO[]; unavailableReason?: string };
 
-export type AssistantExecutionStatusCode = "TASK_READING" | "TASK_UNDERSTANDING" | "SKILL_POOL_LOADED" | "SKILL_ACTIVATED" | "SKILL_SKIPPED" | "SKILL_CONFLICT" | "AUTO_INVOKE_SUGGESTED" | "GENERATION_STARTED" | "CHECK_STARTED" | "COMPLETED";
+export type AssistantExecutionStatusCode = "TASK_READING" | "MEMORY_READING" | "MEMORY_READY" | "TASK_UNDERSTANDING" | "SKILL_POOL_LOADED" | "SKILL_ACTIVATED" | "SKILL_SKIPPED" | "SKILL_CONFLICT" | "AUTO_INVOKE_SUGGESTED" | "GENERATION_STARTED" | "CHECK_STARTED" | "COMPLETED";
 
 export type AssistantExecutionStatus = { code: AssistantExecutionStatusCode; message: string; tone?: "neutral" | "positive" | "warning" };
 

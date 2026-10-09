@@ -9,7 +9,7 @@ export function dispatchRevision(metadata: unknown) {
 }
 
 export async function markDispatchPending(jobId: string, workspaceId: string) {
-  await db.ingestJob.updateMany({ where: { id: jobId, workspaceId, status: "QUEUED" }, data: { errorCode: "DISPATCH_PENDING", errorMessage: "任务已保存，等待队列恢复。", finishedAt: null } });
+  await db.ingestJob.updateMany({ where: { id: jobId, workspaceId, status: "QUEUED", OR: [{ errorCode: null }, { errorCode: { not: "DISPATCH_PENDING" } }] }, data: { errorCode: "DISPATCH_PENDING", errorMessage: "任务已保存，等待队列恢复。", finishedAt: null } });
 }
 
 export async function executionLock(tx: Prisma.TransactionClient, workspaceId: string, jobId: string) {
@@ -49,6 +49,32 @@ export async function withIngestExecution<T>(job: Job<ContentIngestPayload>, exe
   }, { timeout: 15 * 60 * 1000, maxWait: 10000 });
 }
 
+// Expire abandoned material work even when no worker is running. Never take over a live execution lock.
+export const MATERIAL_QUEUE_WAIT_MS = 5 * 60_000;
+export const MATERIAL_RUN_MS = 15 * 60_000;
+export async function expireMaterialProcessing(input: { workspaceId?: string; sourceItemId?: string; now?: Date } = {}) {
+  const now = input.now ?? new Date(), queuedBefore = new Date(now.getTime() - MATERIAL_QUEUE_WAIT_MS), runningBefore = new Date(now.getTime() - MATERIAL_RUN_MS);
+  const scope = { ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}), ...(input.sourceItemId ? { sourceItemId: input.sourceItemId } : {}) };
+  const rows = await db.ingestJob.findMany({ where: { ...scope, jobType: { in: ["EXTRACT_TEXT", "FETCH_URL", "PROCESS_MEDIA", "TRANSCRIBE"] }, OR: [{ status: "QUEUED", updatedAt: { lte: queuedBefore } }, { status: "RUNNING", OR: [{ startedAt: { lte: runningBefore } }, { startedAt: null, updatedAt: { lte: runningBefore } }] }] }, take: 50, orderBy: { updatedAt: "asc" } });
+  for (const row of rows) {
+    await db.$transaction(async tx => {
+      if (!await executionLock(tx, row.workspaceId, row.id)) return;
+      await tx.$queryRawUnsafe('SELECT "id" FROM "SourceItem" WHERE "id"=$1 AND "workspaceId"=$2 FOR UPDATE', row.sourceItemId, row.workspaceId);
+      const changed = await tx.ingestJob.updateMany({ where: { id: row.id, workspaceId: row.workspaceId, status: row.status, updatedAt: row.updatedAt }, data: { status: "FAILED", finishedAt: now, errorCode: "MATERIAL_PROCESSING_TIMEOUT", errorMessage: row.status === "QUEUED" ? "任务等待超时，未能开始处理。请重试；本地文件也可重新上传。" : "处理时间过长，任务已中断。请重试或重新上传，已保存的原文件和文字稿会保留。" } });
+      if (!changed.count || row.jobType === "TRANSCRIBE") return;
+      if (await tx.ingestJob.count({ where: { workspaceId: row.workspaceId, sourceItemId: row.sourceItemId, id: { not: row.id }, jobType: { in: ["EXTRACT_TEXT", "FETCH_URL", "PROCESS_MEDIA"] }, status: { in: ["QUEUED", "RUNNING"] } } })) return;
+      await tx.sourceItem.updateMany({ where: { id: row.sourceItemId, workspaceId: row.workspaceId, status: { in: ["PENDING", "PROCESSING"] } }, data: { status: "FAILED" } });
+      await tx.sourceAsset.updateMany({ where: { workspaceId: row.workspaceId, sourceItemId: row.sourceItemId, status: "DOWNLOADING" }, data: { status: "FAILED" } });
+    });
+  }
+  // Uploads are synchronous and have no queue job. A crashed uploader must not leave an infinite pending state.
+  const uploads = await db.sourceItem.findMany({ where: { ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}), ...(input.sourceItemId ? { id: input.sourceItemId } : {}), sourceProvider: "LOCAL_UPLOAD", status: { in: ["PENDING", "PROCESSING"] }, updatedAt: { lte: queuedBefore } }, select: { id: true, workspaceId: true, updatedAt: true }, take: 50 });
+  for (const source of uploads) await db.$transaction(async tx => {
+    const changed = await tx.sourceItem.updateMany({ where: { id: source.id, workspaceId: source.workspaceId, updatedAt: source.updatedAt, status: { in: ["PENDING", "PROCESSING"] } }, data: { status: "FAILED" } });
+    if (changed.count) await tx.sourceAsset.updateMany({ where: { sourceItemId: source.id, workspaceId: source.workspaceId, status: "DOWNLOADING" }, data: { status: "FAILED" } });
+  });
+}
+
 function queueName(type: string) {
   if (type === "TRANSCRIBE") return TRANSCRIBE_SOURCE;
   if (type === "ANALYZE_MATERIAL") return ANALYZE_MATERIAL;
@@ -57,6 +83,7 @@ function queueName(type: string) {
 }
 
 export async function reconcileJobs(input: { workspaceId?: string; limit?: number; minimumAgeMs?: number; afterJobId?: string } = {}) {
+  await expireMaterialProcessing({ workspaceId: input.workspaceId });
   const rows = await db.ingestJob.findMany({ where: { ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}), status: { in: ["QUEUED", "RUNNING"] }, updatedAt: { lte: new Date(Date.now() - (input.minimumAgeMs ?? 10000)) } }, ...(input.afterJobId?{cursor:{id:input.afterJobId},skip:1}:{}), orderBy: [{createdAt:"asc"},{id:"asc"}], take: Math.min(Math.max(input.limit ?? 50, 1), 100), include: { sourceItem: { select: { workspaceId: true, status: true } } } });
   const results: Array<{ jobId: string; status: string }> = [];
   for (const record of rows) {

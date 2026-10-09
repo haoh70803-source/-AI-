@@ -21,3 +21,5 @@
 .video-center .video-filter-pill select{border:0;padding:0;background:transparent;border-radius:0;}
 
 .video-trend.is-empty :is(.video-chart-axis,.video-chart-plot){display:none;}.video-chart-empty{display:grid;place-content:center;justify-items:center;width:100%;gap:9px;border:1px dashed var(--border);border-radius:12px;color:var(--text-secondary);font-size:11px;text-align:center;padding:12px;}.video-chart-empty strong{color:var(--text);font-size:13px;font-weight:500;}
+
+.video-center .video-filter-pill{box-sizing:border-box;min-height:56px;padding:8px 13px;}.video-center .video-filter-pill select{height:38px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);}.video-pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding-top:16px;font-size:12px;}.video-pagination>span{margin-right:auto;color:var(--text-secondary);}

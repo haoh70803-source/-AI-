@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenCheck, ChevronDown, Files, Lightbulb, Menu, PanelLeftClose, PanelLeftOpen, PenLine, Pin, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { BookOpenCheck, ChevronDown, Files, Lightbulb, Menu, PanelLeftClose, PanelLeftOpen, PenLine, Pin, Settings, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -22,7 +22,7 @@ function isActive(pathname: string, href: string) {
 
 function Brand() {
   return <Link href="/dashboard" aria-label="鑫世界 Studio" className="sidebar-brand flex min-h-12 items-center gap-3 rounded-xl px-2 focus-visible:ring-2 focus-visible:ring-[var(--accent)]">
-    <span className="grid h-9 w-9 place-items-center rounded-xl bg-[linear-gradient(145deg,#67a6ff,#246bfd_58%,#5b55e7)] text-white shadow-[0_12px_28px_-16px_rgb(36_107_253/0.9)]"><Sparkles size={18} /></span>
+    <span className="grid h-9 w-9 shrink-0 place-items-center"><img src="/brand/xin-world-mark-dark.svg" alt="" width={36} height={36} /></span>
     <span className="sidebar-brand-copy"><strong className="block text-[15px] tracking-tight">鑫世界 Studio</strong><span className="block text-[11px] text-[var(--text-tertiary)]">AI 内容工作台</span></span>
   </Link>;
 }

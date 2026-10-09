@@ -55,6 +55,7 @@ export interface StorageProvider {
     body: Uint8Array | Readable;
     contentType?: string;
     contentLength?: number;
+    signal?: AbortSignal;
     assetScope?: StorageAssetScope;
   }): Promise<ProviderResult<{ key: string }>>;
   delete(key: string, assetScope?: StorageAssetScope): Promise<ProviderResult<{ key: string }>>;

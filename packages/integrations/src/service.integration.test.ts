@@ -133,6 +133,15 @@ describe("IntegrationService integration", () => {
     });
   });
 
+  it("preserves the streaming protocol and encrypted key when public settings are saved without a new key", async () => {
+    const apiKey = `streaming-${randomUUID()}`;
+    await service.saveIntegrationConfig({workspaceId,userId,provider:"DOUBAO_ASR",config:{apiKey,protocol:"STREAMING_2_0",resourceId:"volc.seedasr.sauc.duration"}});
+    const saved = await service.saveIntegrationConfig({workspaceId,userId,provider:"DOUBAO_ASR",config:{resourceId:"volc.seedasr.sauc.duration"}});
+    expect(saved.publicConfig).toMatchObject({protocol:"STREAMING_2_0",resourceId:"volc.seedasr.sauc.duration"});
+    expect(JSON.stringify(saved)).not.toContain(apiKey);
+    await expect(service.getDecryptedIntegrationConfig(workspaceId,"DOUBAO_ASR")).resolves.toMatchObject({apiKey,protocol:"STREAMING_2_0"});
+  });
+
   it("requires an explicit key when the RedFox destination changes", async () => {
     await expect(service.saveIntegrationConfig({ workspaceId, userId, provider: "REDFOX", config: { baseUrl: "https://changed.example.invalid" } })).rejects.toMatchObject({ code: "INTEGRATION_SECRET_REQUIRED" });
     const result = await service.saveIntegrationConfig({

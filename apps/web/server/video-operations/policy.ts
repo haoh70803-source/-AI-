@@ -1,4 +1,6 @@
 import { z } from 'zod';
+export const platforms = { DOUYIN: '抖音', XIAOHONGSHU: '小红书' } as const;
+export const platformSchema = z.enum(['DOUYIN', 'XIAOHONGSHU']);
 export const ZONE = 'Asia/Shanghai';
 export const kinds = { PUBLISH: '发布视频', LIVE: '直播', COMMENT: '回复评论', EDIT: '剪辑', ADS: '投流' } as const;
 export const stages = { IDEA: '选题', EDITING: '制作中', REVIEW: '待审核', READY: '待发布', PUBLISHED: '已发布', ARCHIVED: '已归档' } as const;
@@ -6,14 +8,22 @@ export const states = { TODO: '待开始', IN_PROGRESS: '进行中', DONE: '已�
 export function businessDay(now = new Date()) { const p = new Intl.DateTimeFormat('en-CA', { timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now); return ['year', 'month', 'day'].map(k => p.find(v => v.type === k)!.value).join('-'); }
 export function dayOffset(day: string, n: number) { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 export const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => { const n = new Date(s + 'T00:00:00Z'); return !Number.isNaN(n.getTime()) && n.toISOString().slice(0, 10) === s; }, '日期不存在');
+export function videoRange(days = 30, start?: string, end?: string, today = businessDay()) {
+    if ((start === undefined) !== (end === undefined) || ![7, 30, 90].includes(days)) throw Error('筛选条件不正确');
+    if (start !== undefined && end !== undefined) {
+        if (!daySchema.safeParse(start).success || !daySchema.safeParse(end).success || start > end || end > today || start < dayOffset(today, -1826)) throw Error('日期范围需在过去五年内，开始日期不能晚于结束日期，不能选择未来日期');
+        days = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
+    }
+    return { start: start ?? dayOffset(today, 1 - days), end: end ?? today, days };
+}
 const id = z.string().min(1).max(100), title = z.string().trim().min(1).max(200), revision = z.number().int().min(0), count = z.number().int().min(0).max(2000000000);
 const instant = z.string().datetime({ offset: true });
 export const metricSchema = z.object({ accountId: id, day: daySchema, plays: count, exposures: count.nullable(), likes: count, comments: count, shares: count, saves: count, netFollowers: z.number().int().min(-2000000000).max(2000000000), negativeComments: count, limited: z.boolean(), isFinal: z.boolean(), observedAt: instant, revision }).strict().refine(r => r.negativeComments <= r.comments, '负面评论不能多于全部评论');
 export const inputSchema = z.discriminatedUnion('action', [
-    z.object({ action: z.literal('account.create'), handle: title, externalId: z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/, '账号编号需为字母或数字开头，可含下划线、点和短横线') }).strict(),
+    z.object({ action: z.literal('account.create'), handle: title, platform: platformSchema.optional(), externalId: z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/, '账号编号需为字母或数字开头，可含下划线、点和短横线') }).strict(),
     z.object({ action: z.literal('account.archive'), id, revision: z.number().int().positive(), archived: z.boolean() }).strict(),
     z.object({ action: z.literal('metrics.save'), rows: z.array(metricSchema).min(1).max(500), source: z.enum(['MANUAL', 'CSV']) }).strict(),
-    z.object({ action: z.literal('csv.preview'), csv: z.string().min(1).max(240000) }).strict(),
+    z.object({ action: z.literal('csv.preview'), platform: platformSchema.optional(), csv: z.string().min(1).max(240000) }).strict(),
     z.object({ action: z.literal('content.create'), accountId: id, title, projectId: id.nullable(), stage: z.enum(['IDEA', 'EDITING', 'REVIEW', 'READY', 'PUBLISHED']) }).strict(),
     z.object({ action: z.literal('content.stage'), id, revision: z.number().int().positive(), stage: z.enum(['IDEA', 'EDITING', 'REVIEW', 'READY', 'PUBLISHED', 'ARCHIVED']) }).strict(),
     z.object({ action: z.literal('task.create'), accountId: id, contentId: id.nullable(), assigneeId: id, kind: z.enum(['PUBLISH', 'LIVE', 'COMMENT', 'EDIT', 'ADS']), title, dueAt: instant, note: z.string().trim().max(4000) }).strict(),

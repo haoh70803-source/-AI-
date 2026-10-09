@@ -22,6 +22,17 @@ export function SourceViewer({ model, mediaRef, onMediaReady }: {
   const url = preview.type === "DOCUMENT" ? preview.documentUrl : preview.mediaUrl || (preview.type === "IMAGE" ? preview.coverUrl : null);
 
   useEffect(() => {
+    const element = mediaRef.current;
+    if (!element || !["VIDEO", "AUDIO"].includes(preview.type)) { onMediaReady?.(false); return; }
+    // Metadata may finish loading before hydration attaches the React handler.
+    const synchronize = () => onMediaReady?.(element.readyState >= 1 && !element.error);
+    synchronize();
+    element.addEventListener("loadedmetadata", synchronize);
+    element.addEventListener("error", synchronize);
+    return () => { element.removeEventListener("loadedmetadata", synchronize); element.removeEventListener("error", synchronize); };
+  }, [url, failed, mediaRef, onMediaReady, preview.type]);
+
+  useEffect(() => {
     const element = imageViewportRef.current;
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => {
@@ -61,7 +72,7 @@ export function SourceViewer({ model, mediaRef, onMediaReady }: {
     </header>
     <div ref={frameRef} className={`source-viewer-stage type-${preview.type.toLowerCase()} ${unavailable ? "is-unavailable" : ""}`}>
       {plainText ? <article className="source-document-text" aria-label="原文预览"><pre>{plainText}</pre></article> : unavailable ? <div className="source-viewer-fallback"><FileText size={30} /><strong>{failed ? "预览暂时无法加载" : model.workspace.busy ? model.workspace.processingLabel : model.actions.status === "FAILED" ? "资料获取失败" : (["VIDEO", "AUDIO"].includes(preview.type) ? "未保存原音视频文件" : "原件预览不可用")}</strong>
-        <p>{model.workspace.busy ? "正在获取原文件，文件保存完成后才能播放和转写。" : preview.unavailableReason || "当前没有已保存的原文件，请查看资料处理状态。"}</p>{url ? <a href={url} target="_blank" rel="noreferrer">打开原文件</a> : null}</div>
+        <p>{model.workspace.busy ? "正在获取原文件，文件保存完成后才能播放和转写。" : model.workspace.processingError || preview.unavailableReason || "当前没有已保存的原文件，请查看资料处理状态。"}</p>{url ? <a href={url} target="_blank" rel="noreferrer">打开原文件</a> : null}</div>
         : preview.type === "IMAGE" ? <div ref={imageViewportRef} className="source-image-scroll">
           <div className="source-image-canvas" style={{ width: Math.max(imageWidth, viewport.width), height: Math.max(imageHeight, viewport.height) }}>
             <img src={url} alt={header.title} draggable={false} style={natural.width ? { width: imageWidth, height: imageHeight } : { maxWidth: "100%", maxHeight: "100%" }}

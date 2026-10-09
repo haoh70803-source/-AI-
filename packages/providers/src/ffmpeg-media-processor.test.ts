@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
+import { createServer } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { assertFlashAudioLimits, FFmpegMediaProcessor } from "./ffmpeg-media-processor";
 
@@ -30,6 +32,9 @@ describe("FFmpegMediaProcessor", () => {
     expect(extracted.durationMs).toBeGreaterThanOrEqual(900);
     expect(extracted.durationMs).toBeLessThanOrEqual(1_100);
     await extracted.cleanup();
+    const bounded = await new FFmpegMediaProcessor().extractAudio(videoPath, { limits: "NONE", maxDurationMs: 500, localOnly: true });
+    expect(bounded.durationMs).toBeLessThanOrEqual(600);
+    await bounded.cleanup();
   }, 20_000);
 
   it("reports FFmpeg failures explicitly", async () => {
@@ -38,7 +43,7 @@ describe("FFmpegMediaProcessor", () => {
   });
 
   it("probes an existing audio file duration", async () => {
-    const durationMs = await new FFmpegMediaProcessor().probeDuration(resolve(process.cwd(), "../../services/local-asr/benchmark/audio/normal_zh.wav"));
+    const durationMs = await new FFmpegMediaProcessor().probeDuration(fileURLToPath(new URL("../../../services/local-asr/benchmark/audio/normal_zh.wav", import.meta.url)));
     expect(durationMs).toBeGreaterThan(6_000);
   });
 
@@ -54,3 +59,12 @@ describe("FFmpegMediaProcessor", () => {
       .toThrow(expect.objectContaining({ code: "ASR_AUDIO_TOO_LONG" }));
   });
 });
+
+it('terminates a stuck media subprocess and reports a retryable user action', async () => {
+  const server = createServer(() => {});
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("fixture missing");
+  try { await expect(new FFmpegMediaProcessor({ timeoutMs: 200 }).probeDuration(`http://127.0.0.1:${address.port}/hang`)).rejects.toMatchObject({ code: 'ASR_PROCESS_TIMEOUT' }); }
+  finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+}, 5000);

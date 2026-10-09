@@ -30,9 +30,9 @@ function stageForJob(job: { status?: SourceUploadResult["processingStatus"]; cur
   return "UPLOADED";
 }
 
-export function IngestDialog() {
+export function IngestDialog({ initialOpen = false }: { initialOpen?: boolean } = {}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [dragging, setDragging] = useState(false);
   const [kind, setKind] = useState<Kind>("FILE");
   const [busy, setBusy] = useState(false);
@@ -217,22 +217,34 @@ export function IngestDialog() {
     setBusy(true);
     setError("");
     setExistingSourceId(null);
-    const payload = kind === "TEXT"
+    let payload: Record<string, unknown> = kind === "TEXT"
       ? { kind, title: formData.get("title"), text: formData.get("text"), notes: formData.get("notes") }
       : kind === "URL"
         ? { kind, url: formData.get("url") }
         : { kind, shareText: formData.get("shareText") };
-    const response = await fetch("/api/source-items", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    if (kind === "DOUYIN") {
+      const input = String(formData.get("shareText") ?? "");
+      const urls = input.match(/https?:\/\/[^\s<>"，。；]+/g) ?? [];
+      if (urls.length !== 1) { setError("请输入一个明确的视频分享链接或视频文件直链。"); setBusy(false); return; }
+      try {
+        const url = new URL(urls[0]!);
+        const platformLink = /(^|\.)(douyin\.com|iesdouyin\.com|xiaohongshu\.com|xhslink\.com)$/i.test(url.hostname);
+        payload = { kind: platformLink ? "REDFOX" : "MEDIA_URL", url: url.toString(), autoTranscribe: formData.get("autoTranscribe") === "on" };
+      } catch { setError("视频链接格式不正确。"); setBusy(false); return; }
+    }
+    try {
+    const response = await fetch("/api/source-items", { signal: AbortSignal.timeout(30_000), method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       setError(body.message || body.error || "收录失败，请检查输入。");
-      if (body.error === "DUPLICATE_SOURCE" && typeof body.sourceItemId === "string") setExistingSourceId(body.sourceItemId);
+      if (["DUPLICATE_SOURCE", "DUPLICATE_URL"].includes(body.error) && typeof body.sourceItemId === "string") setExistingSourceId(body.sourceItemId);
       setBusy(false);
       return;
     }
     setCreated({ sourceItemId: body.sourceItemId });
     setBusy(false);
     router.refresh();
+    } catch { setError("请求未完成，请稍后重试。"); } finally { setBusy(false); }
   }
 
   function close() {
@@ -249,7 +261,7 @@ export function IngestDialog() {
     { value: "FILE", label: "上传文件" },
     { value: "TEXT", label: "粘贴文字" },
     { value: "URL", label: "网页链接" },
-    { value: "DOUYIN", label: "抖音视频" },
+    { value: "DOUYIN", label: "视频链接" },
   ];
   const finished = uploads.length > 0 && uploads.every((item) => item.status === "FAILED" || item.status === "DUPLICATE" || item.status === "READY" || item.processingStatus === "SUCCEEDED" || item.processingStatus === "FAILED" || item.processingStatus === "CANCELLED");
   const readyCount = uploads.filter((item) => item.status === "READY" || item.status === "DUPLICATE" || item.processingStatus === "SUCCEEDED").length;
@@ -271,7 +283,7 @@ export function IngestDialog() {
             ) : (
               <>
                 <div className="mt-5 grid grid-cols-4 gap-2 rounded-xl bg-[var(--surface-elevated)] p-1">{tabs.map(({ value, label }) => <button key={value} type="button" onClick={() => { setKind(value); setError(""); }} className={`rounded-lg px-2 py-2 text-sm ${kind === value ? "bg-[var(--surface)] font-medium shadow-sm" : "text-[var(--text-secondary)]"}`}>{label}</button>)}</div>
-                {kind === "FILE" ? <div className="mt-5 grid gap-4"><button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-elevated)] text-sm hover:border-[var(--accent)] disabled:opacity-60"><FileUp size={24} /><strong>{busy ? "正在上传…" : "选择文件"}</strong><span className="text-xs text-[var(--text-secondary)]">支持视频、录音、PDF、Word、TXT、Markdown、图片</span></button><input ref={fileInputRef} className="hidden" type="file" multiple accept=".mp4,.mov,.mp3,.wav,.m4a,.pdf,.docx,.txt,.md,.markdown,.jpg,.jpeg,.png,.webp" onChange={(event) => { const files = event.target.files ? [...event.target.files] : []; event.currentTarget.value = ""; void handleFiles(files); }} />{uploads.length ? <div className="grid gap-2" aria-live="polite">{uploads.map((item) => { const Icon = iconForFile(item.name); const failed = item.status === "FAILED" || item.stage === "FAILED" || item.processingStatus === "FAILED" || item.processingStatus === "CANCELLED"; const statusText = item.status === "FAILED" ? item.message ?? sourceUploadStatusLabel(item) : item.stage === "FAILED" ? item.message ?? sourceUploadStatusLabel(item) : sourceUploadStatusLabel(item); return <div key={item.clientId} className="grid gap-2 rounded-xl border p-3 text-sm"><div className="flex items-center gap-3"><Icon size={18} className="shrink-0 text-[var(--text-secondary)]" /><span className="min-w-0 flex-1 truncate">{item.name}</span><span className={failed ? "text-[var(--danger)]" : item.stage === "READY" ? "text-[var(--success)]" : "text-[var(--accent)]"}>{statusText}</span></div><progress className="h-1.5 w-full accent-[var(--accent)]" value={item.uploadProgress ?? (item.stage === "UPLOADING" ? 0 : 100)} max={100} aria-label={`${item.name}上传进度`} />{failed ? <button type="button" className="justify-self-start text-xs font-medium text-[var(--accent)] underline" onClick={() => item.status === "FAILED" ? void retryUpload(item) : void retryProcessing(item)}>{item.status === "FAILED" ? "重试上传" : "重试处理"}</button> : null}</div>; })}</div> : null}{finished ? <p role="status" className="rounded-xl bg-[var(--surface-elevated)] p-3 text-sm text-[var(--success)]">已完成 {readyCount} 份资料{failedCount ? `，${failedCount} 份处理失败` : ""}。</p> : null}<p className="text-xs text-[var(--text-secondary)]">也可以直接把文件拖到资料页，松开后立即开始添加。</p></div> : <form action={submit} className="mt-5 grid gap-4">{kind === "TEXT" ? <><label className="grid gap-1.5 text-sm">标题（可选）<input name="title" maxLength={200} className="h-10 rounded-[var(--radius)] border bg-transparent px-3" /></label><label className="grid gap-1.5 text-sm">正文<textarea name="text" required rows={9} className="rounded-[var(--radius)] border bg-transparent p-3 leading-6" /></label><label className="grid gap-1.5 text-sm">备注（可选）<textarea name="notes" rows={2} className="rounded-[var(--radius)] border bg-transparent p-3 leading-6" /></label></> : kind === "URL" ? <label className="grid gap-1.5 text-sm">网页链接<input name="url" type="url" required placeholder="https://example.com/article" className="h-10 rounded-[var(--radius)] border bg-transparent px-3" /></label> : <label className="grid gap-1.5 text-sm">抖音分享链接或分享文案<textarea name="shareText" required rows={5} maxLength={10000} placeholder={'3.21 复制打开抖音，看看这个作品…\nhttps://v.douyin.com/xxxx/'} className="rounded-[var(--radius)] border bg-transparent p-3 leading-6" /><span className="text-xs text-[var(--text-secondary)]">仅支持一个明确的抖音作品链接；需先在设置中配置 RedFox。</span></label>}{error ? <p role="alert" className="text-sm text-[var(--danger)]">{error}{existingSourceId ? <> <Link href={`/library/${existingSourceId}`} onClick={close} className="underline">查看已有资料</Link></> : null}</p> : null}<div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={close}>取消</Button><Button type="submit" disabled={busy}>{busy ? "提交中…" : "添加资料"}</Button></div></form>}
+                {kind === "FILE" ? <div className="mt-5 grid gap-4"><button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-elevated)] text-sm hover:border-[var(--accent)] disabled:opacity-60"><FileUp size={24} /><strong>{busy ? "正在上传…" : "选择文件"}</strong><span className="text-xs text-[var(--text-secondary)]">支持视频、录音、PDF、Word、TXT、Markdown、图片</span></button><input ref={fileInputRef} className="hidden" type="file" multiple accept=".mp4,.mov,.mp3,.wav,.m4a,.pdf,.docx,.txt,.md,.markdown,.jpg,.jpeg,.png,.webp" onChange={(event) => { const files = event.target.files ? [...event.target.files] : []; event.currentTarget.value = ""; void handleFiles(files); }} />{uploads.length ? <div className="grid gap-2" aria-live="polite">{uploads.map((item) => { const Icon = iconForFile(item.name); const failed = item.status === "FAILED" || item.stage === "FAILED" || item.processingStatus === "FAILED" || item.processingStatus === "CANCELLED"; const statusText = item.status === "FAILED" ? item.message ?? sourceUploadStatusLabel(item) : item.stage === "FAILED" ? item.message ?? sourceUploadStatusLabel(item) : sourceUploadStatusLabel(item); return <div key={item.clientId} className="grid gap-2 rounded-xl border p-3 text-sm"><div className="flex items-center gap-3"><Icon size={18} className="shrink-0 text-[var(--text-secondary)]" /><span className="min-w-0 flex-1 truncate">{item.name}</span><span className={failed ? "text-[var(--danger)]" : item.stage === "READY" ? "text-[var(--success)]" : "text-[var(--accent)]"}>{statusText}</span></div><progress className="h-1.5 w-full accent-[var(--accent)]" value={item.uploadProgress ?? (item.stage === "UPLOADING" ? 0 : 100)} max={100} aria-label={`${item.name}上传进度`} />{failed ? <button type="button" className="justify-self-start text-xs font-medium text-[var(--accent)] underline" onClick={() => item.status === "FAILED" ? void retryUpload(item) : void retryProcessing(item)}>{item.status === "FAILED" ? "重试上传" : "重试处理"}</button> : null}</div>; })}</div> : null}{finished ? <p role="status" className="rounded-xl bg-[var(--surface-elevated)] p-3 text-sm text-[var(--success)]">已完成 {readyCount} 份资料{failedCount ? `，${failedCount} 份处理失败` : ""}。</p> : null}<p className="text-xs text-[var(--text-secondary)]">也可以直接把文件拖到资料页，松开后立即开始添加。</p></div> : <form action={submit} className="mt-5 grid gap-4">{kind === "TEXT" ? <><label className="grid gap-1.5 text-sm">标题（可选）<input name="title" maxLength={200} className="h-10 rounded-[var(--radius)] border bg-transparent px-3" /></label><label className="grid gap-1.5 text-sm">正文<textarea name="text" required rows={9} className="rounded-[var(--radius)] border bg-transparent p-3 leading-6" /></label><label className="grid gap-1.5 text-sm">备注（可选）<textarea name="notes" rows={2} className="rounded-[var(--radius)] border bg-transparent p-3 leading-6" /></label></> : kind === "URL" ? <label className="grid gap-1.5 text-sm">网页链接<input name="url" type="url" required placeholder="https://example.com/article" className="h-10 rounded-[var(--radius)] border bg-transparent px-3" /></label> : <label className="grid gap-1.5 text-sm">视频分享链接或视频文件直链<textarea name="shareText" required rows={5} maxLength={10000} placeholder={'3.21 复制打开抖音，看看这个作品…\nhttps://v.douyin.com/xxxx/'} className="rounded-[var(--radius)] border bg-transparent p-3 leading-6" /><span className="text-xs text-[var(--text-secondary)]">支持抖音、小红书作品分享链接，或可公开下载的视频文件地址。分享链接需配置解析服务。</span></label>}{kind === "DOUYIN" ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="autoTranscribe" defaultChecked />获取视频后自动生成文字稿<span className="text-xs text-[var(--text-secondary)]">优先云端识别，本地识别兜底</span></label> : null}{error ? <p role="alert" className="text-sm text-[var(--danger)]">{error}{existingSourceId ? <> <Link href={`/library/${existingSourceId}`} onClick={close} className="underline">查看已有资料</Link></> : null}</p> : null}<div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={close}>取消</Button><Button type="submit" disabled={busy}>{busy ? "提交中…" : kind === "DOUYIN" ? "添加并处理视频" : "添加资料"}</Button></div></form>}
               </>
             )}
           </section>

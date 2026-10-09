@@ -83,7 +83,7 @@
  .dashboard-workbench .agent-chat .studio-assistant-message.is-user { max-width:85%; }
  .dashboard-workbench .agent-chat .studio-assistant-composer { margin:8px 12px max(12px,env(safe-area-inset-bottom)); }
  .dashboard-workbench .agent-chat .studio-assistant-composer textarea { font-size:16px; }
- .dashboard-workbench .agent-chat .agent-composer-tools select { max-width:100px;font-size:11px; }
+ .dashboard-workbench .agent-chat .agent-composer-tools select { flex:1 1 70px;width:70px;max-width:100px;font-size:11px; }
  .dashboard-workbench .agent-chat .agent-composer-tools > button { width:29px; }
  .dashboard-workbench .agent-chat .studio-assistant-references,.agent-chat .studio-assistant-material-picker { margin-inline:16px; }
  .agent-scroll-latest { right:22px;bottom:144px; }

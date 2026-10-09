@@ -128,6 +128,7 @@ export async function validateUploadedFile(file: File): Promise<ValidatedUpload>
 
 export function uploadErrorMessage(code: string) {
   return {
+    UPLOAD_TIMEOUT: "上传时间过长，已停止处理。请重新上传或重试。",
     UNSUPPORTED_FILE_TYPE: "不支持这种文件。",
     EMPTY_FILE: "文件为空。",
     FILE_TOO_LARGE: "文件太大：音视频最多 50 MB，文档和图片最多 25 MB。",
@@ -140,21 +141,27 @@ export function uploadErrorMessage(code: string) {
 }
 
 // Bound the body before multipart parsing, including requests without Content-Length.
-export async function readUploadFormData(request: Request, maxBytes = 52 * 1024 * 1024) {
+export async function readUploadFormData(request: Request, maxBytes = 52 * 1024 * 1024, timeoutMs = 120_000) {
+  request.signal.throwIfAborted();
   const declared = Number(request.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > maxBytes) throw new Error("UPLOAD_BATCH_TOO_LARGE");
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data")) throw new Error("INVALID_UPLOAD_FORM");
   const reader = request.body?.getReader();
   if (!reader) throw new Error("INVALID_UPLOAD_FORM");
+  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(timeoutMs)]);
+  const cancel = () => { void reader.cancel().catch(() => undefined); };
+  signal.addEventListener("abort", cancel, { once: true });
   const chunks: Uint8Array[] = []; let size = 0;
   try {
     while (true) {
+      signal.throwIfAborted();
       const { value, done } = await reader.read();
+      signal.throwIfAborted();
       if (done) break;
       size += value.byteLength;
       if (size > maxBytes) throw new Error("UPLOAD_BATCH_TOO_LARGE");
       chunks.push(value);
     }
-  } finally { await reader.cancel().catch(() => undefined); }
+  } finally { signal.removeEventListener("abort", cancel); await reader.cancel().catch(() => undefined); }
   return new Response(Buffer.concat(chunks), { headers: { "content-type": request.headers.get("content-type")! } }).formData();
 }

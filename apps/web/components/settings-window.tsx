@@ -3,6 +3,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { SettingsNavigation } from "./settings-navigation";
+import { AppearanceSettings } from "./appearance-settings";
+import { PageHeader } from "./page";
 import "./settings-v1.css";
 
 export function SettingsWindow({ children, name, intercepted = false }: { children: ReactNode; name: string; intercepted?: boolean }) {
@@ -24,7 +26,10 @@ export function SettingsWindow({ children, name, intercepted = false }: { childr
   if (!active) return null;
   return <dialog ref={dialog} tabIndex={-1} className="settings-window settings-v1" aria-label="设置" onCancel={event => { event.preventDefault(); close(); }} onClick={event => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close(); } }}>
     <aside className="settings-window-sidebar"><div className="settings-window-label">设置</div><SettingsNavigation name={name} /></aside>
-    <div ref={content} className="settings-window-content settings-content">{children}</div>
+    <div ref={content} className="settings-window-content settings-content">
+      {pathname === "/settings" && <><PageHeader title="通用" description="调整外观，管理当前工作台的账号、服务和保存位置。"/><AppearanceSettings /></>}
+      {children}
+    </div>
     <button type="button" className="settings-window-close" aria-label="关闭设置" onClick={close}><X size={20}/></button>
   </dialog>;
 }

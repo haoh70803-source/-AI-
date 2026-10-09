@@ -4224,46 +4224,64 @@ body:has(.research-workbench-shell) .app-main { max-width:none; padding:.75rem; 
 
 /* Dark tokens apply to the active application theme and scoped console surfaces. */
 body[data-theme="black-titanium"],
-[data-surface="console-dark"] {
+body:not([data-theme="light"]) [data-surface="console-dark"] {
   color-scheme: dark;
-  --background:        #070b14;
-  --background-deep:   #04070d;
-  --surface:           #0e1626;
-  --surface-secondary: #131d30;
-  --surface-elevated:  #17233a;
-  --border:            #1e2b45;
-  --border-strong:     #2c3d5e;
-  --text:              #e8f1ff;
-  --text-secondary:    #93a8c6;
-  --text-tertiary:     #6b7f9c;
-  --accent:            #4cc9ff;
-  --accent-strong:     #8b5cff;
-  --accent-soft:       rgb(76 201 255 / 0.14);
-  --accent-border:     rgb(76 201 255 / 0.38);
-  --success:           #3ddc97;
-  --danger:            #ff6b6b;
-  --warning:           #f0b45e;
+  --background:        #080f1d;
+  --background-deep:   #060b14;
+  --surface:           #111e32;
+  --surface-secondary: #17263d;
+  --surface-elevated:  #1d2e49;
+  --border:            #263850;
+  --border-strong:     #3a506e;
+  --text:              #f2f6fc;
+  --text-secondary:    #a5b5cc;
+  --text-tertiary:     #92a3bd;
+  --accent:            #2dd4ef;
+  --accent-strong:     #a597ff;
+  --accent-soft:       rgb(45 212 239 / 0.10);
+  --accent-border:     rgb(45 212 239 / 0.32);
+  --success:           #39cdb1;
+  --danger:            #ef6678;
+  --warning:           #f0ae57;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --nav-active:        rgb(137 119 248 / 0.20);
   --radius-card:       14px;
   --radius-panel:      18px;
   --shadow-card:       0 1px 0 rgb(255 255 255 / 0.03) inset, 0 18px 40px -32px rgb(0 0 0 / 0.8);
-  --data-1:            #38BDF8;
-  --data-2:            #A78BFA;
-  --data-3:            #34D399;
+  --data-1:            #2dd4ef;
+  --data-2:            #8977f8;
+  --data-3:            #39cdb1;
 
-  --gradient-brand:    linear-gradient(90deg, #3fd8ff, #4b8dff, #8b5cff);
-  --gradient-panel:    linear-gradient(160deg, rgb(30 50 80 / 0.72), rgb(12 20 34 / 0.88));
-  --glow-accent:       0 0 24px rgb(76 201 255 / 0.28);
+  --gradient-brand:    linear-gradient(90deg, var(--data-1), var(--data-2));
+  --gradient-panel:    linear-gradient(155deg, rgb(23 38 61 / 0.88), rgb(9 16 28 / 0.94));
+  --glow-accent:       0 0 20px rgb(45 212 239 / 0.22);
 
   /* Compatibility aliases used by existing shared controls. */
   --text-primary:      var(--text);
   --surface-muted:     var(--surface-secondary);
   --surface-glass:     rgb(16 24 40 / 0.72);
   --border-subtle:     var(--border);
-  --accent-ring:       rgb(76 201 255 / 0.22);
+  --accent-ring:       rgb(45 212 239 / 0.22);
   --shadow-xs:         var(--shadow-card);
   --shadow-panel:      var(--shadow-card);
   --shadow-button:     none;
   --shadow:            var(--shadow-card);
+  --theme-color-scheme: dark;
+  --on-accent: var(--background-deep);
+  --theme-shadow-card: inset 0 1px 0 rgb(255 255 255 / .04), 0 6px 16px -12px rgb(0 0 0 / .7);
+  --theme-shadow-panel: 0 16px 40px -20px rgb(0 0 0 / .75);
+  --theme-backdrop: radial-gradient(ellipse at 38% 0%, rgb(30 104 232 / .24), transparent 48%), radial-gradient(ellipse at 0% 52%, rgb(24 124 234 / .16), transparent 35%);
+  --theme-topbar: linear-gradient(110deg, rgb(17 30 50 / .96), rgb(8 15 29 / .97));
+  --theme-sidebar: radial-gradient(ellipse at 0% 36%, rgb(32 105 220 / .18), transparent 65%), var(--gradient-panel);
+  --theme-main: radial-gradient(ellipse at 45% 0%, rgb(29 109 232 / .13), transparent 44%);
+  --theme-overlay: rgb(4 7 13 / .68);
 
   min-height: 100dvh;
   background: var(--background);
@@ -4273,16 +4291,86 @@ body[data-theme="black-titanium"],
   font-variant-numeric: tabular-nums;
 }
 
+/* Light appearance changes materials and data colors, never page geometry. */
+:root[data-theme="light"], body[data-theme="light"] {
+  color-scheme: light;
+  --theme-color-scheme: light;
+  --background: #f5f5f7;
+  --background-deep: #eceef2;
+  --surface: #ffffff;
+  --surface-secondary: #f0f2f5;
+  --surface-muted: var(--surface-secondary);
+  --surface-elevated: #e9edf3;
+  --surface-glass: rgb(255 255 255 / .90);
+  --border: #dce1e8;
+  --border-strong: #c4ccd8;
+  --border-subtle: var(--border);
+  --text: #1d1d1f;
+  --text-primary: var(--text);
+  --text-secondary: #505b6b;
+  --text-tertiary: #606b7c;
+  --text-muted: var(--text-tertiary);
+  --accent: #0969d2;
+  --accent-strong: #6545b6;
+  --accent-soft: #eaf2fe;
+  --accent-border: #b3cbec;
+  --accent-ring: rgb(9 105 210 / .17);
+  --on-accent: #ffffff;
+  --nav-active: #eee9f8;
+  --success: #087d65;
+  --warning: #916000;
+  --danger: #c33349;
+  --data-1: #0969d2;
+  --data-2: #7154c8;
+  --data-3: #087d65;
+  --gradient-brand: linear-gradient(90deg, #0969d2, #6545b6);
+  --gradient-panel: linear-gradient(155deg, #ffffff, #fbfcfe);
+  --glow-accent: none;
+  --theme-shadow-card: 0 2px 8px -4px rgb(31 42 61 / .12), 0 12px 28px -24px rgb(31 42 61 / .16);
+  --theme-shadow-panel: 0 20px 60px -28px rgb(31 42 61 / .28);
+  --shadow-card: var(--theme-shadow-card);
+  --shadow-panel: var(--theme-shadow-panel);
+  --shadow-xs: 0 1px 3px rgb(31 42 61 / .08);
+  --shadow-button: none;
+  --shadow: var(--shadow-card);
+  --theme-backdrop: radial-gradient(ellipse at 38% 0%, rgb(9 105 210 / .035), transparent 48%);
+  --theme-topbar: linear-gradient(110deg, rgb(255 255 255 / .96), rgb(245 245 247 / .97));
+  --theme-sidebar: linear-gradient(155deg, #f5f6f9, #eef1f5);
+  --theme-main: radial-gradient(ellipse at 45% 0%, rgb(9 105 210 / .025), transparent 44%);
+  --theme-overlay: rgb(29 35 46 / .28);
+  --v3-page: var(--background); --v3-surface: var(--surface); --v3-surface-soft: var(--surface-secondary);
+  --v3-surface-muted: var(--surface-muted); --v3-border: var(--border); --v3-border-strong: var(--border-strong);
+  --v3-ink: var(--text); --v3-ink-2: var(--text-secondary); --v3-ink-3: var(--text-tertiary);
+  --v3-accent: var(--accent); --v3-accent-strong: var(--accent-strong); --v3-accent-soft: var(--accent-soft);
+  --v3-success: var(--success); --v3-warning: var(--warning); --v3-danger: var(--danger);
+  --v3-sidebar-bg: var(--surface-secondary); --v3-nav-ink: var(--text-secondary); --v3-nav-active: var(--nav-active);
+  --v3-rail-ink: var(--text-secondary); --v3-on-accent: var(--on-accent); --v3-handwriting: var(--text-secondary);
+  --v3-cover-a: #e9edf5; --v3-cover-b: #f3f4f8; --v3-lilac-a: #f7f5fb; --v3-lilac-b: #eee9f8;
+  --v3-media-bg: var(--surface-secondary); --v3-detail-tint: var(--accent-soft);
+  --v3-project-green: var(--success); --v3-project-green-soft: #e6f4ee;
+  --v3-project-draft: var(--accent); --v3-project-draft-soft: var(--accent-soft);
+}
+body[data-theme="light"], body[data-theme="light"] [data-surface="console-dark"] {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme="black-titanium"] { background: #080f1d; color-scheme: dark; }
+body[data-theme="light"] img[src="/brand/xin-world-mark-dark.svg"] { content: url("/brand/xin-world-mark-light.svg"); }
 
-/* Starship pilot: material is applied to KPI cards only. */
+/* Shared KPI material; the existing class remains for compatibility. */
 [data-surface="console-dark"] .console-kpi-starship {
   position: relative;
   isolation: isolate;
   background: var(--gradient-panel);
-  border-color: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-radius: var(--radius-panel);
-  box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.9), inset 0 1px 0 rgb(180 220 255 / 0.06);
-  backdrop-filter: blur(16px) saturate(1.2);
+  border-color: var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   transition: transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
 }
 [data-surface="console-dark"] .console-kpi-starship::before {
@@ -4303,7 +4391,7 @@ body[data-theme="black-titanium"],
 }
 [data-surface="console-dark"] .console-kpi-starship .console-kpi-number {
   color: var(--text);
-  text-shadow: var(--glow-accent);
+  text-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-surface="console-dark"] .console-kpi-starship {

@@ -1,3 +1,4 @@
+import { expireMaterialProcessing } from "@content-center/worker/job-recovery";
 import { db, type Prisma } from "@content-center/db";
 import { getStorageProvider } from "@content-center/providers";
 
@@ -19,6 +20,7 @@ const allowedTypes = ["TEXT", "URL", "VIDEO", "AUDIO", "IMAGE", "DOCUMENT"];
 const allowedStatuses = ["PENDING", "PROCESSING", "READY", "FAILED", "ARCHIVED"];
 
 export async function listLibrarySources(workspaceId: string, query: LibraryQuery) {
+  await expireMaterialProcessing({ workspaceId });
   let page = Math.max(1, Math.floor(Number(query.page) || 1));
   const pageSize = Math.min(50, Math.max(1, Math.floor(Number(query.pageSize) || 12)));
   const where: Prisma.SourceItemWhereInput = {

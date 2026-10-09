@@ -128,3 +128,61 @@ body:has(.xsj-app-sidebar.is-pinned) .xsj-home { --home-sidebar-space: 236px; }
 
 /* Keep the composer in its hero so browsing templates is never obscured. */
 .xsj-home .xsj-morph-layer { position: absolute; top: var(--home-top); left: 50%; width: min(790px, 100%); }
+
+/* The start page shares the cockpit material while keeping its project flow. */
+body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home {
+  background: transparent;
+  padding: var(--space-5) clamp(16px, 2.5vw, 40px) var(--space-7);
+  & .xsj-hero {
+    min-height: 0;
+    height: auto;
+    max-width: 1400px;
+    margin-bottom: var(--space-4);
+    padding: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--gradient-panel);
+    box-shadow: var(--shadow-card);
+    text-align: left;
+  }
+  & .xsj-hero-status { position: static; transform: none; background: var(--nav-active); color: var(--accent-strong); border-color: transparent; margin-bottom: var(--space-5); font-size: 11px; letter-spacing: .08em; }
+  & .xsj-hero-status > i { background: var(--success); }
+  & .xsj-morph-layer { position: relative; inset: auto; transform: none; width: 100%; max-width: 100%; pointer-events: auto; }
+  & .xsj-hero-brand { justify-content: flex-start; height: auto; margin-bottom: var(--space-5); }
+  & .xsj-hero-brand > img { mix-blend-mode: normal; width: 40px; height: 40px; }
+  & .xsj-hero-brand h1 { font-size: 28px; white-space: normal; }
+  & .xsj-hero-brand p { color: var(--text-secondary); }
+  & .xsj-composer { max-width: none; background: var(--background); border-color: var(--border-strong); border-radius: var(--radius-control); box-shadow: none; }
+  & .xsj-composer textarea { background: transparent; }
+  & .xsj-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  & .xsj-explore { margin-top: var(--space-5); }
+  & :is(.xsj-prompt-grid, .xsj-inspiration-grid) { gap: var(--space-4); }
+  & :is(.xsj-prompt-card, .xsj-skill-card) { background: var(--gradient-panel); border-radius: var(--radius-card); border-color: var(--border); box-shadow: var(--shadow-card); padding: var(--space-5); }
+  & :is(.xsj-prompt-card, .xsj-skill-card):hover { border-color: var(--border-strong); }
+  & .xsj-prompt-meta span { background: var(--nav-active); color: var(--accent-strong); }
+  & .xsj-prompt-apply { color: var(--accent); }
+  & .xsj-tabs { gap: var(--space-2); }
+  & .xsj-tabs button { padding: var(--space-2) var(--space-4); border-radius: var(--radius-control); border-bottom: 0; }
+  & .xsj-tabs button[aria-selected="true"] { background: var(--nav-active); color: var(--accent-strong); }
+  & .fusion-metrics { gap: var(--space-4); }
+  & .fusion-metrics > a { min-height: 156px; padding: var(--space-5); border-radius: var(--radius-card); background: var(--gradient-panel); border-color: var(--border); box-shadow: var(--shadow-card); }
+  & .fusion-metrics strong { font-size: 36px; font-variant-numeric: tabular-nums; }
+  & .fusion-metrics > a:nth-child(2) small { color: var(--accent-strong); }
+  & .fusion-metrics > a:nth-child(3) small { color: var(--success); }
+  & .fusion-overview-panels { gap: var(--space-4); }
+  & :is(.fusion-recent, .fusion-flow) { padding: var(--space-5); border-radius: var(--radius-card); background: var(--gradient-panel); border-color: var(--border); }
+  & .fusion-recent li + li { border: 0; }
+  & .fusion-flow > a > b { color: var(--accent-strong); background: var(--nav-active); border-color: transparent; }
+  & :is(.xsj-composer-popover, .home-picker) { background: var(--surface); border-color: var(--border-strong); }
+  & .xsj-home-error { color: var(--danger); }
+  & :is(button, a, input, textarea):focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 4px var(--accent-ring); }
+}
+@media (max-width: 900px) {
+  body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home .fusion-overview-panels { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home { padding: var(--space-4); }
+  body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home .xsj-hero { padding: var(--space-4); }
+  body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home .xsj-hero-brand h1 { font-size: 22px; }
+  body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home .fusion-metrics { grid-template-columns: 1fr; }
+}

@@ -9,7 +9,7 @@ export type ConsoleKpiProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
   icon?: ReactNode;
 };
 
-export function ConsoleKpi({ title, value, description, icon, className, ...props }: ConsoleKpiProps) {
+export function ConsoleKpi({ title, value, description, icon, children, className, ...props }: ConsoleKpiProps) {
   const hasValue = typeof value === "number" && Number.isFinite(value);
   const useWan = hasValue && Math.abs(value) >= 10_000;
   const display = !hasValue ? "—" : useWan ? (value / 10_000).toFixed(1) : value.toLocaleString("zh-CN");
@@ -22,6 +22,7 @@ export function ConsoleKpi({ title, value, description, icon, className, ...prop
         {useWan ? <span className="console-kpi-unit text-[20px] leading-[1.2] text-[var(--text-secondary)]">万</span> : null}
       </div>
       {description != null ? <div className="console-kpi-description text-[12px] leading-[1.5] text-[var(--text-secondary)]">{description}</div> : null}
+      {children != null ? <div className="console-kpi-visual" aria-hidden="true">{children}</div> : null}
     </ConsoleCard>
   );
 }

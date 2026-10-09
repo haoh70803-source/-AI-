@@ -6,6 +6,8 @@ vi.mock("server-only", () => ({}));
 import { db } from "@content-center/db";
 import { listLibrarySources } from "../server/library";
 import { getSourceWorkspaceModel } from "../server/material-detail/read-model";
+import { getMaterialDetailView } from "../server/material-detail/service";
+import { IntegrationService } from "@content-center/integrations";
 
 describe("Material Detail read boundary", () => {
   const suffix = randomUUID();
@@ -63,5 +65,18 @@ describe("Material Detail read boundary", () => {
     const model = await getSourceWorkspaceModel({ workspaceId, userId, sourceItemId, role: "OWNER" });
     expect(model?.workspace.assetId).toBe(asset.id);
     expect(model?.workspace.mimeType).toBe("text/markdown");
+  });
+
+  it("both detail readers accept configured cloud ASR without local transcription settings", async () => {
+    const integrations = new IntegrationService();
+    await integrations.saveIntegrationConfig({ workspaceId, userId, provider: "DOUBAO_ASR", config: { apiKey: "isolated-cloud-fixture" } });
+    const video = await db.sourceItem.create({ data: { workspaceId, createdById: userId, sourceType: "VIDEO", status: "READY" } });
+    const input = { workspaceId, userId, sourceItemId: video.id, role: "OWNER" as const };
+    expect((await getSourceWorkspaceModel(input))?.workspace.configured).toBe(true);
+    expect((await getMaterialDetailView(input))?.transcript.configured).toBe(true);
+    await integrations.saveIntegrationConfig({ workspaceId, userId, provider: "TRANSCRIPTION", config: { source: "LOCAL_FUNASR" } });
+    await db.integrationConfig.update({ where: { workspaceId_provider: { workspaceId, provider: "TRANSCRIPTION" } }, data: { status: "DISABLED" } });
+    expect((await getSourceWorkspaceModel(input))?.workspace.configured).toBe(false);
+    expect((await getMaterialDetailView(input))?.transcript.configured).toBe(false);
   });
 });

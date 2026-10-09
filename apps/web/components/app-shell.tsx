@@ -12,6 +12,7 @@ import {
   type SidebarInteractionLock,
 } from "./sidebar-state";
 import { SidebarFoundation } from "./sidebar-foundation";
+import { GlobalSearch } from "./global-search";
 import type { ProjectListView } from "@/server/sidebar/view-model";
 import "./app-shell.css";
 
@@ -166,7 +167,7 @@ export function AppShell({ userName, workspaceName, isSystemAdmin, initialPinned
   return <SidebarInteractionContext.Provider value={setInteractionLock}>
     {!pathname.startsWith("/settings") && !pathname.startsWith("/admin") ? <span hidden className="apple-workspace-marker" /> : null}
     <a className="xsj-skip" href="#main-content">跳到主要内容</a>
-    <AppTopbar visualState={visualState} menu={menu} setMenu={setMenu} toggleRail={toggleRail} fullscreen={fullscreen} setNotice={setNotice} />
+    <AppTopbar visualState={visualState} menu={menu} setMenu={setMenu} toggleRail={toggleRail} fullscreen={fullscreen} setNotice={setNotice} onSearchOpenChange={(open) => setInteractionLock("SEARCH", open)} />
     <SidebarFoundation
       visualState={visualState}
       hoverCapable={hoverCapable}
@@ -191,18 +192,20 @@ export function AppShell({ userName, workspaceName, isSystemAdmin, initialPinned
   </SidebarInteractionContext.Provider>;
 }
 
-function AppTopbar({ visualState, menu, setMenu, toggleRail, fullscreen, setNotice }: {
+function AppTopbar({ visualState, menu, setMenu, toggleRail, fullscreen, setNotice, onSearchOpenChange }: {
   visualState: "COLLAPSED" | "TEMP_EXPANDED" | "PINNED_EXPANDED";
   menu: string | null;
   setMenu: (value: string | null) => void;
   toggleRail: () => void;
   fullscreen: () => Promise<void>;
   setNotice: (value: string) => void;
+  onSearchOpenChange: (open: boolean) => void;
 }) {
   const expanded = visualState !== "COLLAPSED";
   return <header className="xsj-app-topbar" data-shell-part="topbar">
     <div className="app-topbar-traffic" aria-hidden="true"><i /><i /><i /></div>
-    <Link href="/home" className="app-topbar-name">鑫世界工作台</Link>
+    <Link href="/home" className="app-topbar-name"><img src="/brand/xin-world-mark-dark.svg" alt="" width={24} height={24} />鑫世界工作台</Link>
+    <div className="app-topbar-search"><GlobalSearch onOpenChange={onSearchOpenChange} /></div>
     <nav aria-label="工作台菜单">{["文件", "编辑", "视图", "窗口", "帮助"].map((label) => <button key={label} type="button" aria-expanded={menu === label} onClick={() => setMenu(menu === label ? null : label)}>{label}</button>)}</nav>
     <div className="app-topbar-window-controls">
       <button type="button" aria-label={expanded ? "收起侧栏" : "展开侧栏"} title="切换侧栏" onClick={toggleRail}><Minus /></button>

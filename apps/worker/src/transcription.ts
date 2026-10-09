@@ -1,4 +1,5 @@
 import { markDispatchPending } from "./job-recovery";
+import { randomUUID } from "node:crypto";
 import { reserveExperienceUsage } from "./experience-limits";
 import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -10,6 +11,7 @@ import {
   DOUBAO_DEFAULT_RESOURCE_ID,
   IntegrationService,
   parseProviderConfig,
+  type DoubaoProtocol,
 } from "@content-center/integrations";
 import {
   assertFlashAudioLimits,
@@ -18,6 +20,8 @@ import {
   DoubaoRecordingFileClient,
   DoubaoRecordingFileTranscriptionProvider,
   DoubaoTranscriptionProvider,
+  DoubaoStreamingClient,
+  DoubaoStreamingTranscriptionProvider,
   doubaoErrorMetadata,
   doubaoRuntimeConfigSchema,
   FFmpegMediaProcessor,
@@ -57,11 +61,61 @@ type TranscriptionPlan = {
   device?: LocalAsrDevice;
   fallbackToDoubao: boolean;
   fallbackUsed?: boolean;
-  protocol?: "FLASH" | "RECORDING_FILE_2_0";
+  fallbackToLocal?: boolean;
+  protocol?: DoubaoProtocol;
 };
 
 const integrationService = new IntegrationService();
 let benchmarkProfilePromise: Promise<LocalAsrBenchmarkProfile> | undefined;
+
+// Short, ephemeral dictation uses the same workspace credentials and model policy.
+export async function prepareVoiceTranscription(workspaceId: string, signal?: AbortSignal) {
+  const plan = await resolveWorkspaceTranscriptionPlan(workspaceId, "WORKSPACE");
+  const config = plan.provider === "DOUBAO_ASR" ? await loadDoubaoConfig(workspaceId) : null;
+  const provider = plan.provider === "LOCAL_FUNASR"
+    ? new LocalFunASRTranscriptionProvider(new LocalAsrClient({ endpoint: plan.endpoint!, model: plan.model!, device: plan.device! }, { timeoutMs: 90_000, signal }))
+    : config!.protocol === "RECORDING_FILE_2_0"
+      ? new DoubaoRecordingFileTranscriptionProvider(new DoubaoRecordingFileClient(config!, { submissionTimeoutMs: 10_000, queryTimeoutMs: 10_000, overallTimeoutMs: 60_000, signal }))
+      : config!.protocol === "STREAMING_2_0"
+        ? new DoubaoStreamingTranscriptionProvider(new DoubaoStreamingClient(config!, { overallTimeoutMs: 90_000, signal }))
+        : new DoubaoTranscriptionProvider(new DoubaoClient(config!, { timeoutMs: 90_000, signal }));
+  return async (input: TranscriptionInput, userId: string, durationMs: number) => {
+    const release = await reserveExperienceUsage({ workspaceId, userId, operation: "TRANSCRIBE" });
+    const started = Date.now(); let success = false, errorCode: string | undefined;
+    let temporary: { sourceId: string; key: string; scope: { workspaceId: string; sourceItemId: string; assetId: string } } | undefined;
+    let storage: ReturnType<typeof getStorageProvider> | undefined;
+    try {
+      if (config?.protocol === "RECORDING_FILE_2_0" && input.audio.mode === "BINARY_DATA") {
+        storage = getStorageProvider();
+        // Archived temporary media is scoped and inventoried, never added to the user's library.
+        const { source, asset } = await db.$transaction(async tx => {
+          const source = await tx.sourceItem.create({ data: { workspaceId, createdById: userId, sourceType: "AUDIO", sourceProvider: "VOICE_INPUT", status: "ARCHIVED", title: "语音输入临时录音" } });
+          const asset = await tx.sourceAsset.create({ data: { workspaceId, sourceItemId: source.id, sourceProvider: "VOICE_INPUT", assetType: "AUDIO", status: "DOWNLOADING", storedAt: new Date() } });
+          return { source, asset };
+        });
+        const scope = { workspaceId, sourceItemId: source.id, assetId: asset.id };
+        const key = buildSourceAssetObjectKey({ ...scope, assetType: "AUDIO", mimeType: "audio/mpeg" });
+        temporary = { sourceId: source.id, key, scope };
+        // Inventory the key before upload so a interrupted request remains cleanable.
+        await db.sourceAsset.update({ where: { id: asset.id }, data: { storageKey: key } });
+        await storage.upload({ key, body: input.audio.data, contentType: "audio/mpeg", contentLength: input.audio.data.byteLength, assetScope: scope, signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
+        await db.sourceAsset.update({ where: { id: asset.id }, data: { status: "STORED", storageKey: key, storedAt: new Date() } });
+        const url = (await storage.getSignedUrl(key, 300, { purpose: "doubao", assetScope: scope })).data.url;
+        await resolvePublicAddress(url);
+        input = { audio: { mode: "REMOTE_URL", url }, contentType: "audio/mpeg" };
+      }
+      const text = (await provider.transcribe(input)).data.fullText.trim(); success = true; return text;
+    } catch (error) { errorCode = publicFailure(error).code; throw error; }
+    finally {
+      await release();
+      if (temporary && storage) {
+        try { await storage.delete(temporary.key, temporary.scope); await db.sourceItem.delete({ where: { id: temporary.sourceId } }); }
+        catch { await db.sourceAsset.update({ where: { id: temporary.scope.assetId }, data: { status: "STORED", storageKey: temporary.key, storedAt: new Date(0) } }); }
+      }
+      await db.apiUsage.create({ data: { workspaceId, userId, provider: plan.provider, operation: transcriptionUsageOperation(plan.provider, config?.protocol), requestId: `voice:${randomUUID()}`, success, units: 1, cost: plan.provider === "LOCAL_FUNASR" ? 0 : null, metadata: json({ purpose: "VOICE_INPUT", durationMs, processingMs: Date.now() - started, errorCode, protocol: config?.protocol, providerMode: "REAL" }) } });
+    }
+  };
+}
 
 export class TranscriptionAlreadyRunningError extends Error {
   readonly code = "TRANSCRIPTION_ALREADY_RUNNING";
@@ -82,7 +136,7 @@ function object(value: Prisma.JsonValue | null): Record<string, unknown> {
 
 function publicFailure(error: unknown) {
   if (error instanceof DoubaoError || error instanceof LocalAsrError) {
-    return { code: error.code, message: error.message, retryable: error.retryable };
+    return { code: error.code, message: error.code.endsWith("TIMEOUT") ? "转录超时，已停止等待。请重试，已保存的原文件会保留。" : error.message, retryable: error.retryable && !error.code.endsWith("TIMEOUT") };
   }
   if (error instanceof MediaProcessorError) return { code: error.code, message: error.message, retryable: false };
   if (error instanceof Error && (error.message === "ASR_VIDEO_NOT_AVAILABLE" || error.message === "ASR_MEDIA_NOT_AVAILABLE")) {
@@ -101,9 +155,9 @@ async function updateProgress(jobId: string, amount: number, stage: ProgressStag
 async function loadDoubaoConfig(workspaceId: string) {
   const status = await integrationService.getIntegrationStatus(workspaceId, "DOUBAO_ASR");
   if (status.status === "DISABLED") throw new DoubaoError("DOUBAO_DISABLED", "豆包 ASR 已禁用。", false);
-  if (status.status !== "CONFIGURED") throw new DoubaoError("DOUBAO_NOT_CONFIGURED", "请先配置豆包 ASR。", false);
+  if (status.status !== "CONFIGURED") throw new DoubaoError("DOUBAO_NOT_CONFIGURED", "请先配置豆包 ASR 的 API Key 或凭证，再重试；已保存的文件无需重新上传。", false);
   const decrypted = await integrationService.getDecryptedIntegrationConfig(workspaceId, "DOUBAO_ASR");
-  if (!decrypted) throw new DoubaoError("DOUBAO_NOT_CONFIGURED", "请先配置豆包 ASR。", false);
+  if (!decrypted) throw new DoubaoError("DOUBAO_NOT_CONFIGURED", "请先配置豆包 ASR 的 API Key 或凭证，再重试；已保存的文件无需重新上传。", false);
   const authMode = decrypted.authMode === "LEGACY_APP_TOKEN" || (!decrypted.authMode && decrypted.appId)
     ? "LEGACY_APP_TOKEN"
     : "API_KEY";
@@ -114,7 +168,8 @@ async function loadDoubaoConfig(workspaceId: string) {
     resourceId: decrypted.resourceId ?? DOUBAO_DEFAULT_RESOURCE_ID,
   });
   if (!parsed.success) throw new DoubaoError("DOUBAO_NOT_CONFIGURED", "豆包 ASR Integration 配置无效。", false);
-  return { ...parsed.data, protocol: decrypted.protocol === "RECORDING_FILE_2_0" ? "RECORDING_FILE_2_0" as const : "FLASH" as const };
+  const protocol: DoubaoProtocol = decrypted.protocol === "STREAMING_2_0" ? "STREAMING_2_0" : decrypted.protocol === "RECORDING_FILE_2_0" ? "RECORDING_FILE_2_0" : "FLASH";
+  return { ...parsed.data, protocol };
 }
 
 async function loadWorkspaceTranscriptionConfig(workspaceId: string): Promise<WorkspaceTranscriptionConfig> {
@@ -175,8 +230,21 @@ async function resolveLocalPlan(config: WorkspaceTranscriptionConfig): Promise<T
   };
 }
 
-export async function resolveWorkspaceTranscriptionPlan(workspaceId: string): Promise<TranscriptionPlan> {
+export async function resolveWorkspaceTranscriptionPlan(workspaceId: string, policy: "CLOUD_FIRST" | "WORKSPACE" = "CLOUD_FIRST"): Promise<TranscriptionPlan> {
   const config = await loadWorkspaceTranscriptionConfig(workspaceId);
+  if (policy === "CLOUD_FIRST") {
+    try {
+      const doubao = await loadDoubaoConfig(workspaceId);
+      return { provider: "DOUBAO_ASR", qualityMode: config.qualityMode, fallbackToDoubao: false, fallbackToLocal: true, protocol: doubao.protocol };
+    } catch (cloudError) {
+      try {
+        return { ...await resolveLocalPlan(config), fallbackToDoubao: false, fallbackUsed: true };
+      } catch {
+        // Preserve the actionable cloud failure instead of reporting only local downtime.
+        throw cloudError;
+      }
+    }
+  }
   if (config.source === "DOUBAO") {
     const doubao = await loadDoubaoConfig(workspaceId);
     return { provider: "DOUBAO_ASR", qualityMode: config.qualityMode, fallbackToDoubao: false, protocol: doubao.protocol };
@@ -275,7 +343,7 @@ async function recordUsage(input: {
   success: boolean;
   providerRequestId?: string;
   metadata?: Record<string, unknown>;
-  protocol?: "FLASH" | "RECORDING_FILE_2_0";
+  protocol?: DoubaoProtocol;
   errorCode?: string;
 }) {
   await db.apiUsage.create({
@@ -283,7 +351,7 @@ async function recordUsage(input: {
       workspaceId: input.record.workspaceId,
       userId: input.record.requestedById,
       provider: input.provider,
-      operation: transcriptionUsageOperation(input.provider, input.protocol ?? (input.metadata?.protocol as "FLASH" | "RECORDING_FILE_2_0" | undefined)),
+      operation: transcriptionUsageOperation(input.provider, input.protocol ?? (input.metadata?.protocol as DoubaoProtocol | undefined)),
       requestId: `${input.record.id}:${input.attempt}:${input.provider}`,
       providerRequestId: input.providerRequestId,
       success: input.success,
@@ -303,17 +371,17 @@ async function recordUsage(input: {
   });
 }
 
-export function transcriptionUsageOperation(provider: TranscriptionProviderName, protocol?: "FLASH" | "RECORDING_FILE_2_0") {
+export function transcriptionUsageOperation(provider: TranscriptionProviderName, protocol?: DoubaoProtocol) {
   if (provider === "LOCAL_FUNASR") return "TRANSCRIBE_LOCAL" as const;
-  return protocol === "RECORDING_FILE_2_0" ? "TRANSCRIBE_RECORDING_FILE_2_0" as const : "TRANSCRIBE_FLASH" as const;
+  return protocol === "STREAMING_2_0" ? "TRANSCRIBE_STREAMING_2_0" as const : protocol === "RECORDING_FILE_2_0" ? "TRANSCRIBE_RECORDING_FILE_2_0" as const : "TRANSCRIBE_FLASH" as const;
 }
 
 export async function cleanupExpiredAsrAudio(now = Date.now(), workspaceId?: string) {
   const retentionHours = readAsrAudioRetentionHours();
   const cutoff = new Date(now - retentionHours * 60 * 60 * 1_000);
   const assets = await db.sourceAsset.findMany({
-    where: { ...(workspaceId ? { workspaceId } : {}), assetType: "AUDIO", sourceProvider: "FFMPEG", sourceItem: { sourceType: "VIDEO" }, status: "STORED", storageKey: { not: null }, storedAt: { lt: cutoff } },
-    select: { id: true, workspaceId: true, sourceItemId: true, storageKey: true, metadata: true },
+    where: { ...(workspaceId ? { workspaceId } : {}), assetType: "AUDIO", storageKey: { not: null }, OR: [{ sourceProvider: "FFMPEG", sourceItem: { sourceType: "VIDEO" }, status: "STORED", storedAt: { lt: cutoff } }, { sourceProvider: "VOICE_INPUT", sourceItem: { status: "ARCHIVED" }, status: { in: ["STORED", "DOWNLOADING"] }, storedAt: { lt: new Date(now - 10 * 60_000) } }] },
+    select: { id: true, workspaceId: true, sourceItemId: true, storageKey: true, metadata: true, sourceProvider: true },
     take: 100,
   });
   const storage = assets.length > 0 ? getStorageProvider() : null;
@@ -321,10 +389,11 @@ export async function cleanupExpiredAsrAudio(now = Date.now(), workspaceId?: str
   for (const asset of assets) {
     if (!asset.storageKey || !storage) continue;
     const metadata = asset.metadata && typeof asset.metadata === "object" && !Array.isArray(asset.metadata) ? asset.metadata as Record<string, unknown> : null;
-    if (typeof metadata?.derivedFromAssetId !== "string" || !metadata.derivedFromAssetId) continue;
+    if (asset.sourceProvider !== "VOICE_INPUT" && (typeof metadata?.derivedFromAssetId !== "string" || !metadata.derivedFromAssetId)) continue;
     try {
       await storage.delete(asset.storageKey, { workspaceId: asset.workspaceId, sourceItemId: asset.sourceItemId, assetId: asset.id });
       await db.sourceAsset.update({ where: { id: asset.id }, data: { status: "FAILED", storageKey: null, sizeBytes: null, storedAt: null } });
+      if (asset.sourceProvider === "VOICE_INPUT") await db.sourceItem.deleteMany({ where: { id: asset.sourceItemId, workspaceId: asset.workspaceId, sourceProvider: "VOICE_INPUT", status: "ARCHIVED" } });
       cleaned += 1;
     } catch {
       // Keep STORED when physical deletion fails so the asset remains retryable and discoverable.
@@ -358,11 +427,6 @@ function durationFromMetadata(metadata: Prisma.JsonValue | null) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-function planFromRecord(record: TranscriptionRecord): TranscriptionPlan | null {
-  const candidate = object(record.metadata).transcriptionPlan;
-  return candidate && typeof candidate === "object" && !Array.isArray(candidate) ? candidate as TranscriptionPlan : null;
-}
-
 async function transcribeWithProvider(input: {
   plan: TranscriptionPlan;
   providerInput: TranscriptionInput;
@@ -384,7 +448,7 @@ async function transcribeWithProvider(input: {
       model: input.plan.model,
       device: input.plan.device,
       language: "auto",
-    }));
+    }, { timeoutMs: 8 * 60_000 }));
     const started = Date.now();
     try {
       const transcript = (await provider.transcribe(input.providerInput)).data;
@@ -419,9 +483,11 @@ async function transcribeWithProvider(input: {
   }
 
   const config = await loadDoubaoConfig(input.record.workspaceId);
-  const recordingFile = input.plan.protocol === "RECORDING_FILE_2_0" || config.protocol === "RECORDING_FILE_2_0";
-  const provider = recordingFile
-    ? new DoubaoRecordingFileTranscriptionProvider(new DoubaoRecordingFileClient(config))
+  const protocol = config.protocol;
+  const provider = protocol === "STREAMING_2_0"
+    ? new DoubaoStreamingTranscriptionProvider(new DoubaoStreamingClient(config))
+    : protocol === "RECORDING_FILE_2_0"
+    ? new DoubaoRecordingFileTranscriptionProvider(new DoubaoRecordingFileClient(config, { overallTimeoutMs: 8 * 60_000 }))
     : new DoubaoTranscriptionProvider(new DoubaoClient(config));
   const started = Date.now();
   try {
@@ -434,9 +500,9 @@ async function transcribeWithProvider(input: {
       durationMs: input.durationMs,
       processingMs: Date.now() - started,
       success: true,
-      protocol: recordingFile ? "RECORDING_FILE_2_0" : "FLASH",
+      protocol,
       providerRequestId: metadata.providerRequestId,
-      metadata: { ...metadata, protocol: recordingFile ? "RECORDING_FILE_2_0" : "FLASH" },
+      metadata: { ...metadata, protocol },
     });
     return { transcript, provider: "DOUBAO_ASR", metadata };
   } catch (error) {
@@ -449,7 +515,7 @@ async function transcribeWithProvider(input: {
       durationMs: input.durationMs,
       processingMs: Date.now() - started,
       success: false,
-      protocol: recordingFile ? "RECORDING_FILE_2_0" : "FLASH",
+      protocol,
       providerRequestId: metadata.providerRequestId,
       metadata: { ...metadata, ...errorMetadata },
       errorCode: error instanceof DoubaoError ? error.code : "DOUBAO_INVALID_RESPONSE",
@@ -480,38 +546,36 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
   const mediaAssetId = job.data.mediaAssetId ?? job.data.videoAssetId;
   if (!mediaAssetId) throw new UnrecoverableError("Transcription media asset is missing");
   const attempt = Math.max(job.attemptsMade + 1, record.attempt + 1);
-  const plan = planFromRecord(record) ?? (record.provider === "DOUBAO_ASR"
-    ? { provider: "DOUBAO_ASR" as const, qualityMode: "BALANCED" as const, fallbackToDoubao: false }
-    : await resolveWorkspaceTranscriptionPlan(record.workspaceId));
-  await db.$transaction([
-    db.ingestJob.update({
-      where: { id: record.id },
-      data: {
-        provider: plan.provider,
-        status: "RUNNING",
-        attempt,
-        progress: 5,
-        startedAt,
-        finishedAt: null,
-        errorCode: null,
-        errorMessage: null,
-        metadata: json({ progressStage: "EXTRACTING_AUDIO", mediaAssetId, transcriptionPlan: plan }),
-      },
-    }),
-    db.auditLog.create({
-      data: {
-        workspaceId: record.workspaceId,
-        userId: record.requestedById,
-        action: "transcription.started",
-        resourceType: "ingest_job",
-        resourceId: record.id,
-        metadata: json({ sourceItemId: record.sourceItemId, provider: plan.provider, qualityMode: plan.qualityMode, attempt }),
-      },
-    }),
-  ]);
-
+  let plan: TranscriptionPlan = { provider: "DOUBAO_ASR", qualityMode: "BALANCED", fallbackToDoubao: false };
   let cleanup: (() => Promise<void>) | undefined;
   try {
+    plan = await resolveWorkspaceTranscriptionPlan(record.workspaceId);
+    await db.$transaction([
+      db.ingestJob.update({
+        where: { id: record.id },
+        data: {
+          provider: plan.provider,
+          status: "RUNNING",
+          attempt,
+          progress: 5,
+          startedAt,
+          finishedAt: null,
+          errorCode: null,
+          errorMessage: null,
+          metadata: json({ progressStage: "EXTRACTING_AUDIO", mediaAssetId, transcriptionPlan: plan }),
+        },
+      }),
+      db.auditLog.create({
+        data: {
+          workspaceId: record.workspaceId,
+          userId: record.requestedById,
+          action: "transcription.started",
+          resourceType: "ingest_job",
+          resourceId: record.id,
+          metadata: json({ sourceItemId: record.sourceItemId, provider: plan.provider, qualityMode: plan.qualityMode, attempt }),
+        },
+      }),
+    ]);
     const media = record.sourceItem.assets.find((asset) =>
       asset.id === mediaAssetId && (asset.assetType === "VIDEO" || asset.assetType === "AUDIO") && asset.status === "STORED" && asset.storageKey,
     );
@@ -553,7 +617,7 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
         const videoUrl = (await storage.getSignedUrl(media.storageKey, 15 * 60, {
           assetScope: { workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, assetId: media.id },
         })).data.url;
-        const extracted = await processor.extractAudio(videoUrl, { limits: plan.provider === "DOUBAO_ASR" && plan.protocol !== "RECORDING_FILE_2_0" ? "DOUBAO_FLASH" : "NONE" });
+        const extracted = await processor.extractAudio(videoUrl, { limits: "NONE" });
         cleanup = extracted.cleanup;
         extractedPath = extracted.path;
         durationMs = extracted.durationMs;
@@ -608,17 +672,42 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
       durationMs = await processor.probeDuration(probeUrl);
     }
     if (durationMs === undefined) throw new MediaProcessorError("ASR_AUDIO_EXTRACTION_FAILED", "已保存音频缺少时长信息。");
+    const transcriptionAudio = audio;
+    const transcriptionDurationMs = durationMs;
     const sizeBytes = Number(audio.sizeBytes);
-    if (plan.provider === "DOUBAO_ASR" && plan.protocol !== "RECORDING_FILE_2_0") assertFlashAudioLimits({ sizeBytes, durationMs });
-    const signedUrl = (await storage.getSignedUrl(audio.storageKey, ASR_AUDIO_SIGNED_URL_TTL_SECONDS, {
-      assetScope: { workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, assetId: audio.id },
-      purpose: plan.provider === "DOUBAO_ASR" ? "doubao" : "browser",
-    })).data.url;
-    const providerInput = plan.provider === "LOCAL_FUNASR"
-      ? await localAudioInput({ signedUrl, extractedPath })
-      : await doubaoAudioInput({ signedUrl, sizeBytes, extractedPath });
-    await updateProgress(record.id, 65, "TRANSCRIBING", plan);
-    const result = await transcribeWithProvider({ plan, providerInput, record, attempt, durationMs });
+    const runProvider = async () => {
+      if (plan.provider === "DOUBAO_ASR" && plan.protocol === "FLASH") assertFlashAudioLimits({ sizeBytes, durationMs: transcriptionDurationMs });
+      const signedUrl = (await storage.getSignedUrl(transcriptionAudio.storageKey!, ASR_AUDIO_SIGNED_URL_TTL_SECONDS, {
+        assetScope: { workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, assetId: transcriptionAudio.id },
+        purpose: plan.provider === "DOUBAO_ASR" ? "doubao" : "browser",
+      })).data.url;
+      if (plan.protocol === "STREAMING_2_0" && !extractedPath && transcriptionAudio.sourceProvider !== "FFMPEG") {
+        // Original audio uploads may use another codec/rate/bitrate. Preserve
+        // the saved original and stream the same controlled encoding as video.
+        const normalized = await processor.extractAudio(signedUrl, { limits: "NONE" });
+        const previousCleanup = cleanup;
+        cleanup = async () => { try { await normalized.cleanup(); } finally { await previousCleanup?.(); } };
+        extractedPath = normalized.path;
+      }
+      const providerInput = plan.provider === "LOCAL_FUNASR" || plan.protocol === "STREAMING_2_0"
+        ? await localAudioInput({ signedUrl, extractedPath })
+        : await doubaoAudioInput({ signedUrl, sizeBytes, extractedPath });
+      await updateProgress(record.id, 65, "TRANSCRIBING", plan);
+      return transcribeWithProvider({ plan, providerInput, record, attempt, durationMs: transcriptionDurationMs });
+    };
+    let result: Awaited<ReturnType<typeof transcribeWithProvider>>;
+    try {
+      result = await runProvider();
+    } catch (cloudError) {
+      if (plan.provider !== "DOUBAO_ASR" || !plan.fallbackToLocal) throw cloudError;
+      try {
+        const config = await loadWorkspaceTranscriptionConfig(record.workspaceId);
+        plan = { ...await resolveLocalPlan(config), fallbackToDoubao: false, fallbackUsed: true };
+      } catch {
+        throw cloudError;
+      }
+      result = await runProvider();
+    }
 
     await updateProgress(record.id, 90, "PERSISTING", plan);
     const finishedAt = new Date();

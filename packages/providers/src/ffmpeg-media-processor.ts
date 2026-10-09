@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { MAX_ASR_FLASH_BYTES, MAX_ASR_FLASH_DURATION_MS } from "@content-center/config";
 
 export type MediaProcessorErrorCode =
+  | "ASR_PROCESS_TIMEOUT"
   | "FFMPEG_NOT_AVAILABLE"
   | "ASR_AUDIO_EXTRACTION_FAILED"
   | "ASR_AUDIO_TOO_LARGE"
@@ -26,23 +27,29 @@ export function assertFlashAudioLimits(input: { sizeBytes: number; durationMs: n
   }
 }
 
-type ProcessorOptions = { ffmpegPath?: string; ffprobePath?: string };
-type ExtractAudioOptions = { limits?: "DOUBAO_FLASH" | "NONE" };
+type ProcessorOptions = { ffmpegPath?: string; ffprobePath?: string; timeoutMs?: number };
+type ExtractAudioOptions = { limits?: "DOUBAO_FLASH" | "NONE"; maxDurationMs?: number; localOnly?: boolean };
 
-async function runProcess(command: string, args: string[], failureCode: MediaProcessorErrorCode) {
+async function runProcess(command: string, args: string[], failureCode: MediaProcessorErrorCode, timeoutMs: number) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(command, args, { shell: false, windowsHide: true });
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, timeoutMs);
+    timer.unref();
     const stdout: Buffer[] = [];
     let stderrBytes = 0;
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
     child.stderr.on("data", (chunk: Buffer) => { stderrBytes += chunk.length; });
     child.on("error", (error: NodeJS.ErrnoException) => {
+      clearTimeout(timer);
       reject(new MediaProcessorError(
         error.code === "ENOENT" ? "FFMPEG_NOT_AVAILABLE" : failureCode,
         error.code === "ENOENT" ? "ffmpeg/ffprobe 未安装或不在 PATH。" : "音频处理进程无法启动。",
       ));
     });
     child.on("close", (code) => {
+      clearTimeout(timer);
+      if (timedOut) { reject(new MediaProcessorError("ASR_PROCESS_TIMEOUT", "音频处理超时，进程已停止，请重试或重新上传。")); return; }
       if (code === 0) resolve(Buffer.concat(stdout).toString("utf8"));
       else reject(new MediaProcessorError(failureCode, `音频处理失败（exit ${code ?? "unknown"}，stderr ${stderrBytes} bytes）。`));
     });
@@ -52,19 +59,21 @@ async function runProcess(command: string, args: string[], failureCode: MediaPro
 export class FFmpegMediaProcessor {
   private readonly ffmpegPath: string;
   private readonly ffprobePath: string;
+  private readonly timeoutMs: number;
 
   constructor(options: ProcessorOptions = {}) {
-    this.ffmpegPath = options.ffmpegPath ?? "ffmpeg";
-    this.ffprobePath = options.ffprobePath ?? "ffprobe";
+    this.timeoutMs = options.timeoutMs ?? 120_000;
+    this.ffmpegPath = options.ffmpegPath ?? process.env.FFMPEG_PATH ?? "ffmpeg";
+    this.ffprobePath = options.ffprobePath ?? process.env.FFPROBE_PATH ?? "ffprobe";
   }
 
   async checkAvailability() {
-    await runProcess(this.ffmpegPath, ["-version"], "FFMPEG_NOT_AVAILABLE");
-    await runProcess(this.ffprobePath, ["-version"], "FFMPEG_NOT_AVAILABLE");
+    await runProcess(this.ffmpegPath, ["-version"], "FFMPEG_NOT_AVAILABLE", Math.min(this.timeoutMs, 10_000));
+    await runProcess(this.ffprobePath, ["-version"], "FFMPEG_NOT_AVAILABLE", Math.min(this.timeoutMs, 10_000));
   }
 
   async probeDuration(input: string) {
-    const probe = await runProcess(this.ffprobePath, ["-v", "error", "-show_entries", "format=duration", "-of", "json", input], "ASR_AUDIO_EXTRACTION_FAILED");
+    const probe = await runProcess(this.ffprobePath, ["-v", "error", "-show_entries", "format=duration", "-of", "json", input], "ASR_AUDIO_EXTRACTION_FAILED", Math.min(this.timeoutMs, 30_000));
     const durationSeconds = Number((JSON.parse(probe) as { format?: { duration?: string } }).format?.duration);
     if (!Number.isFinite(durationSeconds) || durationSeconds < 0) throw new MediaProcessorError("ASR_AUDIO_EXTRACTION_FAILED", "无法读取音频时长。");
     return Math.round(durationSeconds * 1_000);
@@ -79,7 +88,9 @@ export class FFmpegMediaProcessor {
         "-nostdin",
         "-hide_banner",
         "-loglevel", "error",
+        ...(options.localOnly ? ["-protocol_whitelist", "file,pipe"] : []),
         "-i", input,
+        ...(options.maxDurationMs ? ["-t", String(options.maxDurationMs / 1000)] : []),
         "-vn",
         "-ac", "1",
         "-ar", "16000",
@@ -87,13 +98,13 @@ export class FFmpegMediaProcessor {
         "-b:a", "64k",
         "-y",
         outputPath,
-      ], "ASR_AUDIO_EXTRACTION_FAILED");
+      ], "ASR_AUDIO_EXTRACTION_FAILED", this.timeoutMs);
       const probe = await runProcess(this.ffprobePath, [
         "-v", "error",
         "-show_entries", "format=duration",
         "-of", "json",
         outputPath,
-      ], "ASR_AUDIO_EXTRACTION_FAILED");
+      ], "ASR_AUDIO_EXTRACTION_FAILED", this.timeoutMs);
       const durationSeconds = Number((JSON.parse(probe) as { format?: { duration?: string } }).format?.duration);
       if (!Number.isFinite(durationSeconds) || durationSeconds < 0) {
         throw new MediaProcessorError("ASR_AUDIO_EXTRACTION_FAILED", "无法读取提取音频的时长。");

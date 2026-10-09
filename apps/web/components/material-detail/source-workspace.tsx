@@ -37,8 +37,8 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
   useEffect(() => { setRequestedTranscription(false); setLiveState(null); }, [header.id]);
   useEffect(() => {
     if (!requestedTranscription || !snapshot || snapshot.busy) return;
-    if (snapshot.transcriptionStatus === "FAILED" && transcript.state === "FAILED") setRequestedTranscription(false);
-    if (snapshot.transcriptionStatus === "SUCCEEDED" && transcript.state === "COMPLETE" && workspace.transcriptUpdatedAt === snapshot.transcriptUpdatedAt) setRequestedTranscription(false);
+    if (snapshot.transcriptionStatus === "FAILED" && transcript.state === "FAILED") { setRequestedTranscription(false); setNotice(""); }
+    if (snapshot.transcriptionStatus === "SUCCEEDED" && transcript.state === "COMPLETE" && workspace.transcriptUpdatedAt === snapshot.transcriptUpdatedAt) { setRequestedTranscription(false); setNotice(""); }
   }, [requestedTranscription, snapshot, transcript.state, workspace.transcriptUpdatedAt]);
   const canManage = actions.canManageProjects;
   const media = workspace.capabilities.includes("transcribe");
@@ -58,7 +58,7 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
           : transcriptionState === "PROCESSING" ? "正在转写" : null;
   const textLabel = media ? "文字稿" : detail.preview.type === "IMAGE" ? "补充文字" : detail.preview.type === "DOCUMENT" ? "提取正文" : "正文";
   async function request(url: string, method = "POST", body?: unknown) {
-    const response = await fetch(url, { method, ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}) });
+    const response = await fetch(url, { signal: AbortSignal.timeout(30_000), method, ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}) });
     const result = response.status === 204 ? {} : await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || result.error || "操作失败，请稍后重试。");
     return result as { id?: string };
@@ -84,6 +84,8 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
   const stateLabel = media
     ? stageLabel ?? ({ NOT_TRANSCRIBED: "未转录", QUEUED: "排队中", PROCESSING: "处理中", COMPLETE: "已完成", FAILED: "转录失败" } as const)[transcriptionState ?? "NOT_TRANSCRIBED"]
     : processing ? "处理中" : actions.status === "FAILED" ? "处理失败" : transcript.text ? "已完成" : "未处理";
+  const processingError = snapshot?.processingError || workspace.processingError;
+  const recoveryNotice = processingError || (media && !workspace.configured ? "转录服务未配置或不可用。云端转录需先配置 API Key；配置后可重试，已上传的文件会保留。" : null);
   const transcriptionActionLabel = transcriptionState === "QUEUED" ? "排队中" : transcriptionState === "PROCESSING" ? "处理中" : transcriptionState === "FAILED" ? "重试转录" : transcriptionState === "COMPLETE" ? "重新转录" : "开始转录";
   const properties = <>
       <section><header><h2>来源信息</h2>{workspace?.canRefresh ? <button type="button" disabled={busy !== null} onClick={() => void run("metadata", () => request(`/api/source-items/${header.id}/metadata/refresh`), "来源信息已更新。")}><RefreshCw size={13} />{busy === "metadata" ? "刷新中…" : "刷新信息"}</button> : null}</header><dl><dt>类型</dt><dd>{header.typeLabel}</dd><dt>来源</dt><dd>{header.platformLabel || header.sourceLabel}</dd>{header.author ? <><dt>作者</dt><dd>{header.author}</dd></> : null}{header.publishTime ? <><dt>发布时间</dt><dd>{new Date(header.publishTime).toLocaleDateString("zh-CN")}</dd></> : null}{header.durationLabel ? <><dt>时长</dt><dd>{header.durationLabel}</dd></> : null}{workspace?.sizeLabel ? <><dt>大小</dt><dd>{workspace.sizeLabel}</dd></> : null}{header.originalUrl ? <><dt>原始链接</dt><dd><a href={header.originalUrl} target="_blank" rel="noreferrer">打开来源 <ExternalLink size={12} /></a></dd></> : null}</dl>{workspace?.metrics && Object.values(workspace.metrics).some((value) => typeof value === "number") ? <div className="source-metrics">{([ ["views", "播放"], ["likes", "点赞"], ["comments", "评论"], ["favorites", "收藏"], ["shares", "转发"] ] as const).map(([key, label]) => workspace.metrics[key] !== null && workspace.metrics[key] !== undefined ? <span key={key}><strong>{workspace.metrics[key]!.toLocaleString()}</strong>{label}</span> : null)}</div> : null}</section>
@@ -116,6 +118,7 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
         </div>
         {canManage && actions.status !== "ARCHIVED" ? <button type="button" disabled={busy !== null || Boolean(processing) || requestedTranscription || !workspace.configured || actions.status !== "READY"} onClick={() => void run("transcribe", requestTranscription, "已提交转录任务，正在等待处理。")}>{transcriptionActionLabel}</button> : null}
       </section> : null}
+      {recoveryNotice ? <section className="source-reading-status" role="alert"><div><strong>{processingError ? "文件处理未完成" : !workspace.configured ? "暂时无法转录" : "转录未完成"}</strong><p>{recoveryNotice}</p></div><div className="source-processing-actions">{canManage && actions.status !== "ARCHIVED" && !processing && processingError && actions.failedJobId ? <button type="button" disabled={busy !== null} onClick={() => void run("retry", () => request(`/api/ingest-jobs/${actions.failedJobId}/retry`), "已提交重试任务。")}>重试读取</button> : null}{canManage && processingError ? <Link href="/library?upload=1">重新上传</Link> : null}{canManage && media && !workspace.configured ? <Link href="/settings/integrations">配置转录服务</Link> : null}</div></section> : null}
       {notice ? <p role="status" className="source-notice">{notice}</p> : null}
       <SourceText key={tab} model={model} mediaRef={mediaRef} canSeek={canSeek && !focusText} understanding={tab === "understanding"} />
       </section>

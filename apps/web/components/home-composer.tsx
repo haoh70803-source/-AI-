@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { createPortal } from "react-dom";
 import type { CreationModel } from "@/server/creation/models";
 import "./home-composer.css";
+import { VoiceInput } from "./voice-input";
 
 type Attachment = { key: string; id?: string; title: string; state: "UPLOADING" | "READING" | "READY" | "FAILED"; message: string; requiresImage?: boolean; jobId?: string | null };
 type Skill = { id: string; status: string; current: { id: string; title: string; steps: string[]; applicableScenarios: string[] } };
@@ -45,6 +46,7 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
   const [newFolder, setNewFolder] = useState("");
   const [library, setLibrary] = useState<Array<{ id: string; title: string | null }>>([]);
   const [notice, setNotice] = useState("");
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [panelError, setPanelError] = useState("");
   const [panelLoading, setPanelLoading] = useState(false);
   const [restored, setRestored] = useState(false);
@@ -173,9 +175,9 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
   const missingSkill = skillIds.some((id) => !skills.some((skill) => skill.current.id === id && skill.status !== "DISABLED"));
   const blocked = !models?.configured || invalidModel || imageMismatch || missingSkill || attachments.some((item) => item.state !== "READY");
   const statusMessage = invalidModel ? "所选模型已不可用，请重新选择。" : imageMismatch ? "这些图片需要支持图片的模型，请切换模型或移除图片。" : missingSkill ? "已选 Skill 有更新或已停用，请重新选择。" : attachments.some((item) => item.state === "FAILED") ? "请重试或移除失败的附件。" : attachments.some((item) => item.state !== "READY") ? "资料读好后即可发送。" : models && !models.configured ? "请先配置创作模型。" : "";
-  function submit() { if (!blocked && !busy && canCreate && idea.trim()) onSubmit({ sourceItemIds: attachments.flatMap((item) => item.id ? [item.id] : []), methodVersionIds: skillIds, folderId: folderId ?? undefined, modelSelection: model }); }
+  function submit() { if (!voiceBusy && !blocked && !busy && canCreate && idea.trim()) onSubmit({ sourceItemIds: attachments.flatMap((item) => item.id ? [item.id] : []), methodVersionIds: skillIds, folderId: folderId ?? undefined, modelSelection: model }); }
   useLayoutEffect(() => { if (inputRef.current) { inputRef.current.style.height = "auto"; inputRef.current.style.height = `${Math.min(200, Math.max(82, inputRef.current.scrollHeight))}px`; } }, [idea, inputRef]);
-  const keepOpen = Boolean(idea || attachments.length || skillIds.length || panel || busy);
+  const keepOpen = Boolean(idea || attachments.length || skillIds.length || panel || busy || voiceBusy);
   const matches = (value: string) => value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
   const popup = panel ? createPortal(<div ref={panelRef} role="dialog" aria-label={{ models: "选择模型", skills: "选择 Skill", folders: "选择项目文件夹", library: "从资料库选择" }[panel]} className="home-picker" style={{ ...position, position: "fixed" }}>
     <header><strong>{{ models: "选择模型", skills: "选择 Skill", folders: "选择项目文件夹", library: "从资料库选择" }[panel]}</strong><button type="button" aria-label="关闭选择框" onClick={close}><X size={16} /></button></header>
@@ -203,7 +205,7 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
         <button ref={(node) => { anchors.current.library = node; }} type="button" aria-expanded={panel === "library"} disabled={!canCreate || busy} onClick={() => open("library")}><FileText /><span>资料库</span></button>
         <button ref={(node) => { anchors.current.models = node; }} type="button" aria-label="选择创作模型" aria-expanded={panel === "models"} disabled={!canCreate || busy} onClick={() => open("models")}><Box /><span title={activeModel?.label}>{activeModel?.label || "模型"}</span><ChevronDown size={13} /></button>
         <span className="xsj-tool-divider" /><button ref={(node) => { anchors.current.skills = node; }} type="button" aria-expanded={panel === "skills"} disabled={!canCreate || busy} onClick={() => open("skills")}><Zap /><span>Skill{skillIds.length ? ` · ${skillIds.length}` : ""}</span><ChevronDown size={13} /></button>
-      </div><button className="xsj-send" aria-label="开始创作" type="submit" disabled={!canCreate || busy || blocked || !idea.trim()}>{busy ? <Loader2 className="xsj-spin" /> : <ArrowUp />}</button></footer>
+      </div><div style={{ display: "flex", gap: 8, alignItems: "center" }}><VoiceInput key={draftKey} disabled={!canCreate || busy} onBusyChange={setVoiceBusy} onText={text => { const joined = idea ? `${idea}\n${text}` : text; onIdeaChange(joined.slice(0, 2000)); if (joined.length > 2000) setNotice("语音加入后超过 2000 字，已保留前 2000 字，请检查后再发送。"); inputRef.current?.focus(); }} /><button className="xsj-send" aria-label="开始创作" type="submit" disabled={voiceBusy || !canCreate || busy || blocked || !idea.trim()}>{busy ? <Loader2 className="xsj-spin" /> : <ArrowUp />}</button></div></footer>
       {statusMessage || notice || error ? <div className="home-composer-notice" role={error ? "alert" : "status"}>{error || notice || statusMessage}</div> : null}
     </form>
     <div className="home-project-bar"><button ref={(node) => { anchors.current.folders = node; }} type="button" aria-label="选择项目文件夹" aria-expanded={panel === "folders"} disabled={!canCreate || busy} onClick={() => open("folders")}><Folder size={14} /><span>{folderId ? folders.find((item) => item.folderId === folderId)?.label || "文件夹已失效，请重新选择" : "项目文件夹 · 未分组"}</span><ChevronDown size={13} /></button><Link href="/projects" aria-disabled={busy} onClick={event => { if (busy) event.preventDefault(); }}>打开已有项目</Link></div>

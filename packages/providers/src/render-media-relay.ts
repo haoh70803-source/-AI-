@@ -172,6 +172,7 @@ export class RenderMediaRelayStorageProvider implements StorageProvider {
     if (input.contentLength !== undefined) headers["content-length"] = String(input.contentLength);
     const body = input.body instanceof Uint8Array ? input.body : Readable.toWeb(input.body as Readable);
     const response = await fetch(`${this.config.internalBaseUrl}${INTERNAL_MEDIA_PATH}/${encodeURIComponent(input.assetScope.assetId)}`, {
+      signal: input.signal ? AbortSignal.any([input.signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
       method: "PUT",
       headers,
       body: body as unknown as BodyInit,
@@ -187,6 +188,7 @@ export class RenderMediaRelayStorageProvider implements StorageProvider {
     void key;
     if (!assetScope) throw new Error("RENDER_MEDIA_RELAY_SCOPE_REQUIRED");
     const response = await fetch(`${this.config.internalBaseUrl}${INTERNAL_MEDIA_PATH}/${encodeURIComponent(assetScope.assetId)}`, {
+      signal: AbortSignal.timeout(10_000),
       method: "DELETE",
       headers: scopedHeaders(assetScope, this.config.internalSecret),
       cache: "no-store",

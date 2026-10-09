@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./redis-connection": "./src/redis-connection.ts",
     "./experience-limits": "./src/experience-limits.ts",
     "./queue": "./src/queue.ts",
     "./integrations": "./src/integrations.ts",

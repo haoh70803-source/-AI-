@@ -31,6 +31,13 @@ it.each([{DATABASE_URL:"postgresql://fixture@127.0.0.1:55432/content_center"},{F
 function dailyProfile() {
  profile(); for(const [key,value] of Object.entries({LOCAL_RELEASE_PROFILE:"daily",ENVIRONMENT_ID:"LOCAL_REAL",DATABASE_URL:"postgresql://fixture@127.0.0.1:55432/content_center",S3_ENDPOINT:"http://127.0.0.1:9000"}))vi.stubEnv(key,value);
 }
+it("live readiness accepts real calls only on the existing local deployment",async()=>{
+ profile();vi.stubEnv("LOCAL_RELEASE_PROFILE","live");vi.stubEnv("ENVIRONMENT_ID","LOCAL_LIVE");vi.stubEnv("EXTERNAL_CALLS_DISABLED","false");vi.stubEnv("LOCAL_REVIEW_OFFLINE","false");vi.stubEnv("WORKER_MODE","embedded");vi.stubEnv("REDIS_URL","redis://127.0.0.1:16379/0");vi.stubEnv("QUEUE_PREFIX","content-center-12-material");
+ expect(await releaseReadiness({database:async()=>true,storage:async()=>true,background:async()=>true})).toMatchObject({ready:true,externalCalls:"enabled",backgroundTasks:"enabled"});
+ expect(await releaseReadiness({database:async()=>true,storage:async()=>true,background:async()=>false})).toMatchObject({ready:false,checks:{background:false},backgroundTasks:"unavailable"});
+ vi.stubEnv("LOCAL_REVIEW_OFFLINE","true");const database=vi.fn(),storage=vi.fn();
+ expect((await releaseReadiness({database,storage})).ready).toBe(false);expect(database).not.toHaveBeenCalled();expect(storage).not.toHaveBeenCalled();
+});
 it("healthy approved daily probes original dependencies without implying a production build",async()=>{
  dailyProfile(); const database=vi.fn(async()=>true),storage=vi.fn(async()=>true);
  expect(await releaseReadiness({database,storage})).toEqual({ready:true,checks:{configuration:true,database:true,storage:true},backgroundTasks:"disabled"});

@@ -35,6 +35,7 @@ describe.each(routes)("$name policy diagnostics", route => {
     expect(calls.decrypt).not.toHaveBeenCalled(); expect(calls.fetch).not.toHaveBeenCalled(); expect(calls.test).not.toHaveBeenCalled();
   });
   it("preserves allowed path using only synthetic mocked dependencies", async () => {
+    vi.stubEnv("ENVIRONMENT_ID", "LOCAL_LIVE");
     const response = await responseFor(route); expect(response.status).toBe(200);
     if (route.name === "模型列表") expect(await response.json()).toEqual({ items: [{ id: "fixture-model", label: "fixture-model" }] });
     else expect(await response.json()).toMatchObject({ ok: true });

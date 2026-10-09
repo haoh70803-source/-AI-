@@ -1,11 +1,11 @@
 import "server-only";
+import { expireMaterialProcessing } from "@content-center/worker/job-recovery";
 
 import { db, findSourceForUser } from "@content-center/db";
 import { sourceCapabilities, type SourceCapability } from "@content-center/core";
-import { IntegrationService, parseProviderConfig } from "@content-center/integrations";
+import { resolveWorkspaceTranscriptionPlan } from "@content-center/worker/transcription";
 import { getStorageProvider, readSourceMetadataEnvelope, type SourceExternalMetrics } from "@content-center/providers";
 import { getSourceProcessingState, materialTranscriptionViewState, type MaterialTranscriptionViewState } from "../../lib/source-processing-state";
-import { getLocalAsrDisplay } from "../local-asr";
 import { getVisionRoute, understandingExpired } from "./understanding";
 
 type Role = "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
@@ -72,6 +72,7 @@ export type SourceWorkspaceModel = {
     updatedAt: string;
     transcriptUpdatedAt: string | null;
     transcriptionError: string | null;
+    processingError?: string | null;
     configured: boolean;
     busy: boolean;
     canRefresh: boolean;
@@ -115,20 +116,22 @@ const jobLabels: Record<string, string> = { EXTRACT_TEXT: "读取文字", FETCH_
 const assetLabels: Record<string, string> = { VIDEO: "视频资源", AUDIO: "音频资源", IMAGE: "图片资源", DOCUMENT: "文档资源", THUMBNAIL: "预览图" };
 
 export async function getSourceWorkspaceModel(input: { workspaceId: string; userId: string; sourceItemId: string; role: Role }): Promise<SourceWorkspaceModel | null> {
-  const source = await findSourceForUser(db, { workspaceId: input.workspaceId, userId: input.userId, sourceItemId: input.sourceItemId });
+  let source = await findSourceForUser(db, { workspaceId: input.workspaceId, userId: input.userId, sourceItemId: input.sourceItemId });
   if (!source) return null;
+  if (["VIDEO", "AUDIO"].includes(source.sourceType)) {
+    await expireMaterialProcessing({ workspaceId: input.workspaceId, sourceItemId: source.id });
+    source = await findSourceForUser(db, { workspaceId: input.workspaceId, userId: input.userId, sourceItemId: input.sourceItemId });
+    if (!source) return null;
+  }
 
   const mediaSource = source.sourceType === "VIDEO" || source.sourceType === "AUDIO";
   const canManage = input.role !== "VIEWER";
-  const integrations = new IntegrationService();
-  const [availableTags, availableCollections, availableProjects, relatedProjects, transcriptionIntegration, doubao, localAsr] = await Promise.all([
+  const [availableTags, availableCollections, availableProjects, relatedProjects, transcriptionPlan] = await Promise.all([
     canManage ? db.contentTag.findMany({ where: { workspaceId: input.workspaceId }, orderBy: { name: "asc" }, select: { id: true, name: true } }) : [],
     canManage ? db.collection.findMany({ where: { workspaceId: input.workspaceId }, orderBy: { name: "asc" }, select: { id: true, name: true } }) : [],
     canManage ? db.contentProject.findMany({ where: { workspaceId: input.workspaceId, status: { not: "ARCHIVED" }, sources: { none: { sourceItemId: source.id } } }, select: { id: true, title: true }, orderBy: { updatedAt: "desc" }, take: 100 }) : [],
     db.contentProject.findMany({ where: { workspaceId: input.workspaceId, status: { not: "ARCHIVED" }, sources: { some: { sourceItemId: source.id } } }, select: { id: true, title: true }, orderBy: { updatedAt: "desc" } }),
-    mediaSource ? integrations.getIntegrationStatus(input.workspaceId, "TRANSCRIPTION") : null,
-    mediaSource ? integrations.getIntegrationStatus(input.workspaceId, "DOUBAO_ASR") : null,
-    mediaSource ? getLocalAsrDisplay(input.workspaceId) : null,
+    mediaSource ? resolveWorkspaceTranscriptionPlan(input.workspaceId).catch(() => null) : null,
   ]);
 
   const external = readSourceMetadataEnvelope(source.metadata)?.external;
@@ -169,9 +172,7 @@ export async function getSourceWorkspaceModel(input: { workspaceId: string; user
   const materialJobs = source.ingestJobs.filter((job) => job.jobType in jobLabels);
   const latestTranscription = materialJobs.find((job) => job.jobType === "TRANSCRIBE");
   const readingJob = materialJobs.find((job) => job.jobType !== "TRANSCRIBE");
-  const transcriptionConfig = parseProviderConfig("TRANSCRIPTION", transcriptionIntegration?.publicConfig ?? {}) as { source: "LOCAL_FUNASR" | "DOUBAO"; qualityMode: "FAST" | "BALANCED" | "QUALITY" };
-  const selectedQuality = localAsr?.qualityModes[transcriptionConfig.qualityMode];
-  const configured = !mediaSource || (transcriptionConfig.source === "DOUBAO" ? doubao?.status === "CONFIGURED" : localAsr?.status === "NORMAL" && selectedQuality?.available === true && selectedQuality.installed);
+  const configured = !mediaSource || transcriptionPlan !== null;
   const transcriptionBusy = latestTranscription?.status === "QUEUED" || latestTranscription?.status === "RUNNING";
   const contentBusy = readingJob?.status === "QUEUED" || readingJob?.status === "RUNNING";
   const busy = contentBusy || transcriptionBusy;
@@ -207,6 +208,7 @@ export async function getSourceWorkspaceModel(input: { workspaceId: string; user
       assetId: primaryAsset?.id ?? null, mimeType: primaryAsset?.mimeType ?? null, sizeLabel: bytesLabel(primaryAsset?.sizeBytes ?? null),
       createdAt: source.createdAt.toISOString(), updatedAt: source.updatedAt.toISOString(), transcriptUpdatedAt: source.transcript?.updatedAt.toISOString() ?? (text ? source.updatedAt.toISOString() : null),
       transcriptionError: latestTranscription?.status === "FAILED" ? latestTranscription.errorMessage?.slice(0, 200) ?? null : null,
+      processingError: readingJob?.status === "FAILED" ? readingJob.errorMessage?.slice(0, 200) ?? "原文件读取失败，请重试或重新上传。" : source.status === "FAILED" ? "文件上传或读取未完成，请重新上传或重试。" : null,
       configured: Boolean(configured), busy, canRefresh: Boolean(canRefresh), processingLabel: processing.currentLabel, metrics,
     },
     adminDetails: input.role === "OWNER" || input.role === "ADMIN" ? {

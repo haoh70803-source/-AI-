@@ -1,6 +1,6 @@
 import 'server-only';
 import { db, type Prisma } from '@content-center/db';
-import { businessDay, dayOffset, validateObservation, taskState, interactions, comparison, parseCsv, csvNumber, csvBoolean, metricSchema, type Metric, type VideoInput } from './policy';
+import { businessDay, dayOffset, videoRange, platformSchema, validateObservation, taskState, interactions, comparison, parseCsv, csvNumber, csvBoolean, metricSchema, type Metric, type VideoInput } from './policy';
 export class VideoError extends Error {
     constructor(public status: number, message: string) { super(message); }
 }
@@ -11,7 +11,7 @@ type Actor = {
 const fail = (s: string, status = 409): never => { throw new VideoError(status, s); };
 const admin = (role: string) => ['OWNER', 'ADMIN'].includes(role);
 async function membership(tx: Prisma.TransactionClient, a: Actor) { return await tx.workspaceMember.findFirst({ where: { workspaceId: a.workspaceId, userId: a.userId, disabledAt: null, workspace: { disabledAt: null }, user: { disabledAt: null } } }) ?? fail('没有工作空间访问权限', 403); }
-async function account(tx: Prisma.TransactionClient, a: Actor, id: string, active = true) { return await tx.videoAccount.findFirst({ where: { id, workspaceId: a.workspaceId, platform: 'DOUYIN', ...(active ? { archivedAt: null } : {}) } }) ?? fail('账号不存在或已归档', 404); }
+async function account(tx: Prisma.TransactionClient, a: Actor, id: string, active = true) { return await tx.videoAccount.findFirst({ where: { id, workspaceId: a.workspaceId, ...(active ? { archivedAt: null } : {}) } }) ?? fail('账号不存在或已归档', 404); }
 const editableTask = (t: {
     assigneeId: string;
     createdById: string;
@@ -21,21 +21,28 @@ export async function readVideo(a: Actor, filters: {
     taskId?: string;
     metricDay?: string;
     days?: number;
+    start?: string;
+    end?: string;
+    platform?: string;
 } = {}) {
     return db.$transaction(async (tx) => {
-        const m = await membership(tx, a), now = new Date(), today = businessDay(now), days = [7, 30, 90].includes(filters.days ?? 30) ? filters.days ?? 30 : 30;
-        const accounts = await tx.videoAccount.findMany({ where: { workspaceId: a.workspaceId, platform: 'DOUYIN' }, orderBy: { createdAt: 'asc' } });
-        if (filters.accountId && !accounts.some(x => x.id === filters.accountId && !x.archivedAt))
+        const m = await membership(tx, a), now = new Date(), today = businessDay(now);
+        let range: ReturnType<typeof videoRange>;
+        try { range = videoRange(filters.days ?? 30, filters.start, filters.end, today); } catch (e) { fail((e as Error).message, 400); }
+        const { start, end, days } = range!;
+        if (filters.platform && !platformSchema.safeParse(filters.platform).success) fail('平台筛选不正确', 400);
+        const accounts = await tx.videoAccount.findMany({ where: { workspaceId: a.workspaceId }, orderBy: { createdAt: 'asc' } });
+        if (filters.accountId && !accounts.some(x => x.id === filters.accountId && !x.archivedAt && (!filters.platform || x.platform === filters.platform)))
             fail('所选账号不存在或已归档', 404);
-        const active = accounts.filter(x => !x.archivedAt && (!filters.accountId || x.id === filters.accountId)), ids = active.map(x => x.id);
-        const records = await tx.videoDailyMetric.findMany({ where: { workspaceId: a.workspaceId, accountId: { in: ids }, OR: [{ day: { gte: new Date(dayOffset(today, -Math.max(days - 1, 7)) + 'T00:00:00Z') } }, ...(filters.metricDay ? [{ day: new Date(filters.metricDay + 'T00:00:00Z') }] : [])] }, orderBy: [{ day: 'asc' }, { accountId: 'asc' }] });
+        const active = accounts.filter(x => !x.archivedAt && (!filters.platform || x.platform === filters.platform) && (!filters.accountId || x.id === filters.accountId)), ids = active.map(x => x.id);
+        const records = await tx.videoDailyMetric.findMany({ where: { workspaceId: a.workspaceId, accountId: { in: ids }, OR: [{ day: { gte: new Date(dayOffset(start, -days) + 'T00:00:00Z'), lte: new Date(end + 'T00:00:00Z') } }, { day: { gte: new Date(dayOffset(today, -7) + 'T00:00:00Z'), lte: new Date(today + 'T00:00:00Z') } }, ...(filters.metricDay ? [{ day: new Date(filters.metricDay + 'T00:00:00Z') }] : [])] }, orderBy: [{ day: 'asc' }, { accountId: 'asc' }] });
         const rows = records.map(r => ({ ...r, day: r.day.toISOString().slice(0, 10), observedAt: r.observedAt.toISOString(), updatedAt: r.updatedAt.toISOString() }));
         const dayRows = (day: string) => rows.filter(r => r.day === day), sum = (day: string, key: 'plays' | 'exposures' | 'netFollowers' | 'interactions') => { const r = dayRows(day); if (!r.length || (key === 'exposures' && r.some(x => x.exposures === null)))
             return null; return r.reduce((n, x) => n + (key === 'interactions' ? interactions(x) : x[key] ?? 0), 0); };
         const complete = (day: string, key: 'plays' | 'exposures') => dayRows(day).length === active.length && active.length > 0 && !dayRows(day).some(r => key === 'exposures' && r.exposures === null);
         const metrics = { plays: sum(today, 'plays'), exposures: sum(today, 'exposures'), interactions: sum(today, 'interactions'), netFollowers: sum(today, 'netFollowers') };
         const change = (key: 'plays' | 'exposures') => ({ yesterday: complete(today, key) && complete(dayOffset(today, -1), key) ? comparison(sum(today, key), sum(dayOffset(today, -1), key)) : null, lastWeek: complete(today, key) && complete(dayOffset(today, -7), key) ? comparison(sum(today, key), sum(dayOffset(today, -7), key)) : null });
-        const trend = Array.from({ length: days }, (_, i) => { const day = dayOffset(today, i - days + 1); return { day, plays: sum(day, 'plays'), exposures: sum(day, 'exposures'), interactions: sum(day, 'interactions'), coverage: dayRows(day).length, accounts: active.length }; });
+        const trend = Array.from({ length: days }, (_, i) => { const day = dayOffset(start, i); return { day, plays: sum(day, 'plays'), exposures: sum(day, 'exposures'), interactions: sum(day, 'interactions'), coverage: dayRows(day).length, accounts: active.length }; });
         const alerts: {
             id: string;
             type: string;
@@ -53,13 +60,13 @@ export async function readVideo(a: Actor, filters: {
             if (todayRow && todayRow.comments >= 10 && todayRow.negativeComments / todayRow.comments >= .2)
                 alerts.push({ id: ac.id + 'negative', type: '评论异常', title: ac.handle + ' 负面评论占比较高', detail: `今日 ${todayRow.negativeComments}/${todayRow.comments} 条评论被标记为负面，建议安排回复与复核。`, accountId: ac.id, href: '/short-video/tasks?account=' + ac.id });
         }
-        const contents = await tx.videoContent.findMany({ where: { workspaceId: a.workspaceId, accountId: { in: ids } }, include: { account: { select: { handle: true } } }, orderBy: { updatedAt: 'desc' }, take: 500 });
-        const tasks = await tx.videoTask.findMany({ where: { workspaceId: a.workspaceId, ...(filters.taskId ? { id: filters.taskId } : {}), ...(filters.accountId ? { accountId: filters.accountId } : {}) }, include: { account: { select: { handle: true, archivedAt: true } }, content: { select: { title: true, projectId: true, stage: true } } }, orderBy: [{ dueAt: 'asc' }, { id: 'asc' }], take: 1000 });
+        const contents = await tx.videoContent.findMany({ where: { workspaceId: a.workspaceId, accountId: { in: ids } }, include: { account: { select: { handle: true, platform: true } } }, orderBy: { updatedAt: 'desc' }, take: 500 });
+        const tasks = await tx.videoTask.findMany({ where: { workspaceId: a.workspaceId, ...(filters.taskId ? { id: filters.taskId } : {}), ...(filters.accountId ? { accountId: filters.accountId } : filters.platform ? { account: { platform: filters.platform } } : {}) }, include: { account: { select: { handle: true, platform: true, archivedAt: true } }, content: { select: { title: true, projectId: true, stage: true } } }, orderBy: [{ dueAt: 'asc' }, { id: 'asc' }], take: 1000 });
         if (filters.taskId && !tasks.length)
             fail('任务不存在或无权访问', 404);
         const members = await tx.workspaceMember.findMany({ where: { workspaceId: a.workspaceId, disabledAt: null, user: { disabledAt: null }, role: { not: 'VIEWER' } }, select: { user: { select: { id: true, name: true } } } });
         const projects = await tx.contentProject.findMany({ where: { workspaceId: a.workspaceId, status: { not: 'ARCHIVED' } }, select: { id: true, title: true }, orderBy: { updatedAt: 'desc' }, take: 200 });
-        return { role: m.role, userId: a.userId, today, zone: '北京时间', days, accounts, selectedAccount: filters.accountId ?? '', records: rows, metrics, changes: { plays: change('plays'), exposures: change('exposures') }, coverage: { recorded: dayRows(today).length, total: active.length }, observedAt: rows.reduce<string | null>((n, r) => n === null || r.observedAt > n ? r.observedAt : n, null), readAt: now.toISOString(), trend, alerts, contents: contents.map(c => ({ ...c, createdAt: c.createdAt.toISOString(), updatedAt: c.updatedAt.toISOString() })), tasks: tasks.map(t => ({ ...t, dueAt: t.dueAt.toISOString(), completedAt: t.completedAt?.toISOString() ?? null, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString(), state: taskState(t, now), editable: editableTask(t, a.userId, m.role) })), members: members.map(x => x.user), projects };
+        return { role: m.role, userId: a.userId, today, zone: '北京时间', days, start, end, accounts, selectedAccount: filters.accountId ?? '', records: rows.filter(r => (r.day >= start && r.day <= end) || r.day === filters.metricDay), comparisonRecords: rows.filter(r => r.day >= dayOffset(start, -days) && r.day < start), metrics, changes: { plays: change('plays'), exposures: change('exposures') }, coverage: { recorded: dayRows(today).length, total: active.length }, observedAt: rows.reduce<string | null>((n, r) => n === null || r.observedAt > n ? r.observedAt : n, null), readAt: now.toISOString(), trend, alerts, contents: contents.map(c => ({ ...c, createdAt: c.createdAt.toISOString(), updatedAt: c.updatedAt.toISOString() })), tasks: tasks.map(t => ({ ...t, dueAt: t.dueAt.toISOString(), completedAt: t.completedAt?.toISOString() ?? null, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString(), state: taskState(t, now), editable: editableTask(t, a.userId, m.role) })), members: members.map(x => x.user), projects };
     }, { isolationLevel: 'RepeatableRead' });
 }
 export async function mutateVideo(a: Actor, input: VideoInput) {
@@ -73,7 +80,7 @@ export async function mutateVideo(a: Actor, input: VideoInput) {
             if (input.action === 'account.create') {
                 if (!admin(member.role))
                     fail('仅所有者与管理员可管理账号', 403);
-                const r = await tx.videoAccount.create({ data: { workspaceId: a.workspaceId, platform: 'DOUYIN', externalId: input.externalId, handle: input.handle } });
+                const r = await tx.videoAccount.create({ data: { workspaceId: a.workspaceId, platform: input.platform ?? 'DOUYIN', externalId: input.externalId, handle: input.handle } });
                 await audit('account.create', r.id, { externalId: r.externalId });
                 return { id: r.id };
             }
@@ -95,7 +102,7 @@ export async function mutateVideo(a: Actor, input: VideoInput) {
                 catch (e) {
                     fail((e as Error).message, 400);
                 }
-                const seen = new Set<string>(), accounts = await tx.videoAccount.findMany({ where: { workspaceId: a.workspaceId, platform: 'DOUYIN', archivedAt: null } }), rows: Metric[] = [], existing = await tx.videoDailyMetric.findMany({ where: { workspaceId: a.workspaceId, accountId: { in: accounts.map(x => x.id) } } });
+                const seen = new Set<string>(), accounts = await tx.videoAccount.findMany({ where: { workspaceId: a.workspaceId, platform: input.platform ?? 'DOUYIN', archivedAt: null } }), rows: Metric[] = [], existing = await tx.videoDailyMetric.findMany({ where: { workspaceId: a.workspaceId, accountId: { in: accounts.map(x => x.id) } } });
                 for (const [i, c] of parsed.entries()) {
                     try {
                         const ac = accounts.find(x => x.externalId === c['账号编号']);

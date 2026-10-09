@@ -88,7 +88,7 @@ export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }
     <section className="xsj-hero" aria-labelledby="xsj-home-title">
       <div className="xsj-hero-status"><i />CONTENT OS · 创作工作台<ArrowRight size={14} /></div>
       <div className="xsj-morph-layer">
-        <div className="xsj-hero-brand"><img src="/fusion/founder-os-mark.png" alt="" /><div><h1 id="xsj-home-title">鑫世界工作台</h1><p>把灵感、资料与创作连接起来</p></div></div>
+        <div className="xsj-hero-brand"><img src="/brand/xin-world-mark-dark.svg" alt="" /><div><h1 id="xsj-home-title">鑫世界工作台</h1><p>把灵感、资料与创作连接起来</p></div></div>
         <HomeComposer initialSkillId={initialSkillId} idea={idea} onIdeaChange={changeIdea} inputRef={inputRef} canCreate={canCreate} busy={busy} draftKey={draftKey} error={error} onSubmit={(selection) => void start(selection)} />
         {appliedPrompt ? <div className="xsj-prompt-applied" role="status">已套用「{appliedPrompt}」{previousIdea !== null ? <button type="button" disabled={busy} onClick={() => { changeIdea(previousIdea); setPreviousIdea(null); setAppliedPrompt(""); }}>撤销套用</button> : null}</div> : null}
       </div>

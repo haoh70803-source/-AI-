@@ -12,7 +12,7 @@ export type LocalAsrRuntimeConfig = {
   hotwords?: string[];
 };
 
-export type LocalAsrClientOptions = { fetch?: typeof fetch; timeoutMs?: number };
+export type LocalAsrClientOptions = { fetch?: typeof fetch; timeoutMs?: number; signal?: AbortSignal };
 
 const KNOWN_CODES = new Set<LocalAsrErrorCode>([
   "LOCAL_ASR_NOT_RUNNING",
@@ -41,10 +41,12 @@ export class LocalAsrClient {
   private readonly fetcher: typeof fetch;
   private readonly timeoutMs: number;
   private lastMetadata: Record<string, unknown> = {};
+  private readonly signal?: AbortSignal;
 
   constructor(readonly config: LocalAsrRuntimeConfig, options: LocalAsrClientOptions = {}) {
     this.fetcher = options.fetch ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 30 * 60 * 1_000;
+    this.signal = options.signal;
   }
 
   getLastRequestMetadata() {
@@ -97,7 +99,7 @@ export class LocalAsrClient {
   private async request(url: URL, init: RequestInit, timeoutMs: number) {
     if (isLocalReviewOffline()) throw new LocalAsrError("LOCAL_REVIEW_OFFLINE", "验收环境已关闭语音服务调用。", false);
     try {
-      return await this.fetcher(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      return await this.fetcher(url, { ...init, signal: AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(this.signal ? [this.signal] : [])]) });
     } catch (error) {
       if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
         throw new LocalAsrError("LOCAL_ASR_TIMEOUT", "本地语音识别处理超时。", true);

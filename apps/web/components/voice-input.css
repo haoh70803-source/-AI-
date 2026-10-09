@@ -1,0 +1,8 @@
+.voice-input { display: inline-flex; position: relative; align-items: center; gap: 6px; flex-shrink: 0; }
+.voice-input button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-elevated); color: var(--text-primary); cursor: pointer; }
+.voice-input button[aria-pressed="true"] { color: #fb7185; border-color: #fb7185; }
+.voice-input button:disabled { opacity: .55; cursor: default; }
+.voice-input > span { font-size: 12px; }
+.voice-input-message,.voice-input-progress { position: absolute; right: 0; bottom: 40px; width: max-content; max-width: min(320px, 75vw); padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-elevated); color: var(--text-primary); z-index: 5; }
+.voice-input-spinner { animation: voice-input-spin 1s linear infinite; }
+@keyframes voice-input-spin { to { transform: rotate(360deg); } }

@@ -1,6 +1,6 @@
 import { getApiWorkspaceContext, apiError } from '@/server/api-access';
 import { readVideo, mutateVideo, VideoError } from '@/server/video-operations/service';
-import { inputSchema, daySchema } from '@/server/video-operations/policy';
+import { inputSchema, daySchema, videoRange, platformSchema } from '@/server/video-operations/policy';
 export const dynamic = 'force-dynamic';
 function failure(e: unknown) { if (e instanceof VideoError)
     return apiError('VIDEO_ERROR', e.status, e.message); console.error('VIDEO_OPERATIONS_FAILED'); return apiError('INTERNAL_ERROR', 500, '操作未完成，请稍后重试'); }
@@ -9,9 +9,10 @@ export async function GET(request: Request) { try {
     if (!c)
         return apiError('UNAUTHORIZED', 401);
     const q = new URL(request.url).searchParams, days = Number(q.get('days') ?? 30);
-    if ((q.has('date') && !daySchema.safeParse(q.get('date')).success) || ![7, 30, 90].includes(days) || (q.get('account')?.length ?? 0) > 100 || (q.get('task')?.length ?? 0) > 100)
+    try { videoRange(days, q.get('start') ?? undefined, q.get('end') ?? undefined); } catch (e) { return apiError('BAD_REQUEST', 400, (e as Error).message); }
+    if ((q.has('platform') && !platformSchema.safeParse(q.get('platform')).success) || (q.has('date') && !daySchema.safeParse(q.get('date')).success) || ![7, 30, 90].includes(days) || (q.get('account')?.length ?? 0) > 100 || (q.get('task')?.length ?? 0) > 100)
         return apiError('BAD_REQUEST', 400, '筛选条件不正确');
-    return Response.json(await readVideo({ workspaceId: c.workspace.id, userId: c.session.user.id }, { accountId: q.get('account') || undefined, taskId: q.get('task') || undefined, metricDay: q.get('date') || undefined, days }), { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(await readVideo({ workspaceId: c.workspace.id, userId: c.session.user.id }, { accountId: q.get('account') || undefined, taskId: q.get('task') || undefined, metricDay: q.get('date') || undefined, platform: q.get('platform') || undefined, start: q.get('start') ?? undefined, end: q.get('end') ?? undefined, days }), { headers: { 'Cache-Control': 'no-store' } });
 }
 catch (e) {
     return failure(e);

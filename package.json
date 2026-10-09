@@ -34,6 +34,8 @@
     "infra:test:up": "docker compose -f docker-compose.test.yml up -d",
     "infra:test:down": "docker compose -f docker-compose.test.yml down",
     "dev:review": "node scripts/local-web.mjs review",
+    "dev:live": "node scripts/local-web.mjs live",
+    "live:check": "node scripts/local-web.mjs live check",
     "review:check": "node scripts/local-web.mjs review check",
     "test:local-env": "node --test scripts/local-profile.test.mjs",
     "dev:daily": "node scripts/local-web.mjs daily",

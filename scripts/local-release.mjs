@@ -104,10 +104,10 @@ async function portAvailable(port) {
   await new Promise((done,reject)=>{const server=net.createServer();server.once("error",()=>reject(Error("RELEASE_PORT_OCCUPIED")));server.listen(Number(port),"127.0.0.1",()=>server.close(done));});
 }
 async function run(action, mode, id) {
-  if(!["daily","review"].includes(mode))throw Error("RELEASE_PROFILE_REQUIRED");
-  const candidate=artifact(id), env=runtimeEnvironment(mode,existingConfig(mode),process.env,{publicNewsReview:mode==="review" && process.argv.includes("--approved-public-news")}), port=mode==="review"?RELEASE_REVIEW_PORT:"3000";
+  if(!["daily","review","live"].includes(mode))throw Error("RELEASE_PROFILE_REQUIRED");
+  const candidate=artifact(id), env=runtimeEnvironment(mode,existingConfig(mode),process.env,{publicNewsReview:mode==="review" && process.argv.includes("--approved-public-news")}), port=mode==="daily"?"3000":RELEASE_REVIEW_PORT;
   await portAvailable(port);
-  console.log("RELEASE_PREFLIGHT",JSON.stringify({mode,id,port,host:"127.0.0.1",worker:"disabled",external:"disabled",schemaChanges:"manual-only",configuration:"existing-private"}));
+  console.log("RELEASE_PREFLIGHT",JSON.stringify({mode,id,port,host:"127.0.0.1",worker:"disabled",external:mode==="live"?"enabled":"disabled",schemaChanges:"manual-only",configuration:"existing-private"}));
   if(action==="check")return;
   if(mode==="daily" && !process.argv.includes("--approved-daily-switch"))throw Error("RELEASE_DAILY_SWITCH_REQUIRES_SEPARATE_APPROVAL");
   const lockPath=join(candidate.directory,"runtime.lock");
@@ -131,7 +131,7 @@ try {
   const [action,mode,id]=process.argv.slice(2);
   if(action==="build")await build();
   else if(["check","start"].includes(action))await run(action,mode,id);
-  else throw Error("RELEASE_USAGE: build | check <daily|review> <artifact-id> | start <daily|review> <artifact-id>");
+  else throw Error("RELEASE_USAGE: build | check <daily|review|live> <artifact-id> | start <daily|review|live> <artifact-id>");
 } catch(error) {
   // Never print URLs, parsed config, child environment or provider error payloads.
   console.error(typeof error.message==="string" && /^(RELEASE_|DAILY_|REVIEW_)/.test(error.message)?error.message:"RELEASE_OPERATION_FAILED");

@@ -57,6 +57,8 @@ export type LLMContentBlock =
 
 export type LLMGenerateInput = ProviderInput & {
   systemPrompt?: string;
+  /** Prior dialogue; policy and the current prompt are supplied separately. */
+  messages?: Array<{ role: "user" | "assistant"; content: string }>;
   content?: LLMContentBlock[];
   temperature?: number;
   maxCompletionTokens?: number;

@@ -30,6 +30,8 @@ function uploadSourceFile(file: File, onProgress: (progress: number) => void) {
     const formData = new FormData();
     formData.append("files", file, file.name);
     const request = new XMLHttpRequest();
+    request.timeout = 4 * 60_000;
+    request.addEventListener("timeout", () => resolve({ name: file.name, status: "FAILED", stage: "FAILED", errorCode: "UPLOAD_TIMEOUT", message: "上传时间过长，已停止等待。请重新上传或重试。" }));
     request.open("POST", "/api/source-items/upload");
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
@@ -51,5 +53,13 @@ function uploadSourceFile(file: File, onProgress: (progress: number) => void) {
 
 export async function uploadSourceFiles(files: File[], onProgress?: (index: number, progress: number) => void) {
   if (files.length > 10) throw new Error("一次最多添加 10 个文件。");
-  return Promise.all(files.map((file, index) => uploadSourceFile(file, (progress) => onProgress?.(index, progress))));
+  const results: SourceUploadResult[] = new Array(files.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(2, files.length) }, async () => {
+    while (next < files.length) {
+      const index = next++;
+      results[index] = await uploadSourceFile(files[index]!, progress => onProgress?.(index, progress));
+    }
+  }));
+  return results;
 }

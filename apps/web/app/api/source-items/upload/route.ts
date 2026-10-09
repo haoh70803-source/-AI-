@@ -10,6 +10,7 @@ function json(value: unknown) {
 }
 
 function errorCode(error: unknown) {
+  if (error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name)) return "UPLOAD_TIMEOUT";
   return error instanceof Error ? error.message : "UPLOAD_FAILED";
 }
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   try {
   let formData: FormData;
   try { formData = await readUploadFormData(request); }
-  catch (error) { return error instanceof Error && error.message === "UPLOAD_BATCH_TOO_LARGE" ? apiError("UPLOAD_BATCH_TOO_LARGE", 413, "本次上传总量超过 50 MB，请分批上传。单个音视频最多 50 MB。") : apiError("INVALID_UPLOAD_FORM", 400, "无法读取上传内容，请重新选择文件。"); }
+  catch (error) { if (errorCode(error) === "UPLOAD_TIMEOUT") return apiError("UPLOAD_TIMEOUT", 408, uploadErrorMessage("UPLOAD_TIMEOUT")); return error instanceof Error && error.message === "UPLOAD_BATCH_TOO_LARGE" ? apiError("UPLOAD_BATCH_TOO_LARGE", 413, "本次上传总量超过 50 MB，请分批上传。单个音视频最多 50 MB。") : apiError("INVALID_UPLOAD_FORM", 400, "无法读取上传内容，请重新选择文件。"); }
   const files = formData?.getAll("files").filter((value): value is File => value instanceof File) ?? [];
   if (!files.length) return apiError("FILE_REQUIRED", 400, "请选择要添加的文件。");
   if (files.length > MAX_UPLOADS_PER_REQUEST) return apiError("TOO_MANY_FILES", 400, `一次最多添加 ${MAX_UPLOADS_PER_REQUEST} 个文件。`);
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       sourceId = source.sourceItem.id;
       assetId = source.asset.id;
       storageKey = buildSourceAssetObjectKey({ workspaceId: context.workspace.id, sourceItemId: sourceId, assetId, assetType: upload.assetType, mimeType: upload.mimeType });
-      await storage.upload({ key: storageKey, body: upload.bytes, contentType: upload.mimeType, contentLength: upload.bytes.byteLength, assetScope: { workspaceId: context.workspace.id, sourceItemId: sourceId, assetId } });
+      await storage.upload({ key: storageKey, body: upload.bytes, contentType: upload.mimeType, contentLength: upload.bytes.byteLength, assetScope: { workspaceId: context.workspace.id, sourceItemId: sourceId, assetId }, signal: AbortSignal.any([request.signal, AbortSignal.timeout(120_000)]) });
       await db.sourceAsset.update({ where: { id: assetId }, data: { status: "STORED", storageKey, storedAt: new Date() } });
 
       // Validation already extracts native text. No second job or AI call is needed.
@@ -93,9 +94,12 @@ export async function POST(request: Request) {
       results.push({ name: upload.originalName, status: "READY", sourceItemId: sourceId, contentState: upload.kind === "DOCUMENT" && !upload.contentText ? "NO_TEXT" : "READY" });
     } catch (error) {
       if (storageKey) await storage.delete(storageKey, { workspaceId: context.workspace.id, sourceItemId: sourceId, assetId }).catch(() => undefined);
-      if (sourceId) await db.sourceItem.delete({ where: { id: sourceId } }).catch(() => undefined);
+      if (sourceId) await db.$transaction([
+        db.sourceAsset.updateMany({ where: { id: assetId, workspaceId: context.workspace.id }, data: { status: "FAILED", storageKey: null } }),
+        db.sourceItem.updateMany({ where: { id: sourceId, workspaceId: context.workspace.id, status: { not: "ARCHIVED" } }, data: { status: "FAILED" } }),
+      ]);
       const code = errorCode(error);
-      results.push({ name: upload.originalName, status: "FAILED", errorCode: code, message: uploadErrorMessage(code) });
+      results.push({ name: upload.originalName, status: "FAILED", ...(sourceId ? { sourceItemId: sourceId } : {}), errorCode: code, message: uploadErrorMessage(code) });
     }
   }
 

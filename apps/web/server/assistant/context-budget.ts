@@ -14,7 +14,7 @@ export function fitContext(items: ContextItem[], maximumBytes = 24_000) {
     const remaining = maximumBytes - usedBytes;
     if (size(item) <= remaining) { included.push(item); usedBytes += size(item); continue; }
     // Recent messages and Skill instructions are atomic: never slice them into misleading fragments.
-    if (["ASSISTANT_MESSAGE", "METHOD_VERSION"].includes(item.objectType) || remaining < 800) { omitted.push(key); continue; }
+    if (["ASSISTANT_MESSAGE", "METHOD_VERSION", "CONVERSATION_MEMORY"].includes(item.objectType) || remaining < 800) { omitted.push(key); continue; }
     let low = 0; let high = item.content.length;
     while (low < high) {
       const mid = Math.ceil((low + high) / 2);

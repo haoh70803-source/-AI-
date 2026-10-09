@@ -1,0 +1,15 @@
+name: content-center-agent-cache
+
+services:
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "127.0.0.1:16380:6379"
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    mem_limit: 128m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 2s
+      retries: 3

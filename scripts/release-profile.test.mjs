@@ -16,6 +16,14 @@ test("review production uses same isolated DB but a distinct port and cookie",()
   assert.equal(env.APP_URL,"http://localhost:3032");assert.equal(env.AUTH_COOKIE_PREFIX,"content-center-12-release");assert.equal(env.DATABASE_URL,review.DATABASE_URL);
   assert.equal(env.NODE_ENV,"production");assert.equal(env.FREE_WORKER_MODE,"false");assert.equal(env.EXA_API_KEY,undefined);
 });
+test("live runtime reuses validated local data and credentials, allows external calls and retains account boundaries",()=>{
+  const env=runtimeEnvironment("live",review,{EXA_API_KEY:"must-not-inherit",NODE_OPTIONS:"--import unwanted"});
+  assert.equal(env.ENVIRONMENT_ID,"LOCAL_LIVE");assert.equal(env.LOCAL_REVIEW_OFFLINE,"false");assert.equal(env.EXTERNAL_CALLS_DISABLED,"false");
+  assert.equal(env.DATABASE_URL,review.DATABASE_URL);assert.equal(env.INTEGRATION_ENCRYPTION_KEY,review.INTEGRATION_ENCRYPTION_KEY);
+  assert.equal(env.WORKER_MODE,"embedded");assert.equal(env.REDIS_URL,"redis://127.0.0.1:16379/0");assert.equal(env.QUEUE_PREFIX,"content-center-12-material");assert.equal(env.MOCK_MODE,"false");assert.equal(env.SYSTEM_MANAGED_PROVIDERS,"false");assert.equal(env.EXA_API_KEY,undefined);
+  for(const patch of [{DATABASE_URL:daily.DATABASE_URL},{S3_ENDPOINT:"https://remote.invalid"},{LOCAL_REVIEW_OFFLINE:"false"}])assert.throws(()=>runtimeEnvironment("live",{...review,...patch},{}));
+  assert.equal(runtimeEnvironment("review",review,{}).EXTERNAL_CALLS_DISABLED,"true");
+});
 test("missing config and build sentinels fail before starting any process",()=>{
   assert.throws(()=>runtimeEnvironment("review",{...review,AUTH_SECRET:""},{}),/EXISTING_CONFIGURATION/);
   assert.throws(()=>runtimeEnvironment("review",{...review,AUTH_SECRET:"BUILD_ONLY"},{}),/EXISTING_CONFIGURATION/);

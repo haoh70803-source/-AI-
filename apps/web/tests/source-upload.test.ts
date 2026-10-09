@@ -54,3 +54,11 @@ describe("bounded upload request", () => {
     await expect(readUploadFormData(new Request("http://localhost/upload", {method:"POST",body:"x",headers:{"content-length":"999","content-type":"multipart/form-data; boundary=x"}}),128)).rejects.toThrow("UPLOAD_BATCH_TOO_LARGE");
   });
 });
+
+it('cancels a stalled request body after the upload deadline', async () => {
+  let cancelled = false;
+  const body = new ReadableStream({ cancel() { cancelled = true; } });
+  const request = new Request('http://localhost/upload', { method: 'POST', body, headers: { 'content-type': 'multipart/form-data; boundary=test' }, duplex: 'half' } as RequestInit);
+  await expect(readUploadFormData(request, 1024, 20)).rejects.toMatchObject({ name: 'TimeoutError' });
+  expect(cancelled).toBe(true);
+});

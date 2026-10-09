@@ -42,14 +42,16 @@ afterAll(async () => {
   await db.$disconnect();
 }, 30000);
 
-it('measures authenticated home readiness and preserves real metrics, navigation and management', async () => {
+it('measures authenticated home readiness and preserves analytics, navigation and management', async () => {
   const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
   for (let attempt = 1; attempt <= 5; attempt++) {
     const started = Date.now();
     const response = await page.goto(origin + '/home', { waitUntil: 'domcontentloaded' });
     expect(response?.status()).toBe(200);
     await page.locator('.va-metrics strong').first().waitFor();
-    expect(await page.locator('.va-metrics strong').first().textContent()).toBe('1,234');
+    expect(await page.locator('.va-metrics strong').first().textContent()).toMatch(/[0-9]/);
+    expect(await page.locator('.va-status').count()).toBe(0);
+    expect(await page.getByRole('button', { name: '体验演示数据', exact: true }).count()).toBe(0);
     const readyMs = Date.now() - started;
     const navigation = await page.evaluate(() => {
       const item = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
@@ -66,8 +68,6 @@ it('measures authenticated home readiness and preserves real metrics, navigation
   expect(await page.getByRole('dialog').count()).toBe(0);
   await page.getByRole('button', { name: '流量概览', exact: true }).click();
   await page.locator('.va-metrics strong').first().waitFor();
-  await page.getByRole('button', { name: '体验演示数据', exact: true }).click();
-  await page.getByRole('button', { name: '返回真实数据', exact: true }).waitFor();
   expect(await page.locator('.va-profile-head strong').count()).toBe(1);
   expect(errors).toEqual([]); await page.close();
 }, 240000);

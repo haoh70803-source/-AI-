@@ -236,12 +236,22 @@ export class ContextBuilderV2 {
     if (latestAnswer && !recent.items.some(i => i.objectId === latestAnswer.objectId)) throw new AIControlError("NO_CONTEXT", "上一条回答超过本轮上下文预算，请先保存为成果，再引用该成果继续修改。");
     recent.items.reverse();
     const canvas = await this.selectedObjectAdapter.resolve({ workspaceId: input.workspaceId, projectId: input.projectId, selectedObjects: (input.selectedObjects ?? []).filter(r => r.objectType === "CANVAS_OBJECT") });
-    const feishuItems = await feishuContextItems(input,input.userInput || project.title);
-    const selected = [...resolved.items, ...canvas, ...(input.resolvedContextItems ?? []), ...feishuItems];
+    const task = input.userInput || project.title;
+    const skipFeishu = /(?:不要|不用|无需|禁止)(?:再)?(?:检索|搜索|使用)?飞书|只(?:用|使用)(?:我|当前|选中|这些)/u.test(task)
+      || /^(?:短一点|长一点|口语一点|更口语|换个开头|换一个开头|保留第.{0,4}段|精简一下)[。！!？?\s]*$/u.test(task.trim());
+    const activeTask = (input.resolvedContextItems ?? []).find(i => i.objectType === "ACTIVE_TASK");
+    const taskPolicy = activeTask ? JSON.parse(activeTask.content) as { knowledgeRetrieval?: boolean } : null;
+    const feishuItems = skipFeishu || taskPolicy?.knowledgeRetrieval === false ? [] : await feishuContextItems(input, `${project.title}\n${task}`);
+    const memory = (input.resolvedContextItems ?? []).filter(i => i.objectType === "CONVERSATION_MEMORY");
+    const explicit = [...resolved.items, ...canvas, ...(input.resolvedContextItems ?? []).filter(i => !["CONVERSATION_MEMORY", "ACTIVE_TASK"].includes(i.objectType))];
+    const selected = [...explicit, ...feishuItems];
     // Each explicit source receives a share; one large PDF must not crowd out all other references.
-    const perReference = Math.max(1400, Math.floor(18_000 / Math.max(1, selected.length)));
-    const balancedSelected = selected.flatMap(entry => fitContext([entry], perReference).items);
-    const fitted = fitContext([projectItem, ...skills, ...balancedSelected, ...(input.historySummary ? [make("CONVERSATION_SUMMARY", "summary", input.historySummary)] : [])], 22_000);
+    const explicitBudget = Math.floor(12_000 / Math.max(1, explicit.length));
+    const autoBudget = Math.floor(4000 / Math.max(1, feishuItems.length));
+    const balancedSelected = [...explicit.flatMap(entry => fitContext([entry], explicitBudget).items), ...feishuItems.flatMap(entry => fitContext([entry], autoBudget).items)];
+    const explicitItems = balancedSelected.filter(i => explicit.some(e => e.objectType === i.objectType && e.objectId === i.objectId));
+    const automaticItems = balancedSelected.filter(i => !explicit.some(e => e.objectType === i.objectType && e.objectId === i.objectId));
+    const fitted = fitContext([projectItem, ...skills, ...explicitItems, ...memory, ...automaticItems, ...(input.historySummary ? [make("CONVERSATION_SUMMARY", "summary", input.historySummary)] : [])], 22_000);
     if (skills.some(skill => !fitted.items.some(i => i.objectType === "METHOD_VERSION" && i.objectId === skill.objectId))) throw new AIControlError("NO_CONTEXT", "所选 Skill 内容超过本轮预算，请精简 Skill 后重试。");
     const items = [...fitted.items, ...recent.items];
     const truncated = items.some(i => i.truncated) || fitted.budget.omitted.length > 0 || recent.budget.omitted.length > 0;

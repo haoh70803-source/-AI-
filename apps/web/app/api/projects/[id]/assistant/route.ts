@@ -40,14 +40,19 @@ export async function POST(request: Request, route: RouteContext) {
   request.signal.addEventListener("abort", () => aborter.abort(), { once: true });
   if (request.signal.aborted) aborter.abort();
   let closed = false;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const signal = AbortSignal.any([aborter.signal, AbortSignal.timeout(5 * 60_000)]);
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const emit = (event: AssistantStreamEvent) => { if (!closed) controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); };
-      void runProjectAssistant({ workspaceId: context.workspace.id, userId: context.session.user.id, projectId: id, ...parsed.data, signal: aborter.signal }, emit)
-        .catch(async (error) => { const response = assistantApiError(error); const denied = response.status === 403 ? await response.json() : null; emit({ type: "error", messageId: "", code: denied ? "PERMISSION_DENIED" : "UNKNOWN", message: denied?.message || (response.status === 404 ? "当前项目不存在。" : "AI 处理失败，请稍后重试。") }); })
-        .finally(() => { if (!closed) { closed = true; controller.close(); } });
+      controller.enqueue(encoder.encode(": connected\n\n"));
+      heartbeat = setInterval(() => { if (!closed) controller.enqueue(encoder.encode(": heartbeat\n\n")); }, 15_000);
+      heartbeat.unref();
+      void runProjectAssistant({ workspaceId: context.workspace.id, userId: context.session.user.id, projectId: id, ...parsed.data, signal }, emit)
+        .catch(async (error) => { const response = assistantApiError(error); const failure = await response.json(); emit({ type: "error", messageId: "", code: failure.error || "UNKNOWN", message: failure.message || (response.status === 404 ? "当前项目不存在。" : "AI 处理失败，请稍后重试。") }); })
+        .finally(() => { clearInterval(heartbeat); if (!closed) { closed = true; controller.close(); } });
     },
-    cancel() { closed = true; aborter.abort(); },
+    cancel() { closed = true; clearInterval(heartbeat); aborter.abort(); },
   });
-  return new Response(stream, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive" } });
+  return new Response(stream, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive", "x-accel-buffering": "no" } });
 }

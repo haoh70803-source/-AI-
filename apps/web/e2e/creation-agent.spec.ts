@@ -54,7 +54,7 @@ test("creation controls, selected editing, locks, history restoration and respon
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/dashboard?project=${project.id}&node=artifact:${artifact.id}`);
-    const editor = page.getByRole("dialog", { name: "项目成果", exact: true });
+    const editor = page.getByRole("region", { name: "项目成果", exact: true });
     await expect(editor.getByLabel("成果正文", { exact: true })).toHaveValue(branch.workingBody, { timeout: 30000 });
     await editor.getByRole("button", { name: "确认并锁定成果", exact: true }).click();
     await expect(editor.getByRole("button", { name: "解锁成果", exact: true })).toBeEnabled();
@@ -76,7 +76,8 @@ test("creation controls, selected editing, locks, history restoration and respon
     await editor.getByLabel("成果正文", { exact: true }).press("Shift+End");
     await expect(editor.getByRole("button", { name: "通过 AI 修改选中内容", exact: true })).toBeVisible();
     await editor.getByRole("button", { name: "通过 AI 修改选中内容", exact: true }).click();
-    await expect(editor).not.toBeVisible();
+    await expect(editor).toBeVisible();
+    await expect(page.getByLabel("和鑫小助说", { exact: true })).toBeFocused();
     await expect(page.getByText(/只修改选中的 \d+ 个字，其他内容保留/)).toBeVisible();
     const localRequest = page.waitForRequest(request => request.url().endsWith(`/api/projects/${project.id}/assistant`) && request.method() === "POST");
     await page.getByLabel("和鑫小助说", { exact: true }).fill("更自然一点");

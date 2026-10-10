@@ -13,5 +13,8 @@ if (receipt.status !== "BUILT" || receipt.networkDenied !== 0 || !receipt.liveFi
 for (const name of ["BUILD_ID", "build-manifest.json", "routes-manifest.json", "server", "static"]) {
   if (!existsSync(join(build, name))) throw new Error(`BUILD_ARTIFACT_MISSING: ${name}`);
 }
+for (const source of receipt.sources.filter(file => file.path.startsWith("vendor/"))) {
+  if (!existsSync(join(directory, "workspace", source.path))) throw new Error(`BUILD_RUNTIME_SOURCE_MISSING: ${source.path}`);
+}
 if (readFileSync(join(build, "BUILD_ID"), "utf8").trim() !== receipt.buildId) throw new Error("BUILD_ID_MISMATCH");
 process.stdout.write(JSON.stringify({ id: receipt.id, status: receipt.status, buildId: receipt.buildId, artifactFiles: receipt.artifactFiles.length }) + "\n");

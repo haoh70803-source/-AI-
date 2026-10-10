@@ -77,7 +77,15 @@ Web 的 `typecheck` 先执行 `next typegen` 再执行完整 `tsc --noEmit`，�
 
 数据库测试要先准备**全新专用** `LOCAL_TEST` 基础设施（允许的目标见 `packages/db/src/test-target.ts`），创建空测试 schema 后运行现有 Vitest/Playwright。测试使用明确 Fixture/Mock；真实 Provider opt-in 默认不执行。全套中部分测试写死 agent database/历史 fixture 路径，失败必须保留并记录。
 
-当前 Compose 的 `minio/minio:RELEASE.2025-09-07T16-13-09Z` 拉取失败，Quay 同标签亦未可用。上游现为源码分发，见 [MinIO 官方说明](https://github.com/minio/minio/blob/master/README.md)。不可任意换用未经审核的社区镜像。CI `integration` 要求仓库变量 `TEST_S3_IMAGE` 提供审核过的兼容镜像及 digest，缺失时明确失败。设置该变量不表示本次任务已经验证了该镜像。
+当前 Compose 的 `minio/minio:RELEASE.2025-09-07T16-13-09Z` 拉取失败，Quay 同标签亦未可用。上游现为源码分发，见 [MinIO 官方说明](https://github.com/minio/minio/blob/master/README.md)。不可任意换用未经审核的社区镜像。CI `integration` 默认自行构建下述固定官方源码的测试镜像；可选仓库变量 `TEST_S3_IMAGE` 用于审核过的兼容镜像，必须包含固定sha256 digest。设置覆盖变量不表示本次任务已经验证了该镜像。
+
+本轮额外准备了 `config/testing/minio-source.Dockerfile`，只用于隔离本机测试：源码固定在官方提交 `9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a`（RELEASE.2025-10-15T17-29-55Z），Go官方linux/amd64镜像固定digest，执行 `go mod verify`，保留源代码及AGPL许可文件，运行用户10001。实际尝试的构建日志与终态见部署就绪报告；配方存在不代表构建或存储验收已经成功。上游已归档，这个配方不构成生产安全或许可审核结论，不自动发布到镜像仓库，不替换既有存储配置。
+
+```bash
+docker build --progress=plain -f config/testing/minio-source.Dockerfile -t xsj-audit-minio:source-9e49d5e config/testing
+```
+
+重新验证应使用专用容器名称、仅绑定127.0.0.1、临时数据卷和测试凭据。镜像使用默认入口 `/minio`，运行参数为 `server /data --address :9000`；非root用户需要可写的数据目录。不得挂载生产对象存储目录或复用线上凭据。自行构建的本地image ID不等于可远程拉取的registry digest；CI默认重建相同固定源码，覆盖变量则须提供经审核且可访问的镜像来源。
 
 CI `quality` 在 Windows/Linux 安装冻结依赖，执行 lint、typecheck、原有启动与边界测试、明确范围的离线单元测试、生产构建和产物检查；`integration` 执行全套 Vitest 和现有 Playwright。代码检查失败不会自动放宽规则。GitHub Actions 当前尚未在远程执行，不能用本地结果替代。
 

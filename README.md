@@ -6,13 +6,13 @@
 
 需要 Node.js 24.21.0、pnpm 11.19.0；项目是 Next.js/React + Prisma/PostgreSQL + BullMQ/Redis 的 pnpm 多包仓库，资料存储与 ASR/外部 API 需独立准备。
 
-`ash
+```bash
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
 pnpm build
 node scripts/verify-build-artifact.mjs
-`
+```
 
 新同事从 [GitHub 独立运行与部署说明](docs/GITHUB_DEPLOYMENT.md) 开始：使用 config/environments/local-review.env.example 创建被忽略的 .env.local-review，通过 LOCAL_PROFILE_FILE 选择私有配置。根 .env.example 是历史共享变量参考；旧 dev:real/dev:up 不是当前默认入口。无需复制维护者的 output、node_modules 或私人数据。
 

@@ -96,15 +96,18 @@ jobs:
         with:
           node-version-file: .node-version
       - run: pnpm install --frozen-lockfile
-      - name: Prepare operator-approved isolated storage
+      - name: Prepare isolated storage from pinned official source or approved image
         env:
           TEST_S3_IMAGE: ${{ vars.TEST_S3_IMAGE }}
         run: |
           if [ -z "$TEST_S3_IMAGE" ]; then
-            echo "TEST_STORAGE_IMAGE_REQUIRED: select an approved MinIO-compatible image and digest; see DEPLOYMENT_READINESS_REPORT.md"
+            docker build --progress=plain -f config/testing/minio-source.Dockerfile -t xsj-audit-minio:source-9e49d5e config/testing
+            TEST_S3_IMAGE=xsj-audit-minio:source-9e49d5e
+          elif [[ ! "$TEST_S3_IMAGE" =~ @sha256:[a-f0-9]{64}$ ]]; then
+            echo "TEST_STORAGE_IMAGE_DIGEST_REQUIRED: an override must use an approved registry image with a fixed sha256 digest"
             exit 1
           fi
-          docker run -d --name test-storage -p 127.0.0.1:9002:9000 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin "$TEST_S3_IMAGE" server /data
+          docker run -d --name test-storage --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /data:rw,mode=0777 --tmpfs /tmp:rw,mode=0777 -p 127.0.0.1:9002:9000 -e HOME=/tmp -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin "$TEST_S3_IMAGE" server /data
           for attempt in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:9002/minio/health/live; then exit 0; fi
             sleep 1

@@ -73,6 +73,8 @@ node scripts/verify-build-artifact.mjs
 
 `pnpm build` 使用现有隔离 release builder：复制源码到 `output/architecture-upgrade-20261005/releases/<id>`、使用同一 checkout 新安装的依赖、阻断构建网络、连接不可达端口 1，生成 `.next-production` 和 receipt；不会自动部署或迁移。新同事验证必须先在干净 checkout 安装依赖，不能把维护者 node_modules 链接进去。
 
+Web 的 `typecheck` 先执行 `next typegen` 再执行完整 `tsc --noEmit`，确保新克隆也有 PageProps/RouteContext；不会以本机旧类型缓存伪造通过。`next-env.d.ts` 由 Next 自动生成，检查可能更新该跟踪文件的相对类型路径，需区分生成变化与业务代码变化。按先检查后构建的顺序执行，避免构建期间源码变化导致 receipt 拒绝产物。
+
 数据库测试要先准备**全新专用** `LOCAL_TEST` 基础设施（允许的目标见 `packages/db/src/test-target.ts`），创建空测试 schema 后运行现有 Vitest/Playwright。测试使用明确 Fixture/Mock；真实 Provider opt-in 默认不执行。全套中部分测试写死 agent database/历史 fixture 路径，失败必须保留并记录。
 
 当前 Compose 的 `minio/minio:RELEASE.2025-09-07T16-13-09Z` 拉取失败，Quay 同标签亦未可用。上游现为源码分发，见 [MinIO 官方说明](https://github.com/minio/minio/blob/master/README.md)。不可任意换用未经审核的社区镜像。CI `integration` 要求仓库变量 `TEST_S3_IMAGE` 提供审核过的兼容镜像及 digest，缺失时明确失败。设置该变量不表示本次任务已经验证了该镜像。

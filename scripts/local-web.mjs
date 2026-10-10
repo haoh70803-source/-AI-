@@ -24,6 +24,8 @@ try {
         const probe = spawnSync(executable, ['-version'], { env, windowsHide: true, stdio: 'ignore', timeout: 10000 });
         if (probe.status !== 0) throw Error('LIVE_MEDIA_TOOLS_NOT_READY: configure FFMPEG_PATH and FFPROBE_PATH in the local profile');
       }
+      const asr = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', resolve(root, 'scripts/start-local-asr.ps1')], { cwd: root, env: process.env, windowsHide: true, stdio: 'inherit', timeout: 210000 });
+      if (asr.status !== 0) console.error('LIVE_ASR_UNAVAILABLE: inspect output/local-asr; voice remains unavailable while Web startup continues');
       const queue = spawnSync('docker', ['compose', '-f', resolve(root, 'docker-compose.material.yml'), 'up', '-d', '--wait', '--wait-timeout', '45'], { env: process.env, windowsHide: true, stdio: 'inherit', timeout: 55000 });
       if (queue.status !== 0) throw Error('LIVE_QUEUE_NOT_READY: start Docker Desktop and retry');
     }

@@ -5,6 +5,7 @@ import type { ContentIngestPayload } from "./queue-producer";
 import { createServer } from "node:http";
 import { createContentIngestWorker, createHealthWorker, createTranscribeSourceWorker } from "./queue";
 import { cleanupExpiredAsrAudio } from "./transcription";
+import { createTeardownWorker, startTeardownReconciler } from "./teardown/worker";
 
 assertWorkerMode("independent");
 const modeLease = await acquireWorkerMode("independent", () => { console.warn("WORKER_MODE_LEASE_LOST"); void shutdown(1); });
@@ -29,15 +30,17 @@ healthServer.listen(healthPort, "127.0.0.1");
 const worker = createHealthWorker();
 const ingestWorker = createContentIngestWorker();
 const transcriptionWorker = createTranscribeSourceWorker();
+const teardownWorker = createTeardownWorker();
 // Reflect terminal queue failures (including lost/stalled workers) in the persisted UI state.
 for (const processor of [ingestWorker, transcriptionWorker]) processor.on("failed", (job, error) => {
   if (!job || !("jobId" in job.data)) return;
   void recordTerminalQueueFailure(job as Job<ContentIngestPayload>,error).catch(() => console.warn("JOB_FAILURE_STATE_UPDATE_FAILED"));
 });
-await Promise.all([worker.waitUntilReady(), ingestWorker.waitUntilReady(), transcriptionWorker.waitUntilReady()]);
+await Promise.all([worker.waitUntilReady(), ingestWorker.waitUntilReady(), transcriptionWorker.waitUntilReady(), teardownWorker.waitUntilReady()]);
 ready = true;
 console.info("WORKER_CONNECTED");
 const stopReconciler = startJobReconciler();
+const stopTeardownReconciler = startTeardownReconciler();
 
 const audioCleanupTimer = setInterval(() => {
   void cleanupExpiredAsrAudio().catch(() => console.warn("ASR_AUDIO_CLEANUP_RUN_FAILED"));
@@ -48,6 +51,7 @@ async function shutdown(exitCode = 0) {
   ready = false;
   clearInterval(audioCleanupTimer);
   stopReconciler();
+  stopTeardownReconciler();
   await new Promise<void>((resolve) => {
     if (!healthServer.listening) {
       resolve();
@@ -55,7 +59,7 @@ async function shutdown(exitCode = 0) {
     }
     healthServer.close(() => resolve());
   });
-  await Promise.all([worker.close(), ingestWorker.close(), transcriptionWorker.close()]);
+  await Promise.all([worker.close(), ingestWorker.close(), transcriptionWorker.close(), teardownWorker.close()]);
   await modeLease.close();
   process.exit(exitCode);
 }

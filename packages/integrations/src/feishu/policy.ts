@@ -29,6 +29,10 @@ export const feishuInput = z.discriminatedUnion('action', [
     z.object({ action: z.literal('remove'), id, revision: rev }).strict(),
     z.object({ action: z.literal('restore'), id, revision: rev }).strict(),
     z.object({ action: z.literal('disconnect'), revision: rev }).strict(),
+    z.object({ action: z.literal('subscribeWiki'), urls: z.array(z.string().trim().min(1).max(1000)).min(1).max(20), scope: z.enum(['SPACE', 'SUBTREE']), category: z.enum(['METHOD', 'CASE', 'BRAND', 'OTHER']), teamShared: z.literal(true) }).strict(),
+    z.object({ action: z.literal('updateWiki'), id, revision: rev, name: z.string().trim().min(1).max(200), category: z.enum(['METHOD', 'CASE', 'BRAND', 'OTHER']) }).strict(),
+    z.object({ action: z.literal('pauseWiki'), id, revision: rev }).strict(),
+    z.object({ action: z.literal('resumeWiki'), id, revision: rev }).strict(),
 ]);
 export function terms(text: string) { const s = text.normalize('NFKC').toLowerCase(), set = new Set<string>(); for (const word of s.match(/[a-z0-9]{2,40}/g) ?? [])
     set.add(word); for (const run of s.match(/[\p{Script=Han}]+/gu) ?? [])
@@ -41,7 +45,7 @@ export function chunks(text: string, title = '') { const cleaned = text.replace(
     if (start + 850 >= cleaned.length)
         break;
 } return result; }
-export function contentHash(text: string, title: string, version: string) { return createHash('sha256').update(JSON.stringify({ text, title, version })).digest('hex'); }
+export function contentHash(text: string, title: string, _version: string) { return createHash('sha256').update(JSON.stringify({ text, title })).digest('hex'); }
 export function rankChunks<T extends {
     text: string;
     terms: string[];

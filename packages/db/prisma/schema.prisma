@@ -2518,6 +2518,7 @@ model FeishuConnection {
   updatedAt DateTime @updatedAt
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   documents FeishuDocument[]
+  subscriptions FeishuSubscription[]
   @@unique([id, workspaceId])
 }
 model FeishuDocument {
@@ -2541,6 +2542,7 @@ model FeishuDocument {
   connection FeishuConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
   sourceItem SourceItem @relation(fields: [sourceItemId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
   chunks FeishuChunk[]
+  wikiNodes FeishuSubscriptionNode[]
   @@unique([sourceItemId, workspaceId])
   @@unique([connectionId, kind, token])
   @@unique([id, workspaceId])
@@ -2557,5 +2559,53 @@ model FeishuChunk {
   @@unique([documentId, position])
   @@index([workspaceId])
   @@index([terms], type: Gin)
+}
+
+// Additive Wiki subscriptions; existing single-document identities remain unchanged.
+model FeishuSubscription {
+  id String @id @default(cuid())
+  workspaceId String
+  connectionId String
+  createdById String
+  scope String
+  rootToken String
+  spaceId String
+  originalUrl String
+  name String
+  category String
+  state String @default("ACTIVE")
+  revision Int @default(1)
+  syncStatus String @default("PENDING")
+  syncRequestedAt DateTime? @default(now())
+  lastAttemptAt DateTime?
+  lastSyncedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  connection FeishuConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  nodes FeishuSubscriptionNode[]
+  @@unique([id, workspaceId])
+  @@unique([connectionId, scope, rootToken])
+  @@index([workspaceId, state])
+}
+
+model FeishuSubscriptionNode {
+  id String @id @default(cuid())
+  workspaceId String
+  subscriptionId String
+  nodeToken String
+  parentNodeToken String
+  objToken String
+  objType String
+  title String
+  originalUrl String
+  documentId String?
+  available Boolean @default(true)
+  state String @default("DISCOVERED")
+  lastSeenAt DateTime @default(now())
+  subscription FeishuSubscription @relation(fields: [subscriptionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  document FeishuDocument? @relation(fields: [documentId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  @@unique([subscriptionId, nodeToken])
+  @@index([workspaceId, documentId, available])
 }
 

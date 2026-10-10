@@ -1,5 +1,6 @@
-import type { SourceReference } from "./references";
+import type { SourceReference, ReferenceOption } from "./references";
 import type { CanvasObjectDTO } from "./canvas";
+import type { CreationOptions } from "./creation";
 
 export type AssistantSourceDTO = { title: string; type: string; excerpt: string; reference?: SourceReference; citation?: number };
 
@@ -18,7 +19,7 @@ export type AssistantResultAction = "TEXT" | "TOPIC" | "DRAFT" | "CREATE_ARTIFAC
 
 export type AssistantMessageDTO = { id: string; role: "USER" | "ASSISTANT"; content: string; status: "PENDING" | "STREAMING" | "COMPLETED" | "FAILED" | "STOPPED"; createdAt: string; artifactId: string | null; sources: AssistantSourceDTO[]; warnings: string[]; resultType: "TEXT" | "TOPIC" | "REWRITE" | "DRAFT" | "CHECK" | "NEXT_STEP"; structuredResult: AssistantStructuredResult | null; actions: AssistantResultAction[] };
 
-export type AssistantThreadDTO = { id: string; messages: AssistantMessageDTO[]; unavailableReason?: string };
+export type AssistantThreadDTO = { id: string; messages: AssistantMessageDTO[]; nextCursor?: string | null; unavailableReason?: string; activeReferences?: ReferenceOption[]; referenceWarnings?: string[]; creationOptions?: CreationOptions; creationPreference?: { persona: string; style: string } };
 
 export type AssistantExecutionStatusCode = "TASK_READING" | "MEMORY_READING" | "MEMORY_READY" | "TASK_UNDERSTANDING" | "SKILL_POOL_LOADED" | "SKILL_ACTIVATED" | "SKILL_SKIPPED" | "SKILL_CONFLICT" | "AUTO_INVOKE_SUGGESTED" | "GENERATION_STARTED" | "CHECK_STARTED" | "COMPLETED";
 

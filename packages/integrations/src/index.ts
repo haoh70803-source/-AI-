@@ -9,4 +9,7 @@ export * from "./tester";
 
 export * from "./feishu/policy";
 export * from "./feishu/client";
+export * from "./feishu/contracts";
+export * from "./feishu/docx";
 export * from "./feishu/service";
+export { feishuWikiTree, feishuReadableKinds, feishuWikiSyncEnabled, feishuDocumentScope } from './knowledge/feishu-wiki';

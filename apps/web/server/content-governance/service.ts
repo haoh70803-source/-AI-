@@ -1,4 +1,5 @@
 import 'server-only';
+import { createProject } from "../project-service";
 import { createHash } from 'node:crypto';
 import { db, type Prisma } from '@content-center/db';
 import { factState, scoreStatus, type HubInput } from './policy';
@@ -227,10 +228,7 @@ export async function mutateHub(a: Actor, input: HubInput) {
                         if (t!.status !== 'APPROVED')
                             fail('选题必须批准后才能转换为项目');
                         await evidence(tx, a, v.evidenceIds as string[], m.role);
-                        const publishedContext = await tx.iPContextVersion.findFirst({ where: { workspaceId: a.workspaceId, status: "PUBLISHED" }, orderBy: { number: "desc" } });
-                        const p = await tx.contentProject.create({ data: { workspaceId: a.workspaceId, createdById: a.userId, ...(publishedContext ? { ipContextSnapshot: JSON.parse(JSON.stringify(publishedContext)) } : {}), title: v.title, audience: v.audience, goal: v.goal, description: v.judgement, status: 'DRAFT' } });
-                        const draft = await tx.draftBranch.create({ data: { workspaceId: a.workspaceId, projectId: p.id, title: '主稿', createdById: a.userId, updatedById: a.userId } });
-                        await tx.contentProject.update({ where: { id: p.id }, data: { primaryDraftBranchId: draft.id } });
+                        const p = await createProject({ ...a, title: v.title, audience: v.audience, goal: v.goal, description: v.judgement }, tx);
                         const sourceIds = new Set<string>();
                         for (const id of v.evidenceIds as string[]) {
                             const f = await visibleFact(tx, a, id, m.role);

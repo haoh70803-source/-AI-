@@ -46,6 +46,7 @@ export function getSystemProviderConfig(provider: ConfigurableIntegrationProvide
       resourceId,
       ...(apiKey ? { apiKey } : { appId, accessToken }),
       protocol: "RECORDING_FILE_2_0",
+      ...(value("DOUBAO_FLASH_RESOURCE_ID") ? { flashResourceId: value("DOUBAO_FLASH_RESOURCE_ID") } : {}),
     };
   }
   if (provider === "WEB_SEARCH") { const apiKey = value("EXA_API_KEY"); return apiKey ? { apiKey } : null; }

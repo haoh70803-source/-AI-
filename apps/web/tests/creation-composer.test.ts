@@ -11,6 +11,8 @@ import { AIControlService } from "../server/ai/control/ai-control-service";
 import { ModelRouter } from "../server/ai/control/model-router";
 import { runProjectAssistant } from "../server/assistant/service";
 import { IntegrationService } from "@content-center/integrations";
+import { ContextBuilderV2 } from "../server/ai/control/context-builder-v2";
+import { setProjectMethodSelections } from "../server/project-methods/service";
 
 describe("creation composer selections", () => {
   const userId = `composer-${randomUUID()}`;
@@ -26,6 +28,26 @@ describe("creation composer selections", () => {
     folderId = (await db.projectFolder.create({ data: { workspaceId, userId, name: "课程项目" } })).id;
   });
   afterAll(async () => { await db.workspace.delete({ where: { id: workspaceId } }); await db.user.delete({ where: { id: userId } }); await db.$disconnect(); });
+  it("creates, edits and executes zero or multiple authorized Skills without dropping selections", async () => {
+    const second = await db.methodAsset.create({ data: { workspaceId, ownerUserId: userId, status: "SAVED" } });
+    const version = await db.methodVersion.create({ data: { assetId: second.id, version: 1, title: "结构检查", steps: ["保留依据，检查段落衔接。"], applicableScenarios: ["文案"], boundaries: ["不增加事实"], evidence: [], editedById: userId } });
+    const ids = [methodVersionId, version.id];
+    const project = await createProject({ workspaceId, userId, title: "可组合技能", methodVersionIds: ids });
+    const actor = { workspaceId, userId, projectId: project.id };
+    const build = (skillVersionIds?: string[]) => new ContextBuilderV2().build({ ...actor, taskType: "GENERAL_QUERY", action: "PROJECT_ASSISTANT", userInput: "整理现有内容", skillVersionIds });
+    const selected = await build();
+    expect(selected?.manifest.methodVersions.map(item => item.versionId).sort()).toEqual([...ids].sort());
+    expect(selected?.manifest.items.filter(item => item.objectType === "METHOD_VERSION")).toHaveLength(2);
+    const empty = await build([]);
+    expect(empty?.manifest.methodVersions).toEqual([]);
+    expect(empty?.defaultMethod).toBeNull();
+    await setProjectMethodSelections({ ...actor, methodVersionIds: [] });
+    expect((await build())?.manifest.methodVersions).toEqual([]);
+    await setProjectMethodSelections({ ...actor, methodVersionIds: ids });
+    expect((await build(ids))?.manifest.methodVersions).toHaveLength(2);
+    await expect(build(["foreign-version"])).rejects.toMatchObject({ code: "PERMISSION_DENIED" });
+    await expect(build(["one", "two", "three", "four"])).rejects.toMatchObject({ code: "NO_CONTEXT" });
+  });
   it("returns only current provider models and rejects foreign models", async () => {
     const options = await getCreationModels(workspaceId);
     expect(options.models.every((item) => item.provider === "DEEPSEEK")).toBe(true);
@@ -66,10 +88,15 @@ describe("creation composer selections", () => {
     expect((await getCreationModels(workspaceId)).defaultModelId).toBe("deepseek-flash");
   });
   it("constructs an overridden runtime without changing stored provider settings", async () => {
+    // Constructs an adapter against a mocked config; no request is sent.
+    vi.stubEnv("EXTERNAL_CALLS_DISABLED", "false");
+    vi.stubEnv("LOCAL_REVIEW_OFFLINE", "false");
+    try {
     const service = new IntegrationService();
     vi.spyOn(service, "getDecryptedIntegrationConfig").mockResolvedValue({ provider: "DEEPSEEK", model: "deepseek-flash", baseUrl: "https://api.deepseek.com", apiKey: "local-test-only" });
     const runtime = await loadLLMRuntime(workspaceId, service, { provider: "DEEPSEEK", modelId: "deepseek-v4-pro" });
     expect(runtime.model).toBe("deepseek-v4-pro");
     await expect(loadLLMRuntime(workspaceId, service, { provider: "KIMI", modelId: "kimi-k2.6" })).rejects.toThrow("不可用");
+    } finally { vi.unstubAllEnvs(); }
   });
 });

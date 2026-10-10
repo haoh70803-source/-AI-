@@ -1,0 +1,24 @@
+{
+  "verificationLevel": "V0",
+  "applicationTestsRun": false,
+  "candidateSlots": 85,
+  "namedCandidates": 74,
+  "unnamedSlots": 11,
+  "allFinalDecisionsUnset": true,
+  "allExecutionAuthorizationFalse": true,
+  "allEvidenceFilesExist": true,
+  "sourceFilesChangedAfterSnapshot": [
+    "apps/web/server/artifacts/service.ts",
+    "apps/web/server/assistant/creation-policy.ts",
+    "apps/web/server/assistant/prompt.ts",
+    "apps/web/server/assistant/service.ts"
+  ],
+  "relativeReportLinksValid": true,
+  "changedSourceSemanticReview": "Re-read four changed files; report observations about text artifacts, version protection, creation strategies, local edits and source links remain supported. Initial snapshot references are historical.",
+  "recheckedSourceHashes": {
+    "apps/web/server/artifacts/service.ts": "15b1818dfba6b8d157591b1eebad1581f72366b30af4cd779922fba9d70e11b2",
+    "apps/web/server/assistant/creation-policy.ts": "b359615ea02718d8b3d280dabb5c76740a0bed3d8322271ce7baa3003c4af1f2",
+    "apps/web/server/assistant/prompt.ts": "49ba62bb1f95d0d1041e3043256c4ebf995b9d827dcb9cc5b64c38fa265ec13e",
+    "apps/web/server/assistant/service.ts": "fd8337b663331fa158fc6ebf1ca6ece9f0a5c7367b495c0a076d6f4aede50165"
+  }
+}

@@ -19,6 +19,7 @@ export type SourceProcessingSnapshot = {
     status: string;
     progress: number;
     stage: string | null;
+    detail?: string | null;
     errorMessage: string | null;
   } | null;
 };

@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-10",
+  "level": "V0 static audit plus local report artifact browser verification",
+  "businessTestsRun": false,
+  "businessAcceptancePassed": false,
+  "applicationCodeEdited": false,
+  "checks": [
+    {
+      "name": "all current source snapshot hashes stable at delivery",
+      "passed": true,
+      "count": 538
+    },
+    {
+      "name": "ordinary page metadata complete",
+      "passed": true,
+      "count": 72
+    },
+    {
+      "name": "registered historical and current screenshot bytes match",
+      "passed": true,
+      "count": 11,
+      "historical": 6,
+      "current": 5
+    },
+    {
+      "name": "report opens with all 82 page evidence panels",
+      "passed": true
+    },
+    {
+      "name": "all registered images load in report",
+      "passed": true,
+      "count": 11
+    },
+    {
+      "name": "source evidence renders as clickable local links",
+      "passed": true,
+      "count": 5316
+    },
+    {
+      "name": "page path filter",
+      "passed": true,
+      "count": 1
+    },
+    {
+      "name": "expand filtered page",
+      "passed": true
+    },
+    {
+      "name": "review table persists locally within this disposable browser context",
+      "passed": true
+    },
+    {
+      "name": "CSV export has header, 72 page rows and reviewed value",
+      "passed": true
+    },
+    {
+      "name": "report JavaScript has no page errors",
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "sourceChangesDuringAudit": [],
+  "guestRuntimeEvidence": {
+    "routesVisited": 53,
+    "routesRendered": [
+      "/account/invite",
+      "/account/recovery",
+      "/account/reset",
+      "/account/verify",
+      "/login"
+    ],
+    "redirectedRoutes": 48,
+    "loginSubmitted": false,
+    "businessWrites": false,
+    "environmentIdentityVerified": false
+  },
+  "reportBrowser": "Microsoft Edge headless, local report only; no business pages navigated",
+  "artifactChecksPassed": true,
+  "finalContentChecks": [
+    {
+      "name": "final eight management sections",
+      "passed": true
+    },
+    {
+      "name": "final HTML JavaScript parses",
+      "passed": true
+    },
+    {
+      "name": "all source evidence links point to existing files",
+      "passed": true,
+      "brokenLinks": []
+    },
+    {
+      "name": "final eleven images exist and registry hashes match",
+      "passed": true
+    },
+    {
+      "name": "no obsolete stopped-service or invented Feishu search API statements",
+      "passed": true
+    },
+    {
+      "name": "current source snapshot remains stable after report normalization",
+      "passed": true,
+      "sourceChanges": []
+    }
+  ],
+  "finalCheckedAt": "2026-10-10T03:51:38.376Z",
+  "finalArtifacts": [
+    {
+      "file": "report.html",
+      "sha256": "2946f51a5f41692e6b9912341dd38d407d6589cb984112764ee90a889c809107"
+    },
+    {
+      "file": "report.md",
+      "sha256": "db8a1a011afaccddb909804b77422cf2dd25af4ba401268d83a9ff9d6a1db939"
+    },
+    {
+      "file": "management-review.md",
+      "sha256": "f5cc1df35641ccb632bb651550ee5001da01be8359a3ae98b9fe93a94ea33c34"
+    },
+    {
+      "file": "function-decisions.csv",
+      "sha256": "cabd2ba7c77a0ad26582e79636c35d37fb494b1326519df086a556a67ea3d7e9"
+    },
+    {
+      "file": "page-control-api-inventory.json",
+      "sha256": "e34956a77a251488ee8dbe1b5f31c83e3a9c5175e365836f2769086788951504"
+    },
+    {
+      "file": "runtime-pages.json",
+      "sha256": "ef29444986243e18d59f56307b134ed282eaf745549c5d0d18eda35c845bbc80"
+    },
+    {
+      "file": "screenshot-register.json",
+      "sha256": "053cfbbdcc88d3266d514e41b118f65b7662eabfdf600e785507b9b99fb978a4"
+    }
+  ]
+}

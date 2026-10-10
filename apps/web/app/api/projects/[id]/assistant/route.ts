@@ -1,8 +1,12 @@
 import { z } from "zod";
+import { creationOptionsSchema, editScopeSchema } from "@/lib/contracts/creation";
+import { saveCreatorWritingPreference } from "@/server/creator-profile-service";
 import { researchSelectionSchema } from "@/server/research/contracts";
 import { apiError, getApiWorkspaceContext } from "@/server/api-access";
 import { assistantApiError } from "@/server/assistant/api";
 import { getProjectAssistantThread, runProjectAssistant, type AssistantStreamEvent } from "@/server/assistant/service";
+
+import { projectSkillVersionIdsSchema } from "@/lib/contracts/creation";
 
 const requestSchema = z.object({
   content: z.string().trim().min(1).max(4_000),
@@ -10,18 +14,36 @@ const requestSchema = z.object({
   sourceItemIds: z.array(z.string().min(1).max(200)).max(8).transform((ids) => [...new Set(ids)]).optional(),
   retryUserMessageId: z.string().min(1).max(200).optional(),
   targetArtifactId: z.string().min(1).max(200).optional(),
-  references: z.array(z.object({ sourceType: z.enum(["MATERIAL", "RESEARCH", "ARTIFACT", "BENCHMARK", "TREND", "KNOWLEDGE"]), sourceId: z.string().min(1).max(200), researchSelection: researchSelectionSchema.optional() }).strict().refine(value => !value.researchSelection || value.sourceType === "RESEARCH")).max(8).optional(),
+  creationOptions: creationOptionsSchema.optional(),
+  editScope: editScopeSchema.optional(),
+  references: z.array(z.object({ sourceType: z.enum(["MATERIAL", "RESEARCH", "ARTIFACT", "BENCHMARK", "TREND", "KNOWLEDGE"]), sourceId: z.string().min(1).max(200), scope: z.enum(["TURN", "TASK", "PROJECT"]).optional(), sourceVersion: z.union([z.string().min(1).max(200), z.number().int().nonnegative()]).optional(), researchSelection: researchSelectionSchema.optional() }).strict().refine(value => !value.researchSelection || value.sourceType === "RESEARCH")).max(8).optional(),
+  skillVersionIds: projectSkillVersionIdsSchema.optional(),
   skillVersionId: z.string().min(1).max(200).nullable().optional(),
   modelSelection: z.object({ provider: z.enum(["KIMI", "DEEPSEEK", "CUSTOM"]), modelId: z.string().min(1).max(200) }).strict().nullable().optional(),
 }).strict();
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, route: RouteContext) {
+export async function PATCH(request: Request, route: RouteContext) {
+  const context = await getApiWorkspaceContext();
+  if (!context) return apiError("UNAUTHORIZED", 401);
+  if (context.role === "VIEWER") return apiError("PERMISSION_DENIED", 403);
+  const parsed = z.object({ persona: z.string().trim().max(160), style: z.string().trim().max(1000) }).strict().safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return apiError("INVALID_INPUT", 400);
+  try {
+    const { id } = await route.params;
+    await getProjectAssistantThread({ workspaceId: context.workspace.id, userId: context.session.user.id, projectId: id });
+    return Response.json(await saveCreatorWritingPreference({ workspaceId: context.workspace.id, userId: context.session.user.id, ...parsed.data }));
+  } catch (error) { return assistantApiError(error); }
+}
+
+export async function GET(request: Request, route: RouteContext) {
   const context = await getApiWorkspaceContext();
   if (!context) return apiError("UNAUTHORIZED", 401);
   const { id } = await route.params;
-  try { return Response.json(await getProjectAssistantThread({ workspaceId: context.workspace.id, userId: context.session.user.id, projectId: id })); }
+  const parsed = z.string().min(1).max(200).optional().safeParse(new URL(request.url).searchParams.get("before") ?? undefined);
+  if (!parsed.success) return apiError("INVALID_INPUT", 400);
+  try { return Response.json(await getProjectAssistantThread({ workspaceId: context.workspace.id, userId: context.session.user.id, projectId: id, beforeMessageId: parsed.data })); }
   catch (error) { return assistantApiError(error); }
 }
 

@@ -1,0 +1,74 @@
+import {chromium} from '@playwright/test';
+import {mkdir,writeFile,access} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const root=path.dirname(fileURLToPath(import.meta.url));
+await mkdir(path.join(root,'screenshots'),{recursive:true});
+let executablePath=process.env.DUAL_EXPERIENCE_CHROMIUM;
+if(!executablePath){try{await access(chromium.executablePath())}catch{const candidate=path.join(process.env.LOCALAPPDATA||'','ms-playwright','chromium-1234','chrome-win64','chrome.exe');await access(candidate);executablePath=candidate}}
+const browser=await chromium.launch({headless:true,executablePath,channel:executablePath?undefined:'chromium'});
+const context=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:1});
+const page=await context.newPage();
+const errors=[];const requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
+const checks=[];const base='http://127.0.0.1:4178/';
+for(const theme of ['dark','light'])for(const route of ['home','studio','content','analytics/overview','analytics/audience']){
+  const screenshotRoute=route.replace('/','-');
+  await page.goto(`${base}?theme=${theme}#${route}`);await page.locator('main').waitFor();await page.evaluate(()=>document.fonts.ready);
+  await page.locator('img').evaluateAll(imgs=>Promise.all(imgs.map(i=>i.complete?Promise.resolve():new Promise(r=>{i.onload=r;i.onerror=r}))));
+  assert.equal(await page.locator('img').evaluateAll(imgs=>imgs.every(i=>i.naturalWidth>0)),true);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${theme}/${route} desktop overflow`);
+  await page.screenshot({path:path.join(root,`screenshots/${theme}-${screenshotRoute}-desktop.png`),fullPage:true,animations:'disabled'});
+  checks.push(`${theme}/${route}: desktop 1440px, images loaded, no horizontal overflow`);
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${theme}/${route} mobile overflow`);
+  const mobileCaptureStyle='body{position:relative;padding-bottom:64px}.shell{margin-bottom:0}.rail{position:absolute;bottom:0;top:auto}';
+  await page.screenshot({path:path.join(root,`screenshots/${theme}-${screenshotRoute}-mobile.png`),fullPage:true,style:mobileCaptureStyle,animations:'disabled'});
+  if(route==='studio'){await page.locator('[data-panel="document"].btn').click();assert.equal(await page.locator('.document-panel').isVisible(),true);await page.screenshot({path:path.join(root,`screenshots/${theme}-studio-mobile-document.png`),fullPage:true,style:mobileCaptureStyle,animations:'disabled'});}
+  checks.push(`${theme}/${route}: mobile 390px, no horizontal overflow`);
+  await page.setViewportSize({width:1440,height:1000});
+}
+await page.goto(`${base}?theme=dark#studio`);
+await page.locator('#prompt').fill('主题切换保留输入');await page.locator('#editable').fill('用户编辑的成果文本');
+await page.locator('[data-theme-choice="light"]').click();assert.equal(await page.locator('#prompt').inputValue(),'主题切换保留输入');assert.equal(await page.locator('#editable').innerText(),'用户编辑的成果文本');
+await page.reload();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');assert.equal(await page.locator('#prompt').inputValue(),'主题切换保留输入');
+checks.push('Theme switches retain live prompt/editor state; theme and prompt persist after reload');
+await page.locator('#editable').fill('这是保存验证文本');await page.locator('[data-action="save"]').click();await page.reload();assert.equal(await page.locator('#editable').innerText(),'这是保存验证文本');
+checks.push('Edited artifact saves locally and survives reload');
+await page.locator('#prompt').fill('提供 3 个标题方向');await page.locator('.send').click();await page.getByText('三个标题方向供你选择：',{exact:false}).waitFor();checks.push('Demo conversation replies without API');
+await page.locator('[data-action="skill"]').click();assert.equal(await page.locator('#skill-count').innerText(),'1');await page.locator('[data-action="skill"]').click();assert.equal(await page.locator('#skill-count').innerText(),'0');checks.push('Optional skill can be enabled and removed');
+await page.locator('a.nav-item[href="#content"]').click();await page.locator('#content-search').fill('不存在');assert.equal(await page.locator('#assets .project-card').count(),0);await page.locator('[data-action="clear-filter"]').click();assert.equal(await page.locator('#assets .project-card').count(),8);
+await page.locator('[data-tab="成果"]').click();assert.equal(await page.locator('#assets .project-card').count(),4);await page.locator('#status-filter').selectOption('待完善');assert.equal(await page.locator('#assets .project-card').count(),1);await page.locator('#status-filter').selectOption('全部状态');
+await page.locator('[data-favorite="a1"]').click();await page.locator('[data-tab="收藏"]').click();assert.equal(await page.locator('#assets .project-card').count(),1);await page.locator('[data-view="list"]').click();assert.equal(await page.locator('#assets').evaluate(e=>e.classList.contains('list')),true);checks.push('Search, empty state, reset, type/status filters, favorites and list view');
+await page.locator('[data-detail="a1"]').first().click();assert.equal(await page.locator('dialog').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('dialog').isVisible(),false);checks.push('Content detail dialog and Escape dismiss');
+await page.locator('a.nav-item[href="#home"]').click();await page.locator('[data-action="new"]').click();await page.locator('input[name="name"]').fill('浏览器验证项目');await page.locator('textarea[name="idea"]').fill('验证创建入口');await page.locator('#project-form button[type="submit"]').click();await page.waitForURL('**#studio');assert.equal(await page.locator('.studio-title h1').innerText(),'浏览器验证项目');checks.push('Create local sample project and enter project workspace');
+const downloadPromise=page.waitForEvent('download');await page.locator('[data-action="export"]').click();const download=await downloadPromise;assert.equal(download.suggestedFilename(),'向新而行-品牌叙事.md');checks.push('Artifact Markdown download');
+await page.setViewportSize({width:768,height:1024});for(const route of ['home','studio','content','analytics/overview','analytics/audience']){await page.goto(`${base}?theme=light#${route}`);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);checks.push(`Tablet 768px/${route}: no horizontal overflow`)}
+await page.setViewportSize({width:1440,height:1000});
+await page.goto(`${base}?theme=dark#analytics/overview`);
+assert.equal(await page.locator('.metrics-row .metric-card').count(),4);
+assert.equal(await page.locator('.overview-bottom>.stat-card').count(),3);
+assert.equal(await page.locator('.donut-svg circle[role="button"]').count(),5);
+assert.equal(await page.locator('.stacked-bar button').count(),5);
+assert.equal(await page.locator('.horizontal-bars button').count(),5);
+checks.push('Overview preserves four metrics, full-width area/line plot, stacked bar, horizontal bars and source donut');
+const initialPath=await page.locator('#main-trend path[stroke]').first().getAttribute('d');
+await page.locator('[data-period="year"]').click();assert.notEqual(await page.locator('#main-trend path[stroke]').first().getAttribute('d'),initialPath);
+await page.locator('[data-metric="interactions"]').click();assert.equal(await page.locator('[data-metric="interactions"]').getAttribute('aria-pressed'),'true');
+await page.locator('[data-series="1"]').click();assert.equal(await page.locator('#main-trend path[stroke]').count(),1);
+checks.push('Metric selection, period switch and interactive legend change chart series');
+await page.locator('#main-trend [data-chart-point="3"]').focus();assert.equal(await page.locator('#main-trend .chart-tooltip').isVisible(),true);checks.push('Chart data point tooltip supports keyboard focus');
+await page.locator('[data-analytics-search]').fill('慢生活');assert.equal(await page.locator('#ranking-list .ranking-row').count(),1);
+const cardsBefore=await page.locator('.overview-bottom>.stat-card').evaluateAll(els=>els.map(e=>({x:e.getBoundingClientRect().x,width:e.getBoundingClientRect().width})));
+await page.locator('[data-theme-choice="light"]').click();assert.equal(await page.locator('[data-analytics-search]').inputValue(),'慢生活');
+assert.deepEqual(await page.locator('.overview-bottom>.stat-card').evaluateAll(els=>els.map(e=>({x:e.getBoundingClientRect().x,width:e.getBoundingClientRect().width}))),cardsBefore);checks.push('Theme switch preserves analytics layout, search, metric, period and legend state');
+await page.locator('[data-analytics-search]').fill('');await page.locator('[data-analytics-range]').first().selectOption('最近 7 天');assert.equal(await page.locator('.chart-summary').innerText(), '最近 7 天 · 互动次数 · 示例趋势');
+await page.locator('[data-analytics-scope]').selectOption('品牌样例');assert.ok((await page.locator('.analytics-sample-note').innerText()).includes('品牌样例'));checks.push('Shared range and scope controls update displayed trend');
+const analyticsDownload=page.waitForEvent('download');await page.locator('[data-analytics-action="export"]').click();assert.equal((await analyticsDownload).suggestedFilename(),'鑫世界-数据观察-示例.csv');checks.push('Analytics CSV export');
+await page.locator('.analytics-toolbar a[href="#analytics/audience"]').click();await page.locator('.heatmap').waitFor();assert.equal(await page.locator('.heat-cell').count(),168);assert.equal(await page.locator('.cohort-cell').count(),26);assert.equal(await page.locator('.bars-svg rect').count(),16);assert.equal(await page.locator('.multi-trend path[stroke]').count(),3);assert.equal(await page.locator('.device-card .donut-svg circle[role="button"]').count(),3);checks.push('Audience preserves line chart, 7x24 heatmap, vertical bars, cohort matrix, three-series line chart and device donut');
+const audiencePath=await page.locator('#audience-trend-chart path[stroke]').first().getAttribute('d');await page.locator('[data-audience-metric="duration"]').click();assert.equal(await page.locator('[data-audience-metric="duration"]').getAttribute('aria-pressed'),'true');assert.notEqual(await page.locator('#audience-trend-chart path[stroke]').first().getAttribute('d'),audiencePath);checks.push('Audience metrics switch independently, including duration and percentage units');
+await page.locator('.heat-cell').first().click();assert.equal(await page.locator('dialog').isVisible(),true);await page.keyboard.press('Escape');await page.locator('.device-card .donut-svg circle[role="button"]').first().focus();await page.keyboard.press('Enter');assert.equal(await page.locator('dialog').isVisible(),true);await page.keyboard.press('Escape');checks.push('Heat cells and keyboard-accessible donut segments open statistical details');
+await page.goto(base+'review.html');assert.equal(await page.locator('.shot').count(),22);for(const file of ['DESIGN-SPEC.md','AUDIT-REPORT.md','FRONTEND-DESIGN.md','README.md','assets/logo-original.svg']){const response=await page.request.get(base+file);assert.equal(response.status(),200)}
+assert.equal(errors.length,0,errors.join('\n'));assert.equal(requests.some(r=>new URL(r).pathname.startsWith('/api/')),false);checks.push('Delivery gallery has 22 images; document/logo links HTTP 200; no browser errors or /api/ requests');
+await writeFile(path.join(root,'VERIFICATION.json'),JSON.stringify({checkedAt:new Date().toISOString(),checks,errors,screenshots:22,scope:'V1 isolated static prototype browser validation'},null,2));
+console.log(JSON.stringify({passed:checks.length,screenshots:22,errors},null,2));await browser.close();

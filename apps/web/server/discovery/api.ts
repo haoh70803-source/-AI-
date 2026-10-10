@@ -1,9 +1,17 @@
 import { RedFoxError } from "@content-center/providers";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { ResearchError } from "../research/access";
+import { projectApiError } from "../project-api";
+import { ProjectServiceError } from "../project-service";
 import { DiscoveryServiceError } from "./service";
 
 export function discoveryApiError(error: unknown) {
+  if (error instanceof ResearchError) return NextResponse.json({ error: error.code, message: error.message }, { status: error.status });
+  if (error instanceof ProjectServiceError) {
+    const response = projectApiError(error);
+    if (response) return response;
+  }
   if (error instanceof ZodError) return NextResponse.json({ error: "INVALID_INPUT", message: "请检查输入内容。" }, { status: 400 });
   if (error instanceof DiscoveryServiceError) {
     const status = error.code === "DISCOVERY_NOT_FOUND" ? 404 : error.code === "DISCOVERY_DUPLICATE" || error.code === "IDEA_REFERENCES_REQUIRE_COLLECTION" ? 409 : error.code === "REDFOX_DISABLED" ? 409 : 503;

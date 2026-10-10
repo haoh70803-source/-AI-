@@ -27,3 +27,5 @@ output/
 .next-release-check/
 
 .next-account-review/
+
+.next-local-test/

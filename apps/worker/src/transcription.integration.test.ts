@@ -18,6 +18,9 @@ import {
 } from "./queue";
 import { createRedisConnection, queuePrefix } from "./redis-connection";
 import { cleanupExpiredAsrAudio, requestSourceTranscription, resolveWorkspaceTranscriptionPlan, TranscriptionAlreadyRunningError } from "./transcription";
+import { deliveryKey } from "./queue-producer";
+import { withIngestExecution } from "./job-recovery";
+import { ensureVideoPreview } from "./video-preview";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +34,7 @@ describe("TRANSCRIBE_SOURCE integration", () => {
   let fixtureOrigin = "";
   let temporaryDirectory = "";
   let providerCalls = 0;
-  let fixtureMode: "SUCCESS" | "EMPTY" = "SUCCESS";
+  let fixtureMode: "SUCCESS" | "EMPTY" | "FAIL_TAIL" = "SUCCESS";
   let completedSourceId = "";
   const worker = createTranscribeSourceWorker();
   const events = new QueueEvents(TRANSCRIBE_SOURCE_QUEUE, { connection: createRedisConnection(), prefix: queuePrefix() });
@@ -55,6 +58,10 @@ describe("TRANSCRIBE_SOURCE integration", () => {
       expect(body.audio.url).toBeUndefined();
       expect(Buffer.from(body.audio.data ?? "", "base64").byteLength).toBeGreaterThan(0);
       expect(body.request).toMatchObject({ model_name: "bigmodel", show_utterances: true });
+      if (fixtureMode === "FAIL_TAIL" && Buffer.from(body.audio.data!, "base64").byteLength < 1_000_000) {
+        response.writeHead(503, { "X-Api-Status-Code": "55000001" }).end();
+        return;
+      }
       response.writeHead(200, {
         "content-type": "application/json",
         "X-Api-Status-Code": "20000000",
@@ -159,14 +166,65 @@ describe("TRANSCRIBE_SOURCE integration", () => {
     }
   });
 
-  it("runs VIDEO STORED through FFmpeg, MinIO, Doubao and Transcript", async () => {
+  it("splits large private audio with real FFmpeg, persists partial success and resumes only its failed tail", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "content-center-long-asr-test-"));
+    try {
+      const path = join(directory, "long.mp3");
+      await execFileAsync("ffmpeg", ["-nostdin", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=601", "-c:a", "libmp3lame", "-b:a", "320k", "-y", path]);
+      const body = await readFile(path);
+      expect(body.length).toBeGreaterThan(20 * 1024 * 1024);
+      const source = await db.sourceItem.create({ data: { workspaceId, createdById: userId, sourceType: "AUDIO", status: "READY", title: "Long ASR disposable fixture" } });
+      const asset = await db.sourceAsset.create({ data: { workspaceId, sourceItemId: source.id, assetType: "AUDIO", sourceProvider: "LOCAL_UPLOAD", status: "STORED", mimeType: "audio/mpeg", sizeBytes: BigInt(body.length), metadata: { durationMs: 601_000 } } });
+      const storage = minioStorageFromEnv();
+      const scope = { workspaceId, sourceItemId: source.id, assetId: asset.id };
+      const storageKey = buildSourceAssetObjectKey({ ...scope, assetType: "AUDIO", mimeType: "audio/mpeg" });
+      await storage.upload({ key: storageKey, body, contentType: "audio/mpeg", assetScope: scope });
+      await db.sourceAsset.update({ where: { id: asset.id }, data: { storageKey } });
+      const callsBefore = providerCalls;
+      fixtureMode = "FAIL_TAIL";
+      const first = await requestSourceTranscription({ workspaceId, sourceItemId: source.id, requestedById: userId, mediaAssetId: asset.id });
+      const queue = createTranscribeSourceQueue();
+      try {
+        const queued = await queue.getJob(deliveryKey(TRANSCRIBE_SOURCE, { jobId: first.job.id, workspaceId }));
+        expect(queued).toBeDefined();
+        await expect(queued!.waitUntilFinished(events, 30_000)).rejects.toThrow("已保存 3/4 段");
+        const failed = await db.ingestJob.findUniqueOrThrow({ where: { id: first.job.id } });
+        expect(failed.status).toBe("FAILED");
+        expect((failed.metadata as { chunkProgress: { completed: number } }).chunkProgress.completed).toBe(3);
+        expect(await db.transcript.findUnique({ where: { sourceItemId: source.id } })).toBeNull();
+        const callsAfterFailure = providerCalls;
+        expect(callsAfterFailure - callsBefore).toBe(6);
+        fixtureMode = "SUCCESS";
+        const resumed = await requestSourceTranscription({ workspaceId, sourceItemId: source.id, requestedById: userId, mediaAssetId: asset.id });
+        const resumedDelivery = await queue.getJob(deliveryKey(TRANSCRIBE_SOURCE, { jobId: resumed.job.id, workspaceId }));
+        await resumedDelivery!.waitUntilFinished(events, 30_000);
+        expect(providerCalls - callsAfterFailure).toBe(1);
+        const transcript = await db.transcript.findUniqueOrThrow({ where: { sourceItemId: source.id } });
+        expect(transcript.durationMs).toBe(601_000);
+        expect((transcript.segments as Array<{ startMs: number }>).map(segment => segment.startMs)).toEqual([0, 179_000, 359_000, 539_000]);
+      } finally { fixtureMode = "SUCCESS"; await queue.close(); }
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }, 60_000);
+
+  it("allows an interrupted chunked job to resume under the existing execution lock", async () => {
+    const source = await db.sourceItem.create({ data: { workspaceId, createdById: userId, sourceType: "AUDIO", status: "READY", title: "Interrupted transcription disposable fixture" } });
+    const record = await db.ingestJob.create({ data: { workspaceId, sourceItemId: source.id, requestedById: userId, jobType: "TRANSCRIBE", provider: "DOUBAO_ASR", providerMode: "REAL", status: "RUNNING", attempt: 1, maxAttempts: 3, metadata: { chunkCheckpoint: { version: 1, key: "fixture", chunks: {} } } } });
+    const delivery = { name: TRANSCRIBE_SOURCE, data: { workspaceId, sourceItemId: source.id, requestedById: userId, jobId: record.id }, attemptsMade: 1 } as import("bullmq").Job;
+    let resumed = false;
+    await withIngestExecution(delivery, async () => { resumed = true; return { status: "resumed" }; });
+    expect(resumed).toBe(true);
+    await db.ingestJob.update({ where: { id: record.id }, data: { status: "CANCELLED" } });
+  });
+
+  it("runs HEVC VIDEO through a separate cached preview, FFmpeg, MinIO, Doubao and Transcript", async () => {
+    const callsBefore = providerCalls;
     temporaryDirectory = await mkdtemp(join(tmpdir(), "content-center-worker-asr-"));
     const videoPath = join(temporaryDirectory, "fixture.mp4");
     await execFileAsync("ffmpeg", [
       "-nostdin", "-hide_banner", "-loglevel", "error",
       "-f", "lavfi", "-i", "color=c=black:s=160x90:d=1",
       "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
-      "-shortest", "-c:v", "libx264", "-c:a", "aac", "-y", videoPath,
+      "-shortest", "-c:v", "libx265", "-c:a", "aac", "-y", videoPath,
     ]);
     const videoBody = await readFile(videoPath);
     const source = await db.sourceItem.create({
@@ -192,7 +250,17 @@ describe("TRANSCRIBE_SOURCE integration", () => {
     expect(requested.job.status).toBe("QUEUED");
     await expect.poll(async () => (await db.ingestJob.findUnique({ where: { id: requested.job.id } }))?.status, { timeout: 30_000 }).toBe("SUCCEEDED");
 
-    expect(providerCalls).toBe(1);
+    expect(providerCalls - callsBefore).toBe(1);
+    const preview = await db.sourceAsset.findFirstOrThrow({ where: { workspaceId, sourceItemId: source.id, sourceProvider: "FFMPEG_VIDEO_PREVIEW", status: "STORED" } });
+    expect(preview).toMatchObject({ assetType: "VIDEO", metadata: { derivedFromAssetId: videoAsset.id, browserVideoValidated: 1, videoProbe: { codec: "h264", width: 160, height: 90 } } });
+    const scope = { workspaceId, sourceItemId: source.id, assetId: videoAsset.id };
+    expect(await ensureVideoPreview(scope)).toBe(preview.id);
+    expect(await db.sourceAsset.count({ where: { workspaceId, sourceItemId: source.id, sourceProvider: "FFMPEG_VIDEO_PREVIEW" } })).toBe(1);
+    await expect(ensureVideoPreview({ ...scope, workspaceId: "foreign-workspace" })).rejects.toThrow("VIDEO_NOT_AVAILABLE");
+    const original = await db.sourceAsset.findUniqueOrThrow({ where: { id: videoAsset.id } });
+    expect(original.storageKey).toBe(videoAsset.storageKey);
+    const bytes = await fetch((await minioStorageFromEnv().getSignedUrl(original.storageKey!)).data.url);
+    expect(Buffer.from(await bytes.arrayBuffer())).toEqual(videoBody);
     await expect(db.sourceItem.findUnique({ where: { id: source.id } })).resolves.toMatchObject({ status: "READY" });
     const audio = await db.sourceAsset.findFirstOrThrow({ where: { sourceItemId: source.id, assetType: "AUDIO" } });
     expect(audio).toMatchObject({ status: "STORED", sourceProvider: "FFMPEG", mimeType: "audio/mpeg", remoteUrl: null });
@@ -241,6 +309,7 @@ describe("TRANSCRIBE_SOURCE integration", () => {
   });
 
   it("keeps the old Transcript and reuses AUDIO when retranscription fails", async () => {
+    const callsBefore = providerCalls;
     fixtureMode = "EMPTY";
     const source = await db.sourceItem.findUniqueOrThrow({ where: { id: completedSourceId }, include: { assets: true, transcript: true } });
     const video = source.assets.find((asset) => asset.assetType === "VIDEO");
@@ -277,10 +346,11 @@ describe("TRANSCRIBE_SOURCE integration", () => {
     await expect(db.transcript.findUnique({ where: { sourceItemId: source.id } })).resolves.toMatchObject({ fullText: beforeText });
     await expect(db.sourceItem.findUnique({ where: { id: source.id } })).resolves.toMatchObject({ status: "READY" });
     expect(await db.sourceAsset.count({ where: { sourceItemId: source.id, assetType: "AUDIO", status: "STORED" } })).toBe(beforeAudioCount);
-    expect(providerCalls).toBe(2);
+    expect(providerCalls - callsBefore).toBe(1);
   }, 30_000);
 
   it("retries only after an explicit request and keeps the existing transcript readable", async () => {
+    const callsBefore = providerCalls;
     fixtureMode = "SUCCESS";
     const source = await db.sourceItem.findUniqueOrThrow({ where: { id: completedSourceId }, include: { assets: true, transcript: true } });
     const video = source.assets.find((asset) => asset.assetType === "VIDEO" && asset.status === "STORED");
@@ -291,7 +361,7 @@ describe("TRANSCRIBE_SOURCE integration", () => {
     await expect.poll(async () => (await db.ingestJob.findUnique({ where: { id: requested.job.id } }))?.status, { timeout: 30_000 }).toBe("SUCCEEDED");
     await expect(db.transcript.findUnique({ where: { sourceItemId: source.id } })).resolves.toMatchObject({ fullText: previousText });
     expect(await db.materialAnalysis.count({ where: { sourceItemId: source.id } })).toBe(0);
-    expect(providerCalls).toBe(3);
+    expect(providerCalls - callsBefore).toBe(1);
   }, 40_000);
 
   it("creates one queued job and one provider call for concurrent requests, then permits retranscription", async () => {
@@ -339,6 +409,10 @@ describe("TRANSCRIBE_SOURCE integration", () => {
     const derived = await db.sourceAsset.findFirstOrThrow({ where: { workspaceId, sourceItemId: completedSourceId, assetType: "AUDIO", sourceProvider: "FFMPEG", status: "STORED" } });
     await db.sourceAsset.update({ where: { id: derived.id }, data: { storedAt: old } });
     const transcriptBefore = await db.transcript.findUniqueOrThrow({ where: { sourceItemId: completedSourceId } });
+    const active = await db.ingestJob.create({ data: { workspaceId, sourceItemId: completedSourceId, requestedById: userId, jobType: "TRANSCRIBE", provider: "DOUBAO_ASR", providerMode: "REAL", status: "RUNNING" } });
+    expect((await cleanupExpiredAsrAudio(Date.now(), workspaceId)).cleaned).toBe(0);
+    await expect(db.sourceAsset.findUnique({ where: { id: derived.id } })).resolves.toMatchObject({ status: "STORED" });
+    await db.ingestJob.update({ where: { id: active.id }, data: { status: "CANCELLED" } });
     const result = await cleanupExpiredAsrAudio(Date.now(), workspaceId);
     expect(result.cleaned).toBe(1);
     await expect(db.sourceItem.findUnique({ where: { id: originalSource.id } })).resolves.toMatchObject({ status: "READY" });

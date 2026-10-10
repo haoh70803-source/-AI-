@@ -123,10 +123,11 @@ describe("generic text artifacts", () => {
     expect(resolved.item).toMatchObject({ objectType: "ARTIFACT", objectId: artifact.artifactId, version: artifact.version, ownership: "PENDING", provenance: "artifact:text" });
     expect(resolved.item.content).toContain("第二段需要缩短一半");
 
-    const provider = new MockLLMProvider(() => "新版本：第一段保持。\n第二段缩短。\n第三段保持。");
+    const provider = new MockLLMProvider(() => "第二段缩短。");
     const runtime = { provider, providerName: "KIMI", model: "kimi-k2.6", requestedModel: "kimi-k2.6", mode: "REAL" as const };
     const result = await runProjectAssistant({ workspaceId, userId: ownerId, projectId, content: "把第二段缩短一半", targetArtifactId: artifact.artifactId }, () => undefined, { runtime });
     expect(result).toMatchObject({ artifactId: artifact.artifactId, resultType: "REWRITE", actions: ["APPLY_ARTIFACT"] });
+    expect(result.content).toBe("第一段保持。\n第二段缩短。\n第三段保持。");
     const messages = await db.assistantMessage.findMany({ where: { threadId, artifactId: artifact.artifactId }, orderBy: { createdAt: "desc" }, take: 2 });
     expect(messages).toHaveLength(2);
     expect(messages.map(({ artifactId }) => artifactId)).toEqual([artifact.artifactId, artifact.artifactId]);

@@ -49,6 +49,7 @@ export const doubaoAsrConfigSchema = z
     accessToken: optionalText(10_000),
     resourceId: optionalText(500),
     protocol: z.enum(DOUBAO_PROTOCOLS).optional(),
+    flashResourceId: optionalText(500),
     boostingTableId: optionalText(500),
     boostingTableName: optionalText(500),
   })
@@ -151,7 +152,7 @@ export const providerConfigFields: Record<
   WEB_SEARCH: { publicFields: [], secretFields: ["apiKey"], primarySecret: "apiKey" },
   REDFOX: { publicFields: ["baseUrl"], secretFields: ["apiKey"], primarySecret: "apiKey" },
   DOUBAO_ASR: {
-    publicFields: ["authMode", "baseUrl", "appId", "resourceId", "protocol", "boostingTableId", "boostingTableName"],
+    publicFields: ["authMode", "baseUrl", "appId", "resourceId", "protocol", "flashResourceId", "boostingTableId", "boostingTableName"],
     secretFields: ["apiKey", "accessToken"],
     primarySecret: "apiKey",
   },

@@ -1,0 +1,123 @@
+[
+  {
+    "id": "workbench",
+    "file": "qa-reports/screenshots/core-1440x900.png",
+    "route": "/dashboard?project=<id>",
+    "note": "历史 QA 测试项目的空对话界面。测试数据，非本轮截图或模型成功证据。",
+    "output": "screenshots/workbench.png",
+    "sha256": "0c3f9ce51db1c89ed1c10367f68d603aad9434cae6a9734e16882bd865818271",
+    "fileModifiedAt": "2026-10-08T13:09:53.179Z",
+    "captureDate": "无法从 PNG 与可用记录可靠确定；mtime 不是拍摄时间",
+    "newCapture": false
+  },
+  {
+    "id": "artifact",
+    "file": "qa-reports/screenshots/restored-artifact.png",
+    "route": "/dashboard?project=<id>&node=artifact:<id>",
+    "note": "历史 QA 成果窗口显示 V2；截图只说明曾有该界面，不证明本轮恢复或刷新通过。",
+    "output": "screenshots/artifact.png",
+    "sha256": "b589141d011361acfb73703d7b5f598f11235ecd3f921de932beb21404af7b1a",
+    "fileModifiedAt": "2026-10-08T13:09:59.018Z",
+    "captureDate": "无法从 PNG 与可用记录可靠确定；mtime 不是拍摄时间",
+    "newCapture": false
+  },
+  {
+    "id": "home",
+    "file": "output/home-performance/regression/登录首页-新版驾驶舱.png",
+    "route": "/home（历史样式）",
+    "note": "历史运营驾驶舱演示截图仍显示“演示模式”；当前源码 showDataSource=false，与截图存在版本差异。所有数字不得作为经营成果。",
+    "output": "screenshots/home.png",
+    "sha256": "d36d999cfdd95f4c43f2d83b622e0caa1977f3d2f18bef202a7216cfc1426867",
+    "fileModifiedAt": "2026-10-08T08:57:33.298Z",
+    "captureDate": "无法从 PNG 与可用记录可靠确定；mtime 不是拍摄时间",
+    "newCapture": false
+  },
+  {
+    "id": "feishu",
+    "file": "output/starship-ui/verification/全站-09-library.png",
+    "route": "/library/feishu",
+    "note": "历史飞书连接与检索界面。当前知识库浏览和订阅可能已变化，截图不证明同步成功。",
+    "output": "screenshots/feishu.png",
+    "sha256": "f8806fc742192845590545f2a1a4e4fdf573ccd02c32da3389cf939d40787060",
+    "fileModifiedAt": "2026-10-08T07:42:42.650Z",
+    "captureDate": "无法从 PNG 与可用记录可靠确定；mtime 不是拍摄时间",
+    "newCapture": false
+  },
+  {
+    "id": "navigation",
+    "file": "output/research-navigation-preview/navigation-1440.png",
+    "route": "研究导航布局预览",
+    "note": "图片自身明确“导航效果预览 未连接业务数据”，不是研究报告或真实业务页面验证。",
+    "output": "screenshots/navigation.png",
+    "sha256": "c0d9a1992bd9862b35a2a291f213b1bc9698d6093ce83a54da4e5ae5bea64457",
+    "fileModifiedAt": "2026-10-10T02:10:25.233Z",
+    "captureDate": "无法从 PNG 与可用记录可靠确定；mtime 不是拍摄时间",
+    "newCapture": false
+  },
+  {
+    "id": "settings",
+    "file": "output/ui-cockpit/settings-light.png",
+    "route": "/settings（历史隔离预览）",
+    "note": "历史设置弹层，标注隔离预览/样例；不证明账号、空间和配置操作有效。",
+    "output": "screenshots/settings.png",
+    "sha256": "9dd8b2274e0d8504f437538cbc41b9d731a02ed90d82ff3f55fd4a3bee2fce85",
+    "fileModifiedAt": "2026-10-09T04:05:25.261Z",
+    "captureDate": "无法从 PNG 与可用记录可靠确定；mtime 不是拍摄时间",
+    "newCapture": false
+  },
+  {
+    "id": "current-login",
+    "file": "docs/product-review/2026-10-10/full-page-audit/screenshots/current-login.png",
+    "route": "/login 本轮访客实拍",
+    "note": "2026-10-10 在本机 3022 未登录浏览器实际渲染；仅验证登录页展示，没有提交登录或验证账号功能。该服务运行版本尚未与工作树构建核对。",
+    "output": "screenshots/current-login.png",
+    "sha256": "836ce3105f8460c052f2e1d76248b9a79e56bca1ec4e996047866ba835f80f83",
+    "fileModifiedAt": "2026-10-10T03:51:07.123Z",
+    "captureDate": "2026-10-10T03:47:49.111Z",
+    "newCapture": true
+  },
+  {
+    "id": "current-account-invite",
+    "file": "docs/product-review/2026-10-10/full-page-audit/screenshots/current-account-invite.png",
+    "route": "/account/invite 本轮访客实拍",
+    "note": "本轮不带邮件 token 的实际页面显示链接缺失或失效，提交禁用；仅验证空链接页面展示，未验证成功路径。",
+    "output": "screenshots/current-account-invite.png",
+    "sha256": "c539feb51c4a9c1dadd711d5b9e8da9c4263e93eabc301de22b2b4f1b6083cef",
+    "fileModifiedAt": "2026-10-10T03:51:07.125Z",
+    "captureDate": "2026-10-10T03:47:49.111Z",
+    "newCapture": true
+  },
+  {
+    "id": "current-account-recovery",
+    "file": "docs/product-review/2026-10-10/full-page-audit/screenshots/current-account-recovery.png",
+    "route": "/account/recovery 本轮访客实拍",
+    "note": "本轮实际页面显示邮件服务未配置，申请恢复邮件按钮禁用；未提交恢复请求。",
+    "output": "screenshots/current-account-recovery.png",
+    "sha256": "d1df32813aa28dcb7e7257185d04afff90d555d525d1949b9a96b3373d7d4219",
+    "fileModifiedAt": "2026-10-10T03:51:07.127Z",
+    "captureDate": "2026-10-10T03:47:49.111Z",
+    "newCapture": true
+  },
+  {
+    "id": "current-account-reset",
+    "file": "docs/product-review/2026-10-10/full-page-audit/screenshots/current-account-reset.png",
+    "route": "/account/reset 本轮访客实拍",
+    "note": "本轮不带邮件 token 的实际页面显示链接缺失或失效，提交禁用；仅验证空链接页面展示，未验证成功路径。",
+    "output": "screenshots/current-account-reset.png",
+    "sha256": "fdb4aa01e03360bca7703e2f2930f0ec8747e64942e912c9b67077e6e1baee3c",
+    "fileModifiedAt": "2026-10-10T03:51:07.128Z",
+    "captureDate": "2026-10-10T03:47:49.111Z",
+    "newCapture": true
+  },
+  {
+    "id": "current-account-verify",
+    "file": "docs/product-review/2026-10-10/full-page-audit/screenshots/current-account-verify.png",
+    "route": "/account/verify 本轮访客实拍",
+    "note": "本轮不带邮件 token 的实际页面显示链接缺失或失效，提交禁用；仅验证空链接页面展示，未验证成功路径。",
+    "output": "screenshots/current-account-verify.png",
+    "sha256": "bae5cb7fe35d55f2c5ddefcffec89772acba120303504c9485048a5de672f118",
+    "fileModifiedAt": "2026-10-10T03:51:07.130Z",
+    "captureDate": "2026-10-10T03:47:49.111Z",
+    "newCapture": true
+  }
+]

@@ -14,6 +14,14 @@ export function AppearanceSync() {
   return null;
 }
 
+export function AppearanceToggle() {
+  const appearance = useSyncExternalStore(subscribeAppearance, getAppearance, () => DEFAULT_APPEARANCE);
+  const [message, setMessage] = useState("");
+  return <div className="app-theme-control"><div className="app-theme-toggle" role="group" aria-label="切换主题">
+    {options.slice().reverse().map(({ value, Icon }) => <button key={value} type="button" aria-pressed={appearance === value} aria-label={value === "light" ? "切换浅色主题" : "切换深色主题"} onClick={() => setMessage(setAppearance(value) ? "" : "主题已切换，浏览器未允许保存偏好。")}><Icon size={14}/><span>{value === "light" ? "Light Edition" : "Dark Studio"}</span></button>)}
+  </div>{message ? <span className="app-theme-message" role="status">{message}</span> : null}</div>;
+}
+
 export function AppearanceSettings() {
   const appearance = useSyncExternalStore(subscribeAppearance, getAppearance, () => DEFAULT_APPEARANCE);
   const [message, setMessage] = useState("");

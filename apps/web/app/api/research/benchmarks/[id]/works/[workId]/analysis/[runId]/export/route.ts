@@ -1,6 +1,6 @@
 import { researchApiActor, researchApiError } from "@/server/research/api";
 import { getWorkResearchForExport } from "@/server/research/work-research-service";
-import { workResearchMarkdown, workResearchMarkdownFilename } from "@/components/research/work-research-markdown";
+import { workResearchMarkdown, workResearchMarkdownFilename } from "@/lib/work-research-markdown";
 
 export async function GET(request: Request, route: { params: Promise<{ id: string; workId: string; runId: string }> }) {
   try {

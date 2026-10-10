@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  distDir: process.env.ENVIRONMENT_ID === "LOCAL_REVIEW" ? ".next-account-review" : process.env.NEXT_BUILD_CHECK === "1" ? ".next-release-check" : ".next",
+  distDir: process.env.ENVIRONMENT_ID === "LOCAL_TEST" ? ".next-local-test" : process.env.ENVIRONMENT_ID === "LOCAL_REVIEW" ? ".next-account-review" : process.env.NEXT_BUILD_CHECK === "1" ? ".next-release-check" : ".next",
   serverExternalPackages: ["jsdom", "pdf-parse", "@napi-rs/canvas", "bullmq"],
   turbopack: {},
   experimental: {

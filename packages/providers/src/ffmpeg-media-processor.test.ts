@@ -16,6 +16,23 @@ afterEach(async () => {
 });
 
 describe("FFmpegMediaProcessor", () => {
+  it("converts HEVC into a verified H.264 preview and rejects an audio-only file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "content-center-preview-test-"));
+    cleanupDirectories.push(directory);
+    const input = join(directory, "original.mp4");
+    await execFileAsync("ffmpeg", ["-nostdin", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=320x180:d=2", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-shortest", "-c:v", "libx265", "-c:a", "aac", "-y", input]);
+    const processor = new FFmpegMediaProcessor();
+    const original = await processor.probeVideo(input);
+    expect(original).toMatchObject({ codec: "hevc", width: 320, height: 180, browserCompatible: false });
+    const result = await processor.createVideoPreview(input, original.durationMs);
+    try {
+      expect(result.probe).toMatchObject({ codec: "h264", browserCompatible: true, width: 320, height: 180 });
+      expect((await processor.probeVideo(input)).codec).toBe("hevc");
+      const audio = await processor.extractAudio(input);
+      try { await expect(processor.probeVideo(audio.path)).rejects.toMatchObject({ code: "VIDEO_TRACK_MISSING" }); }
+      finally { await audio.cleanup(); }
+    } finally { await result.cleanup(); }
+  }, 30_000);
   it("extracts mono 16kHz MP3 audio from a small real video", async () => {
     const directory = await mkdtemp(join(tmpdir(), "content-center-ffmpeg-test-"));
     cleanupDirectories.push(directory);
@@ -35,6 +52,10 @@ describe("FFmpegMediaProcessor", () => {
     const bounded = await new FFmpegMediaProcessor().extractAudio(videoPath, { limits: "NONE", maxDurationMs: 500, localOnly: true });
     expect(bounded.durationMs).toBeLessThanOrEqual(600);
     await bounded.cleanup();
+    const slice = await new FFmpegMediaProcessor().extractAudio(videoPath, { limits: "NONE", startMs: 500, maxDurationMs: 300, localOnly: true });
+    expect(slice.durationMs).toBeGreaterThanOrEqual(300);
+    expect(slice.durationMs).toBeLessThan(450);
+    await slice.cleanup();
   }, 20_000);
 
   it("reports FFmpeg failures explicitly", async () => {

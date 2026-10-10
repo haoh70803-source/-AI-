@@ -29,7 +29,7 @@ function normalized(value: string) { return value.normalize("NFKC").toLocaleLowe
 function fingerprint(parts: string[]) { return createHash("sha256").update(parts.join("|")).digest("hex"); }
 
 async function roleFor(workspaceId: string, userId: string) {
-  const member = await db.workspaceMember.findUnique({ where: { workspaceId_userId: { workspaceId, userId } }, select: { role: true } });
+  const member = await db.workspaceMember.findFirst({ where: { workspaceId, userId, disabledAt: null, workspace: { disabledAt: null }, user: { disabledAt: null } }, select: { role: true } });
   if (!member) throw new LearningSuggestionError("FORBIDDEN", "当前账号不能处理这些建议。");
   return member.role as WorkspaceRoleName;
 }
@@ -46,7 +46,7 @@ function methodDTO(row: { id: string; sourceBenchmarkStudyId: string; type: Meth
 
 export async function listMethodSuggestions(input: { workspaceId: string; userId: string; benchmarkAccountId: string }) {
   await roleFor(input.workspaceId, input.userId);
-  const rows = await db.methodSuggestion.findMany({ where: { workspaceId: input.workspaceId, sourceBenchmarkStudy: { benchmarkAccountId: input.benchmarkAccountId } }, orderBy: { createdAt: "desc" } });
+  const rows = await db.methodSuggestion.findMany({ where: { workspaceId: input.workspaceId, ownerUserId: input.userId, sourceBenchmarkStudy: { benchmarkAccountId: input.benchmarkAccountId } }, orderBy: { createdAt: "desc" } });
   return rows.map(methodDTO);
 }
 
@@ -63,8 +63,9 @@ export async function generateMethodSuggestions(input: { workspaceId: string; us
     const method = parsed.data.commonMethods[suggestion.sourceMethodIndex]; if (!method) continue;
     const sourceRefs = [...new Set(method.occurrenceSampleIds.flatMap((id) => study.samples.find((sample) => sample.id === id)?.sourceItemId ?? []))];
     if (!sourceRefs.length || !method.evidence.length) continue;
-    const dedupeKey = fingerprint([study.id, suggestion.type, normalized(method.title)]);
-    const exists = await db.methodSuggestion.findUnique({ where: { dedupeKey }, select: { id: true } }); if (exists) continue;
+    const legacyKey = fingerprint([study.id, suggestion.type, normalized(method.title)]);
+    const dedupeKey = fingerprint([input.workspaceId, input.userId, study.id, suggestion.type, normalized(method.title)]);
+    const exists = await db.methodSuggestion.findFirst({ where: { workspaceId: input.workspaceId, ownerUserId: input.userId, dedupeKey: { in: [dedupeKey, legacyKey] } }, select: { id: true } }); if (exists) continue;
     await db.methodSuggestion.create({ data: { workspaceId: input.workspaceId, ownerUserId: input.userId, sourceBenchmarkStudyId: study.id, sourceMethodIndex: suggestion.sourceMethodIndex, type: suggestion.type, title: method.title, steps: json(list(method.howTo)), applicableScenarios: json(list(method.applicable)), boundaries: json(list(method.boundaries)), rationale: suggestion.rationale, stability: study.sampleCount >= 3 && method.occurrenceSampleIds.length >= 3 ? "STABLE" : "LIMITED", sampleCount: method.occurrenceSampleIds.length, sourceRefs: json(sourceRefs), evidence: json(method.evidence), dedupeKey, generatedById: input.userId } }); created += 1;
   }
   return { created, items: await listMethodSuggestions({ workspaceId: input.workspaceId, userId: input.userId, benchmarkAccountId: study.benchmarkAccountId }) };
@@ -73,7 +74,7 @@ export async function generateMethodSuggestions(input: { workspaceId: string; us
 export async function decideMethodSuggestion(input: { workspaceId: string; userId: string; benchmarkAccountId?: string; suggestionId: string; decision: "SAVE" | "REJECT"; title?: string; steps?: string[]; applicableScenarios?: string[]; boundaries?: string[] }) {
   const role = await roleFor(input.workspaceId, input.userId); const action = input.decision === "SAVE" ? "SAVE_FORMAL_METHOD" : "CREATE_RESEARCH_CANDIDATE"; const permission = new ActionPermissionPolicy().evaluate({ role, action, userConfirmed: input.decision === "SAVE" });
   if (permission.decision !== "ALLOW") throw new LearningSuggestionError("FORBIDDEN", "当前权限可以查看建议，但不能处理。");
-  const suggestion = await db.methodSuggestion.findFirst({ where: { id: input.suggestionId, workspaceId: input.workspaceId, status: "PENDING", ...(input.benchmarkAccountId ? { sourceBenchmarkStudy: { benchmarkAccountId: input.benchmarkAccountId } } : {}) } });
+  const suggestion = await db.methodSuggestion.findFirst({ where: { id: input.suggestionId, workspaceId: input.workspaceId, ownerUserId: input.userId, status: "PENDING", ...(input.benchmarkAccountId ? { sourceBenchmarkStudy: { benchmarkAccountId: input.benchmarkAccountId } } : {}) } });
   if (!suggestion) throw new LearningSuggestionError("ALREADY_REVIEWED", "这条建议已经处理。");
   if (input.decision === "REJECT") { await db.$transaction([db.methodSuggestion.update({ where: { id: suggestion.id }, data: { status: "REJECTED", reviewedById: input.userId, reviewedAt: new Date() } }), db.auditLog.create({ data: { workspaceId: input.workspaceId, userId: input.userId, action: "method_suggestion.rejected", resourceType: "method_suggestion", resourceId: suggestion.id, metadata: { benchmarkStudyId: suggestion.sourceBenchmarkStudyId } } })]); return { status: "REJECTED" as const }; }
   const method = await createMethodFromBenchmarkStudy({ workspaceId: input.workspaceId, ownerUserId: input.userId, benchmarkStudyId: suggestion.sourceBenchmarkStudyId, methodIndex: suggestion.sourceMethodIndex, title: input.title ?? suggestion.title, steps: input.steps ?? strings(suggestion.steps), applicableScenarios: input.applicableScenarios ?? strings(suggestion.applicableScenarios), boundaries: input.boundaries ?? strings(suggestion.boundaries) });

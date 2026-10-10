@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { CreationInputError, validateCreationModel, type CreationModel } from "./creation/models";
 import { loadCreationSources } from "./creation/sources";
+import { MAX_PROJECT_SKILLS } from "../lib/contracts/creation";
 import { isDefaultContentMethodPayload } from "./default-content-method/schemas";
 
 import {
@@ -14,7 +15,7 @@ import { db, findProjectForUser, type Prisma } from "@content-center/db";
 import { getProjectNextAction } from "../lib/project-next-action";
 
 export class ProjectServiceError extends Error {
-  constructor(readonly code: "PROJECT_NOT_FOUND" | "SOURCE_NOT_FOUND" | "SOURCE_ALREADY_ADDED" | "SOURCE_LIMIT_EXCEEDED" | "PROJECT_CONFLICT" | "PROJECT_RETAINED") {
+  constructor(readonly code: "PROJECT_NOT_FOUND" | "PROJECT_FORBIDDEN" | "SOURCE_NOT_FOUND" | "SOURCE_ALREADY_ADDED" | "SOURCE_LIMIT_EXCEEDED" | "PROJECT_CONFLICT" | "PROJECT_RETAINED") {
     super(code);
     this.name = "ProjectServiceError";
   }
@@ -122,7 +123,13 @@ export async function createProject(input: {
   folderId?: string;
   methodVersionIds?: string[];
   modelSelection?: CreationModel | null;
-}) {
+}, transaction?: Prisma.TransactionClient) {
+  const store = transaction ?? db;
+  const assertCreateAllowed = async (client: Prisma.TransactionClient) => {
+    const member = await client.workspaceMember.findFirst({ where: { workspaceId: input.workspaceId, userId: input.userId, disabledAt: null, workspace: { disabledAt: null }, user: { disabledAt: null } }, select: { role: true } });
+    if (!member || member.role === "VIEWER") throw new ProjectServiceError("PROJECT_FORBIDDEN");
+  };
+  await assertCreateAllowed(store);
   const requestedSourceIds = [...new Set([...(input.sourceItemId ? [input.sourceItemId] : []), ...(input.sourceItemIds ?? [])])];
   if (requestedSourceIds.length > 8) throw new ProjectServiceError("SOURCE_LIMIT_EXCEEDED");
   const clientRequestId = input.clientRequestId?.trim() || null;
@@ -132,7 +139,7 @@ export async function createProject(input: {
   const normalizedAudience = input.audience?.trim() || null;
   const methodIds = [...new Set(input.methodVersionIds ?? [])];
   const requestHash = createHash("sha256").update(JSON.stringify({ title: normalizedTitle, description: normalizedDescription, goal: normalizedGoal, audience: normalizedAudience, sources: [...requestedSourceIds].sort(), folderId: input.folderId ?? null, methods: [...methodIds].sort(), model: input.modelSelection ?? null })).digest("hex");
-  const existingRequest = clientRequestId ? await db.contentProject.findFirst({ where: { workspaceId: input.workspaceId, createdById: input.userId, clientRequestId }, include: { sources: { select: { sourceItemId: true } } } }) : null;
+  const existingRequest = clientRequestId ? await store.contentProject.findFirst({ where: { workspaceId: input.workspaceId, createdById: input.userId, clientRequestId }, include: { sources: { select: { sourceItemId: true } } } }) : null;
   if (existingRequest) {
     if (existingRequest.creationRequestHash) {
       if (existingRequest.creationRequestHash !== requestHash) throw new ProjectServiceError("PROJECT_CONFLICT");
@@ -141,22 +148,23 @@ export async function createProject(input: {
     if (existingRequest.title !== normalizedTitle || existingRequest.description !== normalizedDescription || existingRequest.goal !== normalizedGoal || existingRequest.audience !== normalizedAudience || requestedSourceIds.length !== existingRequest.sources.length || requestedSourceIds.some((id) => !existingRequest.sources.some((source) => source.sourceItemId === id))) throw new ProjectServiceError("PROJECT_CONFLICT");
     return { ...existingRequest, primaryDraftBranchId: existingRequest.primaryDraftBranchId! };
   }
-  const sources = requestedSourceIds.length ? await db.sourceItem.findMany({ where: { id: { in: requestedSourceIds }, workspaceId: input.workspaceId, status: { not: "ARCHIVED" } }, select: { id: true } }) : [];
+  const sources = requestedSourceIds.length ? await store.sourceItem.findMany({ where: { id: { in: requestedSourceIds }, workspaceId: input.workspaceId, status: { not: "ARCHIVED" } }, select: { id: true } }) : [];
   if (sources.length !== requestedSourceIds.length) throw new ProjectServiceError("SOURCE_NOT_FOUND");
-  const methods = methodIds.length ? await db.methodVersion.findMany({ where: { id: { in: methodIds }, asset: { workspaceId: input.workspaceId, ownerUserId: input.userId, status: { not: "DISABLED" } } }, select: { id: true, assetId: true, steps: true } }) : [];
-  if (methodIds.length > 1 || methods.length !== methodIds.length || new Set(methods.map((method) => method.assetId)).size !== methods.length || methods.some((method) => isDefaultContentMethodPayload(method.steps))) throw new CreationInputError("请选择 1 个自己的可用 Skill，或不使用 Skill。");
+  const methods = methodIds.length ? await store.methodVersion.findMany({ where: { id: { in: methodIds }, asset: { workspaceId: input.workspaceId, ownerUserId: input.userId, status: { not: "DISABLED" } } }, select: { id: true, assetId: true, steps: true } }) : [];
+  if (methodIds.length > MAX_PROJECT_SKILLS || methods.length !== methodIds.length || new Set(methods.map((method) => method.assetId)).size !== methods.length || methods.some((method) => isDefaultContentMethodPayload(method.steps))) throw new CreationInputError(`请选择最多 ${MAX_PROJECT_SKILLS} 个自己的可用 Skill，也可不使用 Skill。`);
   if (input.methodVersionIds !== undefined || input.modelSelection !== undefined) {
     const model = await validateCreationModel(input.workspaceId, input.modelSelection);
     const attachments = await loadCreationSources(input.workspaceId, requestedSourceIds, input.userId);
     if (attachments.some((source) => source.state !== "READY")) throw new CreationInputError("部分资料尚未读好，请等待处理完成或移除后再发送。");
     if (!model.image && attachments.some((source) => source.image)) throw new CreationInputError("当前模型不支持图片，请选择支持图片的模型或移除图片引用。");
   }
-  const creatorProfile = await db.creatorProfile.findUnique({
+  const creatorProfile = await store.creatorProfile.findUnique({
     where: { workspaceId_userId: { workspaceId: input.workspaceId, userId: input.userId } },
     select: { id: true },
   });
 
-  try { return await db.$transaction(async (tx) => {
+  const persist = async (tx: Prisma.TransactionClient) => {
+    await assertCreateAllowed(tx);
     if (input.folderId) {
       const folder = await tx.projectFolder.findFirst({ where: { id: input.folderId, workspaceId: input.workspaceId, userId: input.userId }, select: { id: true } });
       if (!folder) throw new ProjectServiceError("PROJECT_NOT_FOUND");
@@ -224,8 +232,12 @@ export async function createProject(input: {
       });
     }
     return { ...project, primaryDraftBranchId: primaryDraft.id };
-  }); } catch (error) {
+  };
+  try { return transaction ? await persist(transaction) : await db.$transaction(persist, { isolationLevel: "Serializable" }); } catch (error) {
+    // An outer transaction owns rollback and conflict recovery.
+    if (transaction) throw error;
     if (!clientRequestId || !error || typeof error !== "object" || !("code" in error) || error.code !== "P2002") throw error;
+    await assertCreateAllowed(db);
     const existing = await db.contentProject.findFirst({ where: { workspaceId: input.workspaceId, createdById: input.userId, clientRequestId }, include: { sources: { select: { sourceItemId: true } } } });
     if (existing?.creationRequestHash) {
       if (existing.creationRequestHash !== requestHash) throw new ProjectServiceError("PROJECT_CONFLICT");

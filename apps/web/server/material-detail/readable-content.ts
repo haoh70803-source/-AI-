@@ -11,6 +11,7 @@ export async function getMaterialReadableContent(input: { workspaceId: string; u
     where: {
       id: input.sourceItemId,
       workspaceId: input.workspaceId,
+      status: { not: "ARCHIVED" },
       workspace: { disabledAt: null, members: { some: { userId: input.userId, disabledAt: null, user: { disabledAt: null } } } },
     },
     select: {

@@ -3,6 +3,7 @@ import { z } from "zod";
 const sharedConfig = {
   baseUrl: z.string().trim().url().max(2_000),
   resourceId: z.string().trim().min(1).max(500),
+  flashResourceId: z.string().trim().min(1).max(500).optional(),
   boostingTableId: z.string().trim().min(1).max(500).optional(),
   boostingTableName: z.string().trim().min(1).max(500).optional(),
 };

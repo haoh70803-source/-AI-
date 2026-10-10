@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { getSourceProcessingState, materialTranscriptionViewState } from "../lib/source-processing-state";
+import { getSourceProcessingState, materialTranscriptionViewState, transcriptionProgressLabel } from "../lib/source-processing-state";
 
 const storedVideo = { assetType: "VIDEO", status: "STORED" } as const;
 const storedAudio = { assetType: "AUDIO", status: "STORED" } as const;
 const redfoxSucceeded = { jobType: "PROCESS_MEDIA", provider: "REDFOX", status: "SUCCEEDED" } as const;
+
+it("shows only validated chunk progress and never exposes private checkpoint content", () => {
+  expect(transcriptionProgressLabel({ chunkProgress: { total: 4, completed: 2, active: [2, 3], retrying: [] }, chunkCheckpoint: { privateText: "private" } })).toBe("已完成 2/4 段，正在转写第 3、4 段");
+  expect(transcriptionProgressLabel({ chunkProgress: { total: 4, completed: 2, active: [2], retrying: [2] } })).toBe("已完成 2/4 段，正在重试第 3 段");
+  expect(transcriptionProgressLabel({ chunkProgress: { total: 4, completed: 9, active: [100] } })).toBeNull();
+});
 
 describe("getSourceProcessingState", () => {
   it("reports saved video with unconfigured ASR without changing READY semantics", () => {

@@ -7,6 +7,7 @@ import { refreshTrends } from "../discovery/trends/service";
 export type SearchEvidence = { provider: string; query: string; retrievedAt: string; content: string; links: string[]; warning?: string };
 export function searchQueryForMessage(message: string): string | null {
   if (/(?:不要|不用|无需|禁止)(?:再)?(?:联网|搜索|上网)/u.test(message)) return null;
+  if (/^(?:请)?(?:解释|介绍|什么是|说明).{0,16}(?:联网|上网|搜索|检索)/u.test(message.trim())) return null;
   if (/^(?:你|这个|这里|现在).{0,10}(?:能|可以|支持|有没有).{0,8}(?:联网|搜索)(?:吗|么|能力|功能|？|\?)?$/u.test(message.trim())) return null;
   if (!/(联网|上网|搜索|搜一下|查一下|查找|最新|今日|今天.*热点|最近.*(?:热点|新闻|政策)|实时)/u.test(message)) return null;
   if (/(?:api[_ -]?key|密码|密钥|身份证|银行卡|sk-[a-z0-9]|Bearer\s)/iu.test(message)) return null;

@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "environment": "待授权真实模型；当前未产生外部费用",
+  "samples": [
+    {
+      "id": "Q01",
+      "scenario": "教培短视频口播",
+      "input": "面向小学家长写约90秒口播，口语自然，介绍阅读课，不承诺提分。",
+      "sourceText": "阅读课6次，每次60分钟；训练关键词定位、段落主旨判断；费用980元。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q02",
+      "scenario": "朋友圈文案",
+      "input": "写一条120字左右朋友圈，语气像校长与家长交流，避免机械排比。",
+      "sourceText": "同Q01，仅有课程安排与训练内容。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q03",
+      "scenario": "活动邀约",
+      "input": "邀请家长周六参加45分钟阅读体验，写两种不同表达，保留时间占位待确认。",
+      "sourceText": "体验课45分钟；日期和地点未确认。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q04",
+      "scenario": "课程宣传",
+      "input": "写课程宣传页正文，解释适合什么孩子及课程内容，不捏造案例或效果。",
+      "sourceText": "同Q01。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q05",
+      "scenario": "对标视频改写",
+      "input": "学习参考视频的开头节奏，另写阅读主题，不复制案例、不当成我的经历。",
+      "sourceText": "外部参考：一位老师从学生的小疑问切入主题；仅研究材料。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q06",
+      "scenario": "长文本脚本",
+      "input": "写8分钟讲解脚本，段落完整，举例必须标明假设示例，不机械缩短。",
+      "sourceText": "只使用Q01课程事实，其余具体案例未核验。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q07",
+      "scenario": "多轮创意发散",
+      "input": "给5种明显不同的家长沟通角度；下一轮挑第3个继续，保留不得承诺成绩的约束。",
+      "sourceText": "表达风格：直接、自然、有同理心，不用成功学。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q08",
+      "scenario": "指定段落修改",
+      "input": "只修改第二段，让它更自然，第一、第三段必须逐字保持。",
+      "sourceText": "第一段原样。\n\n第二段原样。\n\n第三段原样。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    },
+    {
+      "id": "Q09",
+      "scenario": "仅删减原文",
+      "input": "仅删除冗余内容，不能添加任何新字句，保留原文顺序。",
+      "sourceText": "今天我们先读短文，再标出关键词，然后说出段落主要讲什么。今天我们先读短文。",
+      "result": null,
+      "humanEvaluation": "NOT RUN",
+      "model": "NOT RUN",
+      "rubric": [
+        "长度匹配任务",
+        "表达自然且避免模板排比",
+        "方向差异",
+        "IP风格一致",
+        "事实无捏造",
+        "严格修改范围",
+        "跨轮约束保留"
+      ],
+      "pass": null
+    }
+  ]
+}

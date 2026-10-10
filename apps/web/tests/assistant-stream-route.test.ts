@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+vi.mock("@/server/creator-profile-service", () => ({ saveCreatorWritingPreference: vi.fn() }));
 const calls = vi.hoisted(() => ({ context: vi.fn(), thread: vi.fn(), run: vi.fn() }));
 vi.mock("@/server/api-access", () => ({ getApiWorkspaceContext: calls.context, apiError: (error: string, status: number) => Response.json({ error }, { status }) }));
 vi.mock("@/server/assistant/api", () => ({ assistantApiError: (error: { code?: string; message?: string }) => Response.json({ error: error.code || "UNKNOWN", message: error.message }, { status: error.code === "RATE_LIMITED" ? 429 : 500 }) }));
@@ -35,4 +36,15 @@ it("preserves capacity failures as actionable stream errors rather than generic 
 });
 it("rejects unauthorized requests before opening streams", async () => {
   calls.context.mockResolvedValue(null); expect((await POST(request(), route)).status).toBe(401); expect(calls.run).not.toHaveBeenCalled();
+});
+
+it("validates creation controls and forwards the parsed settings into generation", async () => {
+  calls.run.mockImplementation(async (_input, emit) => emit({ type: "done", message: { id: "reply", content: "完成", status: "COMPLETED" } }));
+  const body = { content: "写口播", creationOptions: { task: "SCRIPT", depth: "DEEP", mode: "EXECUTE", persona: "校长" } };
+  const response = await POST(new Request("http://localhost/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }), route);
+  await response.text();
+  expect(calls.run.mock.calls[0]![0]).toMatchObject({ creationOptions: { task: "SCRIPT", depth: "DEEP", mode: "EXECUTE", persona: "校长", naturalness: "AUTO" } });
+  calls.run.mockClear();
+  const invalid = await POST(new Request("http://localhost/assistant", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, creationOptions: { depth: "UNLIMITED" } }) }), route);
+  expect(invalid.status).toBe(400); expect(calls.run).not.toHaveBeenCalled();
 });

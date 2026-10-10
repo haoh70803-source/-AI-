@@ -49,6 +49,19 @@ function progressStage(metadata: unknown) {
   return typeof stage === "string" ? stage : undefined;
 }
 
+/** Only presentation counts leave the server; checkpoint text and provider configuration stay private. */
+export function transcriptionProgressLabel(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>).chunkProgress;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const total = row.total, completed = row.completed;
+  if (typeof total !== "number" || !Number.isSafeInteger(total) || total < 1 || total > 120 || typeof completed !== "number" || !Number.isSafeInteger(completed) || completed < 0 || completed > total) return null;
+  const indices = (value: unknown) => Array.isArray(value) ? value.filter((index): index is number => typeof index === "number" && Number.isSafeInteger(index) && index >= 0 && index < total).slice(0, 2).map(index => index + 1).join("、") : "";
+  const retrying = indices(row.retrying), active = indices(row.active);
+  return `已完成 ${completed}/${total} 段${retrying ? `，正在重试第 ${retrying} 段` : active ? `，正在转写第 ${active} 段` : ""}`;
+}
+
 export function getSourceProcessingState(input: SourceProcessingInput) {
   const redfoxJob = input.jobs.find((job) => job.provider === "REDFOX" && job.jobType === "PROCESS_MEDIA");
   const transcriptionJob = input.jobs.find((job) => job.jobType === "TRANSCRIBE");
@@ -65,7 +78,7 @@ export function getSourceProcessingState(input: SourceProcessingInput) {
   let transcription: TranscriptionState;
   if (transcriptionJob?.status === "FAILED") transcription = "FAILED";
   else if (transcriptionJob?.status === "QUEUED") transcription = "QUEUED";
-  else if (transcriptionJob?.status === "RUNNING" && (stage === "EXTRACTING_AUDIO" || stage === "UPLOADING_AUDIO")) transcription = "EXTRACTING_AUDIO";
+  else if (transcriptionJob?.status === "RUNNING" && (stage === "PREPARING_VIDEO_PREVIEW" || stage === "EXTRACTING_AUDIO" || stage === "UPLOADING_AUDIO")) transcription = "EXTRACTING_AUDIO";
   else if (transcriptionJob?.status === "RUNNING") transcription = "TRANSCRIBING";
   else if (transcriptionJob?.status === "SUCCEEDED" || input.hasTranscript) transcription = "SUCCEEDED";
   else if (!transcriptionConfigured) transcription = "NOT_CONFIGURED";
@@ -125,7 +138,9 @@ export function getSourceProcessingState(input: SourceProcessingInput) {
       ? "失败"
       : "处理中";
 
-  const currentLabel = redfoxJob?.status === "RUNNING"
+  const currentLabel = stage === "PREPARING_VIDEO_PREVIEW" && transcriptionJob?.status === "RUNNING"
+    ? "正在准备带画面的视频预览"
+    : redfoxJob?.status === "RUNNING"
     ? redfoxStage === "DOWNLOADING_MEDIA"
       ? "下载视频中"
       : redfoxStage === "STORING"
@@ -136,7 +151,7 @@ export function getSourceProcessingState(input: SourceProcessingInput) {
       : transcription === "EXTRACTING_AUDIO"
         ? "正在提取音频"
         : transcription === "TRANSCRIBING"
-          ? "转写中"
+          ? transcriptionProgressLabel(transcriptionJob?.metadata) ?? "转写中"
           : transcription === "SUCCEEDED"
             ? "已完成"
             : transcription === "FAILED"

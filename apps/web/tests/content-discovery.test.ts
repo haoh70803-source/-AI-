@@ -151,4 +151,29 @@ describe("Content Discovery service", () => {
     await expect(db.contentIdea.findUniqueOrThrow({ where: { id: idea.id } })).resolves.toMatchObject({ status: "IN_PROGRESS", projectId: started.projectId });
     await expect(db.projectSource.count({ where: { projectId: started.projectId, role: "REFERENCE" } })).resolves.toBe(1);
   });
+  it("serializes simultaneous starts and atomically rolls back project creation when idea binding fails", async () => {
+    const idea = await createIdea({ workspaceId, userId: ownerId, title: "V4 concurrent start" });
+    const results = await Promise.all([1, 2].map(() => startIdeaProject({ workspaceId, userId: ownerId, ideaId: idea.id, collectMissing: false })));
+    expect(new Set(results.map(result => result.projectId)).size).toBe(1);
+    expect(results.filter(result => !result.existing)).toHaveLength(1);
+    expect(await db.contentProject.count({ where: { workspaceId, title: "V4 concurrent start" } })).toBe(1);
+    const failing = await createIdea({ workspaceId, userId: ownerId, title: "V4 failed start" });
+    const transaction = db.$transaction.bind(db);
+    const spy = vi.spyOn(db, "$transaction").mockImplementation((async (callback: unknown, options: unknown) => {
+      if (typeof callback !== "function") return transaction(callback as never, options as never);
+      return transaction(async tx => callback(new Proxy(tx, { get(target, key) {
+        if (key === "contentIdea") return new Proxy(target.contentIdea, { get(delegate, operation) {
+          if (operation === "update") return async () => { throw new Error("V4_BIND_FAILURE"); };
+          return Reflect.get(delegate, operation);
+        } });
+        return Reflect.get(target, key);
+      } })), options as never);
+    }) as typeof db.$transaction);
+    try { await expect(startIdeaProject({ workspaceId, userId: ownerId, ideaId: failing.id, collectMissing: false })).rejects.toThrow("V4_BIND_FAILURE"); }
+    finally { spy.mockRestore(); }
+    expect(await db.contentProject.count({ where: { workspaceId, title: "V4 failed start" } })).toBe(0);
+    expect((await db.contentIdea.findUniqueOrThrow({ where: { id: failing.id } })).projectId).toBeNull();
+    expect((await startIdeaProject({ workspaceId, userId: ownerId, ideaId: failing.id, collectMissing: false })).existing).toBe(false);
+  });
+
 });

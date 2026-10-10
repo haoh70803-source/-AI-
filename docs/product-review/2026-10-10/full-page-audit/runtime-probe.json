@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-10T03:49:48.558Z",
+  "purpose": "read-only local socket probe outside sandbox; no database query",
+  "probes": [
+    {
+      "host": "127.0.0.1",
+      "port": 3000,
+      "state": "closed"
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 3001,
+      "state": "closed"
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 3022,
+      "state": "open"
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 55438,
+      "state": "open"
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 19020,
+      "state": "open"
+    }
+  ],
+  "conclusion": "3022 and its local dependency ports are reachable when probed outside sandbox. Earlier sandbox connection failures did not prove the services stopped. Authenticated business runtime and build identity remain unverified."
+}

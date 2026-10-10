@@ -1,6 +1,7 @@
 import { getApiWorkspaceContext, apiError } from '@/server/api-access';
 import { feishuState, mutateFeishu, searchFeishu } from '@/server/feishu/service';
 import { FeishuError, feishuInput } from '@/server/feishu/policy';
+import { feishuWikiTree } from '@content-center/integrations';
 export const dynamic = 'force-dynamic';
 function failure(e: unknown) { if (e instanceof FeishuError)
     return apiError('FEISHU_ERROR', e.status, e.message); const code = (e as {
@@ -12,6 +13,11 @@ export async function GET(request: Request) { try {
     if (!c)
         return apiError('UNAUTHORIZED', 401);
     const actor = { workspaceId: c.workspace.id, userId: c.session.user.id }, q = new URL(request.url).searchParams.get('q');
+    const subscriptionId = new URL(request.url).searchParams.get('subscriptionId');
+    if (subscriptionId !== null) {
+        if (!subscriptionId || subscriptionId.length > 100 || q !== null) return apiError('BAD_REQUEST', 400);
+        return Response.json(await feishuWikiTree(actor, subscriptionId), { headers: { 'Cache-Control': 'no-store' } });
+    }
     if (q !== null) {
         if (!q.trim() || q.length > 500)
             return apiError('BAD_REQUEST', 400, '请输入1–500字的检索内容');

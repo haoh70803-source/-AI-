@@ -29,6 +29,9 @@ export type ScopeGateResult = {
 export class ScopeGate {
   evaluate(input: ScopeGateInput): ScopeGateResult {
     const text = input.userInput?.trim() ?? "";
+    if (input.taskType === "GENERAL_QUERY") {
+      return { decision: input.projectId || input.selectedObjects?.length ? "ALLOW_WITH_CONTEXT" : "ALLOW", reason: "GENERAL_PROJECT_TASK" };
+    }
     if (text && explicitlyUnrelated.some((pattern) => pattern.test(text))) {
       return { decision: "OUT_OF_SCOPE", reason: "EXPLICITLY_UNRELATED", employeeMessage: "鑫小助主要用于当前内容项目相关的研究、资料整理和创作。" };
     }

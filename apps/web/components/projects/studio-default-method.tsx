@@ -1,11 +1,15 @@
 "use client";
+import { referenceScope } from "@/lib/contracts/references";
+import { MAX_PROJECT_SKILLS } from "@/lib/contracts/creation";
 
+import { CreationControls } from "./creation-controls";
+import { defaultCreationOptions, type CreationOptions, type EditScope } from "@/lib/contracts/creation";
 import { Button } from "@content-center/ui";
 import { ArrowDown, AtSign, Copy, Plus, Check, ChevronDown, FileText, Link2, LoaderCircle, RefreshCw, Save, Search, Send, Square, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { StudioActionRecommendation } from "@/server/ai/schemas";
-import type { AssistantExecutionStatus, AssistantMessageDTO, AssistantResultAction, AssistantStreamEvent, NodeAssistantStreamEvent } from "@/lib/contracts/assistant";
+import type { AssistantExecutionStatus, AssistantMessageDTO, AssistantResultAction, AssistantStreamEvent, AssistantThreadDTO, NodeAssistantStreamEvent } from "@/lib/contracts/assistant";
 import type { CanvasObjectDTO } from "@/lib/contracts/canvas";
 import type { ProjectMaterial } from "./project-materials-panel";
 import type { StudioSelectionAction } from "./mother-content-editor";
@@ -26,7 +30,7 @@ const artifactDialogInteractionLock = () => undefined;
 type TextSelection = { text: string; start: number; end: number };
 type SelectedCanvasReference = { objectType: "CANVAS_OBJECT"; objectId: string; version: number; ownership: "EXTERNAL" | "PENDING"; whySelected: string; label: string };
 export type StudioAssistantHandle = { executeSelection: (action: StudioSelectionAction) => void };
-type Props = { initialRequest?: Record<string, unknown> & { content: string }; projectId: string; recommendedActions: StudioActionRecommendation[]; editable: boolean; configured: boolean; selection?: TextSelection | null; selectedObject?: SelectedCanvasReference | null; targetArtifact?: ArtifactView | null; projectMaterials: ProjectMaterial[]; canvasObjects: CanvasObjectDTO[]; methods: ProjectMethodStateDTO; onMethodsChange: (state: ProjectMethodStateDTO) => void; onClose: () => void; onObjectCreated: (object: CanvasObjectDTO) => void };
+type Props = { initialRequest?: Record<string, unknown> & { content: string }; projectId: string; recommendedActions: StudioActionRecommendation[]; editable: boolean; configured: boolean; selection?: TextSelection | null; selectedObject?: SelectedCanvasReference | null; targetArtifact?: ArtifactView | null; artifactEditScope?: EditScope | null; projectMaterials: ProjectMaterial[]; canvasObjects: CanvasObjectDTO[]; methods: ProjectMethodStateDTO; onMethodsChange: (state: ProjectMethodStateDTO) => void; onClose: () => void; onObjectCreated: (object: CanvasObjectDTO) => void };
 
 const actionPrompts: Record<StudioSelectionAction, string> = {
   HUMANIZE_TEXT: "请把这段内容改得更自然、更像本人表达：",
@@ -60,10 +64,22 @@ function alignReadingEdge(element: HTMLDivElement) {
   }
 }
 
-export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(function StudioDefaultMethod({ initialRequest, projectId, editable, configured, selection, selectedObject, targetArtifact, projectMaterials, canvasObjects, methods, onClose, onObjectCreated }, ref) {
+export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(function StudioDefaultMethod({ initialRequest, projectId, editable, configured, selection, selectedObject, targetArtifact, artifactEditScope, projectMaterials, canvasObjects, methods, onClose, onObjectCreated }, ref) {
   const router = useRouter();
+  const pathname = usePathname(), searchParams = useSearchParams();
+  const researchArtifactId = searchParams.get("researchArtifact");
+  const restoredReferences = useRef<ReferenceOption[]>([]);
+  const [reportReading, setReportReading] = useState(false), [reportRetry, setReportRetry] = useState(0);
+  const [creationOptions, setCreationOptions] = useState<CreationOptions>({ ...defaultCreationOptions });
+  const [preferenceStyle, setPreferenceStyle] = useState("");
+  const [preferenceBusy, setPreferenceBusy] = useState(false);
+  const [editRange, setEditRange] = useState<EditScope | null>(null);
+  useEffect(() => { setEditRange(artifactEditScope ?? null); }, [artifactEditScope, targetArtifact?.artifactId, targetArtifact?.version]);
+  const [reportError, setReportError] = useState("");
   const startedProject = useRef<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessageDTO[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [input, setInput] = useState("");
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,7 +95,8 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
   const [additionalObjectIds, setAdditionalObjectIds] = useState<string[]>([]);
   const [references, setReferences] = useState<ReferenceOption[]>([]);
   const [referenceResults, setReferenceResults] = useState<ReferenceOption[]>([]);
-  const [skillId, setSkillId] = useState(methods.selected[0]?.methodVersionId || "");
+  const [skillIds, setSkillIds] = useState(methods.selected.filter(m => !m.isDisabled).map(m => m.methodVersionId));
+  const skillId = skillIds[0] || "";
   const [modelOptions, setModelOptions] = useState<Array<LLMModelSelection & { label: string }>>([]);
   const [defaultModelLabel, setDefaultModelLabel] = useState("默认模型");
   const [modelId, setModelId] = useState("");
@@ -111,8 +128,8 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
   const [handoffBusy,setHandoffBusy] = useState(false);
   const handoffLock = useRef(false), handoffSeen = useRef(false);
   useEffect(()=>{handoffSeen.current=false;},[projectId]);
-  const currentComposer = useRef({input,references,materialIds,skillId,modelId});
-  currentComposer.current={input,references,materialIds,skillId,modelId};
+  const currentComposer = useRef({input,references,materialIds,skillId,skillIds,modelId});
+  currentComposer.current={input,references,materialIds,skillId,skillIds,modelId};
   useEffect(() => {
     setDraftScope(null); setResearchPending(null);
     if (loading || selectedObject || conversationUnavailable) return;
@@ -123,18 +140,42 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
       const scope={...target.actor,projectId}, stored=readProjectInput(scope), pending=readResearchHandoff(scope);
       setDraftScope(scope);
       if(JSON.stringify(currentComposer.current)===signature){
-      if(stored){setInput(stored.input);setReferences(stored.references);setMaterialIds(stored.materialIds);setSkillId(stored.skillId);setModelId(stored.modelId);}
-      else {setInput("");setReferences([]);setMaterialIds([]);}
+      if(stored){setInput(stored.input);setReferences(stored.references);setMaterialIds(stored.materialIds);setSkillIds(stored.skillIds ?? (stored.skillId ? [stored.skillId] : []));setModelId(stored.modelId);}
+      else {setInput("");setReferences(restoredReferences.current);setMaterialIds([]);}
       }
       if(pending){handoffSeen.current=true;setResearchPending(pending);}
     }).catch(cause=>{if(!controller.signal.aborted){if(cause.status===401)cleanResearchDrafts();setNotice(cause.message || "临时输入未能恢复，未自动发送任何内容。");}});
     return()=>controller.abort();
   },[projectId,loading,selectedObject?.objectId,conversationUnavailable]);
+  function clearReportRequest() {
+    const query = new URLSearchParams(searchParams.toString()); query.delete("researchArtifact");
+    setReportReading(false); setReportError("");
+    router.replace(`${pathname}${query.size ? "?" + query.toString() : ""}`, { scroll: false });
+  }
+  useEffect(() => {
+    if (!researchArtifactId || !draftScope || draftScope.projectId !== projectId || loading || selectedObject) return;
+    const controller = new AbortController(); setReportReading(true); setReportError("");
+    void jsonRequest(`/api/projects/${projectId}/artifacts/${encodeURIComponent(researchArtifactId)}`, { signal: controller.signal }).then((artifact: ArtifactView) => {
+      if (controller.signal.aborted) return;
+      const current = currentComposer.current;
+      const reference: ReferenceOption = { sourceType: "ARTIFACT", sourceId: artifact.artifactId, title: artifact.title, href: `/dashboard?project=${encodeURIComponent(projectId)}&node=artifact:${encodeURIComponent(artifact.artifactId)}`, generated: true, version: artifact.version, description: "已加入项目的研究依据，后续对话持续引用" };
+      const exists = current.references.some(item => item.sourceType === "ARTIFACT" && item.sourceId === artifact.artifactId);
+      if (!exists && current.references.length + current.materialIds.length >= 8) throw new Error("当前引用已满，请先移除一个引用，再读取报告。");
+      const next = exists ? current.references : [...current.references, reference];
+      setReferences(next); writeProjectInput(draftScope, { ...current, references: next });
+      setReportReading(false);
+      setNotice(`已引用“${artifact.title}”。可以直接提出创作要求，原报告保留。`);
+      const query = new URLSearchParams(searchParams.toString()); query.delete("researchArtifact");
+      router.replace(`${pathname}${query.size ? "?" + query.toString() : ""}`, { scroll: false });
+      composerRef.current?.focus();
+    }).catch(cause => { if (!controller.signal.aborted) setReportError(cause instanceof Error ? cause.message : "报告暂时无法读取，请重试。"); }).finally(() => { if (!controller.signal.aborted) setReportReading(false); });
+    return () => controller.abort();
+  }, [researchArtifactId, draftScope, projectId, loading, selectedObject?.objectId, reportRetry, pathname, router, searchParams]);
   useEffect(()=>{
     if(!draftScope||draftScope.projectId!==projectId||selectedObject||loading)return;
-    const scope=draftScope,draft={input,references,materialIds,skillId,modelId};
+    const scope=draftScope,draft={input,references,materialIds,skillId,skillIds,modelId};
     if(!writeProjectInput(scope,draft))setNotice("临时草稿存储不可用，离开前请保留当前输入。");
-  },[draftScope,projectId,selectedObject?.objectId,loading,input,references,materialIds,skillId,modelId]);
+  },[draftScope,projectId,selectedObject?.objectId,loading,input,references,materialIds,skillId,skillIds,modelId]);
   function cancelResearchDraft(){
     if(draftScope)clearResearchHandoff(draftScope);
     setResearchPending(null);composerRef.current?.focus();setNotice("已取消本次带入，原输入与引用保留，没有分享研究。");
@@ -150,7 +191,7 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
       const merged=old?references:[...references,next.reference];
       const text=replace?next.content:[input,next.content].filter(value=>value.trim()).join("\n\n");
       if(text.length>4000||merged.length+materialIds.length>8)throw Error("现有输入或引用较多，请先调整；当前内容与本次准备都已保留。");
-      const draft={input:text,references:merged,materialIds,skillId,modelId};
+      const draft={input:text,references:merged,materialIds,skillId,skillIds,modelId};
       writeProjectInput(draftScope,draft);
       setInput(text);setReferences(merged);clearResearchHandoff(draftScope);setResearchPending(null);
       setNotice("已放入待发送内容，原研究未改动、未分享。审阅后由你发送。");composerRef.current?.focus();
@@ -166,8 +207,9 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
     setLoading(true); followOutput.current = true;
     setConversationUnavailable("");
     if (!preserveCreatedResult) { setMessages([]); setError(""); setExecutionStatuses([]); }
+    restoredReferences.current = [];
     const url = selectedObject ? `/api/projects/${projectId}/canvas/objects/${selectedObject.objectId}/assistant` : `/api/projects/${projectId}/assistant`;
-    void jsonRequest(url).then((thread: { messages?: AssistantMessageDTO[]; unavailableReason?: string }) => { if (!active) return; setConversationUnavailable(thread.unavailableReason ?? ""); if (thread.messages?.length || !preserveCreatedResult) setMessages(thread.messages ?? []); if (preserveCreatedResult) createdObjectIdRef.current = null; }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "对话记录加载失败。"); }).finally(() => { if (active) setLoading(false); });
+    void jsonRequest(url).then((thread: AssistantThreadDTO) => { if (!active) return; setHistoryCursor(thread.nextCursor ?? null); restoredReferences.current = thread.activeReferences ?? []; setCreationOptions(thread.creationOptions ?? { ...defaultCreationOptions, persona: thread.creationPreference?.persona ?? "" }); setPreferenceStyle(thread.creationPreference?.style ?? ""); if (thread.referenceWarnings?.length) setNotice(thread.referenceWarnings.join(" ")); setConversationUnavailable(thread.unavailableReason ?? ""); if (thread.messages?.length || !preserveCreatedResult) setMessages(thread.messages ?? []); if (preserveCreatedResult) createdObjectIdRef.current = null; }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "对话记录加载失败。"); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; abortRef.current?.abort(); };
   }, [projectId, selectedObject?.objectId]);
 
@@ -191,17 +233,17 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
 
   const send = async (override?: string, retryBody?: Record<string, unknown>) => {
     const content = (override ?? input).trim();
-    if (!content || sending || voiceBusy || uploading || !configured || conversationUnavailable || (selectedObject && !editable)) return;
+    if (!content || sending || voiceBusy || uploading || reportReading || researchArtifactId || !configured || conversationUnavailable || (selectedObject && !editable)) return;
     followOutput.current = true; setShowScrollDown(false);
     setSending(true); setError(""); setNotice(""); lastPromptRef.current = content;
     const controller = new AbortController(); abortRef.current = controller;
     try {
       const url = selectedObject ? `/api/projects/${projectId}/canvas/objects/${selectedObject.objectId}/assistant` : `/api/projects/${projectId}/assistant`;
-      const body = retryBody ?? (selectedObject ? { instruction: content, ...(additionalObjectIds.length ? { additionalObjectIds } : {}), ...(materialIds.length ? { sourceItemIds: materialIds } : {}) } : { content, references: references.map(({ sourceType, sourceId, researchSelection }): ContextReference => ({ sourceType, sourceId, ...(researchSelection ? { researchSelection } : {}) })), skillVersionId: skillId || null, modelSelection: modelOptions.find(m => m.modelId === modelId) ? { provider: modelOptions.find(m => m.modelId === modelId)!.provider, modelId } : null, ...(targetArtifact ? { targetArtifactId: targetArtifact.artifactId } : {}), ...(materialIds.length ? { sourceItemIds: materialIds } : {}) });
+      const body = retryBody ?? (selectedObject ? { instruction: content, ...(additionalObjectIds.length ? { additionalObjectIds } : {}), ...(materialIds.length ? { sourceItemIds: materialIds } : {}) } : { content, creationOptions, ...(targetArtifact && editRange ? { editScope: editRange } : {}), references: references.map(({ sourceType, sourceId, researchSelection, scope, sourceVersion, version }): ContextReference => ({ sourceType, sourceId, scope, sourceVersion: sourceVersion ?? version ?? undefined, ...(researchSelection ? { researchSelection } : {}) })), skillVersionIds: skillIds, modelSelection: modelOptions.find(m => m.modelId === modelId) ? { provider: modelOptions.find(m => m.modelId === modelId)!.provider, modelId } : null, ...(targetArtifact ? { targetArtifactId: targetArtifact.artifactId } : {}), ...(materialIds.length ? { sourceItemIds: materialIds } : {}) });
       lastRequest.current = body;
       const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: controller.signal });
       if (!response.ok || !response.body) { const body = await response.json().catch(() => ({})); throw new Error(body.message || "当前 AI 服务暂时不可用，请稍后再试。"); }
-      setInput(""); setReferences([]); setMaterialIds([]); setAdditionalObjectIds([]); setMaterialOpen(false);
+      setInput(""); setEditRange(null); setReferences(current => current.filter(item => referenceScope(item) !== "TURN")); setMaterialIds([]); setAdditionalObjectIds([]); setMaterialOpen(false);
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let terminal = false;
       while (true) {
         const { value, done } = await reader.read();
@@ -271,6 +313,15 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
     <div className="studio-assistant-stream" ref={streamRef} onScroll={() => { const e = streamRef.current; if (e) { const nearBottom = e.scrollHeight - e.scrollTop - e.clientHeight < 64; followOutput.current = nearBottom; setShowScrollDown(!nearBottom); if (scrollSettle.current) clearTimeout(scrollSettle.current); scrollSettle.current = setTimeout(() => alignReadingEdge(e), 140); } }} aria-live="polite">
       {loading ? <div className="studio-assistant-loading"><LoaderCircle size={18} />正在载入项目对话…</div> : null}
       {!loading && !messages.length ? <section className="studio-assistant-empty"><strong>{targetArtifact ? `继续完善“${targetArtifact.title}”` : selectedObject ? `基于“${selectedObject.label}”继续` : "今天想先做什么？"}</strong><p>直接告诉我你的想法，或用 @ 引用资料和研究成果。</p></section> : null}
+      {historyCursor ? <button type="button" disabled={historyLoading || sending} onClick={async () => {
+        setHistoryLoading(true);
+        try {
+          const page = await jsonRequest(`/api/projects/${projectId}/assistant?before=${encodeURIComponent(historyCursor)}`) as AssistantThreadDTO;
+          setMessages(current => [...page.messages.filter(item => !current.some(existing => existing.id === item.id)), ...current]);
+          setHistoryCursor(page.nextCursor ?? null);
+        } catch (cause) { setError(cause instanceof Error ? cause.message : "历史读取失败，当前对话保留。"); }
+        finally { setHistoryLoading(false); }
+      }}>{historyLoading ? "正在读取历史…" : "加载更早的对话"}</button> : null}
       {messages.map((message, index) => <article key={message.id} className={`studio-assistant-message is-${message.role.toLowerCase()} is-${message.status.toLowerCase()} ${message.role === "ASSISTANT" && message.structuredResult ? "has-structured-result" : ""}`}>
         <header className="agent-message-meta"><strong>{message.role === "USER" ? "你" : "鑫小助"}</strong><time>{new Date(message.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</time>{message.status === "STREAMING" ? <span><i />正在回复</span> : message.status === "STOPPED" ? <span>已停止</span> : message.status === "FAILED" ? <span>未完成</span> : null}</header>
         {message.role === "ASSISTANT" && !selectedObject ? <AssistantMarkdown message={message} /> : message.role === "ASSISTANT" ? <AssistantResultRenderer message={message} onContinue={(instruction) => void send(instruction)} onTopicContinue={(topic) => void send(`继续展开这个选题：${topic.title}${topic.angle ? `。切入角度：${topic.angle}` : ""}`)} onTopicSave={(topicIndex) => void saveResult(message, "TEXT", topicIndex)} /> : <div className="studio-assistant-message-content">{message.content || (message.status === "PENDING" ? "正在准备项目上下文…" : "")}</div>}
@@ -286,7 +337,7 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
 
     {showScrollDown ? <button className="agent-scroll-latest" type="button" aria-label="回到最新消息" title="回到最新消息" onClick={scrollToLatest}><ArrowDown size={17} /></button> : null}
     <div className="studio-assistant-references">
-      {references.map(r => <span key={`${r.sourceType}:${r.sourceId}`}>{r.title}<button type="button" aria-label={`移除 ${r.title}`} onClick={() => setReferences(current => current.filter(v => v !== r))}><X size={13} /></button></span>)}
+      {references.map(r => <span key={`${r.sourceType}:${r.sourceId}`} title={r.description}><a href={r.href} target="_blank" rel="noopener noreferrer" aria-label={`查看引用：${r.title}`}>{r.title}</a><select aria-label={`${r.title} 引用范围`} value={referenceScope(r)} onChange={event => { const scope = event.target.value as "TURN" | "TASK" | "PROJECT"; setReferences(current => current.map(item => item === r ? { ...item, scope } : item)); }}><option value="TURN">仅本轮</option><option value="TASK">当前任务持续</option><option value="PROJECT">项目长期</option></select><button type="button" aria-label={`移除 ${r.title}`} onClick={() => setReferences(current => current.filter(v => v !== r))}><X size={13} /></button></span>)}
       {targetArtifact ? <span><FileText size={14} />当前产出：{targetArtifact.title} · v{targetArtifact.version}</span> : null}
       {selectedObject ? <span><FileText size={14} />当前正在基于：{selectedObject.label}</span> : null}
       {additionalObjectIds.map((id) => { const object = canvasObjects.find((item) => item.id === id); return object ? <span key={id}><Link2 size={14} />{object.title || "未命名内容"}<button type="button" aria-label={`移除内容 ${object.title || "未命名内容"}`} onClick={() => setAdditionalObjectIds((current) => current.filter((value) => value !== id))}><X size={13} /></button></span> : null; })}
@@ -294,6 +345,8 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
     </div>
 
 
+    {reportReading ? <p className="agent-notice" role="status">正在读取已加入项目的报告，读取完成后即可发送。</p> : null}
+    {reportError ? <section className="agent-research-handoff" role="alert"><p>{reportError}</p><button type="button" onClick={() => setReportRetry(value => value + 1)}>重新读取报告</button><button type="button" onClick={clearReportRequest}>取消带入，保留原输入</button></section> : null}
     {researchPending ? <section className="agent-research-handoff" aria-label="审阅研究带入内容">
       <h3>研究发现已准备好，尚未发送</h3>
       <p>{researchPending.conversationVisibility}</p>
@@ -314,15 +367,20 @@ export const StudioDefaultMethod = forwardRef<StudioAssistantHandle, Props>(func
     {error ? <p className="studio-assistant-error" role="alert">{error}</p> : null}{notice ? <p className="studio-assistant-success" role="status">{notice}</p> : null}
     {!configured ? <p className="studio-assistant-error">当前 AI 服务暂时不可用，请稍后再试。</p> : null}
     <footer className="studio-assistant-composer">
+      {!selectedObject ? <CreationControls value={creationOptions} onChange={setCreationOptions} style={preferenceStyle} onStyleChange={setPreferenceStyle} disabled={sending || loading || preferenceBusy || !editable} onSave={clear => {
+        setPreferenceBusy(true); setError("");
+        void jsonRequest(`/api/projects/${projectId}/assistant`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ persona: clear ? "" : creationOptions.persona, style: clear ? "" : preferenceStyle }) }).then(() => { if (clear) { setPreferenceStyle(""); setCreationOptions(current => ({ ...current, persona: "" })); } setNotice(clear ? "已清除保存的身份与表达偏好。" : "已保存我的身份与表达偏好；其他档案内容保留。"); }).catch(cause => setError(cause.message || "偏好保存失败。")).finally(() => setPreferenceBusy(false));
+      }} /> : null}
+      {targetArtifact && editRange ? <p role="status">只修改选中的 {editRange.end - editRange.start} 个字，其他内容保留。<button type="button" onClick={() => setEditRange(null)}>改为全文修改</button></p> : null}
       <textarea ref={composerRef} aria-label="和鑫小助说" value={input} disabled={Boolean(conversationUnavailable) || Boolean(selectedObject && !editable)} onChange={(event) => { setInput(event.target.value); const mention = event.target.value.match(/@([^@\s]*)$/); if (mention && !selectedObject) { setMaterialOpen(true); setMaterialSearch(mention[1] || ""); } }} onKeyDown={onComposerKeyDown} rows={2} maxLength={4_000} placeholder={selectedObject ? "基于当前内容，你想继续生成什么？" : "继续告诉 AI 你想做什么……"} />
       <div className="agent-composer-tools">
         <input ref={uploadRef} type="file" hidden multiple accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.mp4,.mp3,.wav" onChange={e => { void upload(Array.from(e.target.files || [])); e.target.value = ""; }} />
         <button type="button" aria-label="上传文件或图片" title="上传文件或图片" disabled={uploading || !editable} onClick={() => uploadRef.current?.click()}>{uploading ? <LoaderCircle size={17} /> : <Plus size={17} />}</button>
         <button type="button" aria-label="引用已有内容" title="引用已有内容" aria-expanded={materialOpen} onClick={() => setMaterialOpen(v => !v)}><AtSign size={17} /></button>
-        <select aria-label="选择 Skill" value={skillId} onChange={e => setSkillId(e.target.value)}><option value="">不使用专业技能</option>{[...new Map([...methods.selected, ...methods.available].map(m => [m.methodVersionId, m])).values()].map(m => <option key={m.methodVersionId} value={m.methodVersionId}>{m.title}</option>)}</select>
+        <select aria-label="选择 Skill（可多选）" multiple size={3} value={skillIds} onChange={e => { const ids = Array.from(e.target.selectedOptions, option => option.value); if (ids.length <= MAX_PROJECT_SKILLS) setSkillIds(ids); else setNotice("最多选择 3 个 Skill。"); }}>{[...new Map([...methods.selected.filter(m => !m.isDisabled), ...methods.available].map(m => [m.methodVersionId, m])).values()].map(m => <option key={m.methodVersionId} value={m.methodVersionId}>{m.title}</option>)}</select><button type="button" onClick={() => setSkillIds([])}>不使用 Skill</button>
         <select className="agent-model" aria-label="选择模型" value={modelId} onChange={e => setModelId(e.target.value)}><option value="">{defaultModelLabel}</option>{modelOptions.map(m => <option key={m.modelId} value={m.modelId}>{m.label}</option>)}</select>
         <VoiceInput key={`${projectId}:${selectedObject?.objectId ?? "chat"}`} disabled={!editable || sending || Boolean(conversationUnavailable)} onBusyChange={setVoiceBusy} onText={text => { setInput(value => { const joined = value ? `${value}\n${text}` : text; if (joined.length > 4000) { setError("语音加入后超过 4000 字，已保留前 4000 字，请检查后再发送。"); } return joined.slice(0, 4000); }); composerRef.current?.focus(); }} />
-        {sending ? <button type="button" aria-label="停止生成" title="停止生成" onClick={() => abortRef.current?.abort()}><Square size={16} /></button> : <Button aria-label="发送给鑫小助" disabled={voiceBusy || !input.trim() || uploading || !configured || Boolean(conversationUnavailable)} onClick={() => void send()}><Send size={16} /></Button>}
+        {sending ? <button type="button" aria-label="停止生成" title="停止生成" onClick={() => abortRef.current?.abort()}><Square size={16} /></button> : <Button aria-label="发送给鑫小助" disabled={voiceBusy || reportReading || Boolean(researchArtifactId) || !input.trim() || uploading || !configured || Boolean(conversationUnavailable)} onClick={() => void send()}><Send size={16} /></Button>}
       </div>
     </footer>
     <button type="button" className="studio-assistant-mobile-close" onClick={onClose}>收起鑫小助</button>

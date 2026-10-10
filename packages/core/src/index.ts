@@ -9,3 +9,4 @@ export * from "./discovery-query";
 export * from "./trend";
 export * from "./today-recommendation";
 export * from "./research";
+export * from "./teardown";

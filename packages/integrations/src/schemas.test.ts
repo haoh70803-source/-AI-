@@ -34,6 +34,12 @@ describe("provider config schemas", () => {
     expect(splitProviderConfig("DOUBAO_ASR", parsed).secretConfig).toEqual({ accessToken: "legacy-token" });
   });
 
+  it("stores an explicitly supplied flash resource without replacing the configured fallback", () => {
+    const parsed = parseProviderConfig("DOUBAO_ASR", { apiKey: "fixture-key", protocol: "STREAMING_2_0", resourceId: "stream-resource", flashResourceId: "volc.bigasr.auc_turbo" });
+    expect(splitProviderConfig("DOUBAO_ASR", parsed).publicConfig).toMatchObject({ protocol: "STREAMING_2_0", resourceId: "stream-resource", flashResourceId: "volc.bigasr.auc_turbo" });
+    expect(parseProviderConfig("DOUBAO_ASR", { flashResourceId: "" }).flashResourceId).toBeUndefined();
+  });
+
   it("accepts catalog models and normalizes the legacy Kimi 2.6 shape", () => {
     expect(parseProviderConfig("LLM", {
       provider: "KIMI",

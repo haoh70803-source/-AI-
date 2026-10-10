@@ -69,14 +69,14 @@ HTTP 成功不足以表示识别成功；客户端还要求响应 Header `X-Api-
 - 支持 WAV、MP3、OGG OPUS。
 - 二进制上传建议尽量在 20 MB 内。
 
-本项目使用 FFmpeg 输出 MP3、单声道、16 kHz、64 kbps，并在调用豆包前检查实际文件大小和 ffprobe 时长。超限不会 fallback 到标准版。
+本项目使用 FFmpeg 输出 MP3、单声道、16 kHz、64 kbps，并在调用豆包前检查实际文件大小和 ffprobe 时长。资料转写的超限文件现按分片识别，详见 [Production transcription](production-transcription.md)。不会推测账号权限或自动切换到未配置的标准版。
 
 ## Input selection
 
 ```text
 公网可访问的短期 Signed URL → audio.url
 私网 / localhost 且音频 <= 20 MB → audio.data
-私网 / localhost 且音频 > 20 MB → ASR_AUDIO_NOT_PUBLICLY_REACHABLE
+资料转写音频 > 20 MiB → 私有音频分片 → 每片受控二进制上传
 ```
 
 生产优先使用 30 分钟短期 Signed URL。开发 MinIO 默认是 localhost，豆包云端无法访问，因此自动使用受大小约束的 `audio.data`；不会让真实豆包尝试拉取 localhost。
@@ -96,7 +96,7 @@ SourceAsset VIDEO STORED
 
 ## Error and retry
 
-可重试：网络失败、超时、HTTP 429、HTTP 5xx、官方 `550xxxx` 临时服务错误。BullMQ 最多尝试 3 次并使用指数退避。
+分片内可重试：网络失败、超时、HTTP 429、HTTP 5xx、官方 `550xxxx` 临时服务错误。每片每次执行最多尝试 3 次；完成的片段保存检查点。耗尽后停止，显式重试仅补转缺片。整文件请求的超时仍不自动重复，以避免重复计费；其他可重试错误沿用队列退避。
 
 不可自动重试：未配置、已禁用、认证失败、权限失败、无效响应、空转写、音频格式错误、FFmpeg 缺失/失败、大小/时长超限、不可公网访问且无法使用受控二进制上传。
 

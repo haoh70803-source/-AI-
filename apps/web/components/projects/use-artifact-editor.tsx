@@ -39,6 +39,10 @@ type Options = { projectId: string; canWrite: boolean; externalBusy?: boolean; i
 export function useArtifactEditor(options: Options) {
   const [draft, setDraft] = useState<Draft>({ artifact: options.initialArtifact ?? null, messageId: "", title: options.initialArtifact?.title ?? "我的创作版本", body: options.initialArtifact?.content ?? "" });
   const [busy, setBusy] = useState(false), [status, setStatus] = useState(""), [error, setError] = useState("");
+  const [historyItems, setHistoryItems] = useState<Array<{ id: string; revision: number; title: string; body: string; createdAt: string }>>([]);
+  const [selectedScope, setSelectedScope] = useState<{ start: number; end: number; expectedVersion: number } | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCursor, setHistoryCursor] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null), editorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<{ body: string; title: string } | null>(null);
@@ -51,7 +55,7 @@ export function useArtifactEditor(options: Options) {
   const savedRef = useRef({ artifact, messageId }); savedRef.current = { artifact, messageId };
   useEffect(() => { trackHistoryPositions(); }, []);
   function update(value: Draft) { draftRef.current = value; savedRef.current = { artifact: value.artifact, messageId: value.messageId }; setDraft(value); }
-  function showArtifact(value: ArtifactView) { inputRef.current = null; dirtyRef.current = false; update({ artifact: value, messageId: "", title: value.title, body: value.content }); setError(""); }
+  function showArtifact(value: ArtifactView) { setSelectedScope(null); setHistoryItems([]); setHistoryOpen(false); inputRef.current = null; dirtyRef.current = false; update({ artifact: value, messageId: "", title: value.title, body: value.content }); setError(""); }
   function clear() { inputRef.current = null; dirtyRef.current = false; update({ artifact: null, messageId: "", title: "我的创作版本", body: "" }); setError(""); setStatus(""); }
   function setGenerated(id: string, content: string) { inputRef.current = null; navigationApproved = false; update({ artifact: null, messageId: id, title: "我的创作版本", body: content }); setError(""); setStatus(""); }
   function hasUnsavedContent() {
@@ -61,7 +65,7 @@ export function useArtifactEditor(options: Options) {
     if (input) return savedValue ? input.body !== savedValue.content || input.title !== savedValue.title : Boolean(savedRef.current.messageId);
     return text && name ? savedValue ? text.value !== savedValue.content || name.value !== savedValue.title : Boolean(savedRef.current.messageId) : dirtyRef.current;
   }
-  function editBody(value: string) { const current = draftRef.current; navigationApproved = false; dirtyRef.current = current.artifact ? value !== current.artifact.content || current.title !== current.artifact.title : Boolean(current.messageId); update({ ...current, body: value }); }
+  function editBody(value: string) { setSelectedScope(null); const current = draftRef.current; navigationApproved = false; dirtyRef.current = current.artifact ? value !== current.artifact.content || current.title !== current.artifact.title : Boolean(current.messageId); update({ ...current, body: value }); }
   function editTitle(value: string) { const current = draftRef.current; navigationApproved = false; dirtyRef.current = current.artifact ? current.body !== current.artifact.content || value !== current.artifact.title : Boolean(current.messageId); update({ ...current, title: value }); }
   function blocked() { return lock.current || latest.current.externalBusy; }
   function queueAction(action: () => void) { if (blocked() || pendingRef.current || resolving.current) return; pendingRef.current = action; setPendingAction(() => action); }
@@ -89,7 +93,7 @@ export function useArtifactEditor(options: Options) {
       }
       if (value.content !== fields.body || value.title !== fields.title.trim()) value = await request("/api/projects/" + project + "/artifacts/" + value.artifactId, "PUT", { expectedVersion: value.version, title: fields.title.trim(), body: fields.body });
       showArtifact(value); setStatus("成果已保存，旧版本保留。"); latest.current.onSaved?.(value); return true;
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "保存失败，当前编辑内容仍保留。"); return false; }
+    } catch (cause) { setStatus(""); setError(cause instanceof Error ? cause.message : "保存失败，当前编辑内容仍保留。"); return false; }
     finally { lock.current = false; setBusy(false); }
   }
   async function resolveAction(saveFirst: boolean) {
@@ -154,12 +158,38 @@ export function useArtifactEditor(options: Options) {
     return () => { window.removeEventListener("researchhistorychange", historyChange); navigationGuards.delete(guard); window.removeEventListener("pageshow", resetNavigation); window.removeEventListener("beforeunload", leave); window.removeEventListener("popstate", back, true); document.removeEventListener("input", input, true); document.removeEventListener("click", click, true); };
   }, []);
 
+  function selectText(start: number, end: number) {
+    const value = draftRef.current.artifact;
+    setSelectedScope(value && !hasUnsavedContent() && !value.locked && end > start ? { start, end, expectedVersion: value.version } : null);
+  }
+  async function loadHistory(append = false) {
+    const value = draftRef.current.artifact; if (!value || blocked()) return;
+    setBusy(true); setError(""); setStatus("正在读取版本历史…");
+    try {
+      const response = await fetch(`/api/projects/${latest.current.projectId}/artifacts/${value.artifactId}/history${append && historyCursor ? "?before=" + historyCursor : ""}`);
+      const data = await response.json(); if (!response.ok) throw new Error(data.message || "历史读取失败。");
+      if (draftRef.current.artifact?.artifactId !== value.artifactId) return;
+      setHistoryItems(current => append ? [...current, ...data.items.filter((item: { id: string }) => !current.some(existing => existing.id === item.id))] : data.items); setHistoryCursor(data.nextCursor ?? null); setHistoryOpen(true);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "历史读取失败。"); }
+    finally { setBusy(false); setStatus(""); }
+  }
+  async function changeSavedVersion(action: "lock" | "restore", revisionId?: string) {
+    if (blocked() || hasUnsavedContent() || !latest.current.canWrite) { setError("请先保存或放弃当前修改。"); return; }
+    const value = draftRef.current.artifact; if (!value) return;
+    lock.current = true; setBusy(true); setError("");
+    try {
+      const url = `/api/projects/${latest.current.projectId}/artifacts/${value.artifactId}`;
+      const next = await request(action === "restore" ? url + "/history" : url, action === "restore" ? "POST" : "PATCH", action === "restore" ? { expectedVersion: value.version, revisionId } : { expectedVersion: value.version, locked: !value.locked });
+      showArtifact(next); setHistoryOpen(false); setStatus(action === "restore" ? "已恢复为新版本，历史版本保留。" : next.locked ? "成果已锁定；手动修改与 AI 应用均需先解锁。" : "成果已解锁。"); latest.current.onSaved?.(next);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "操作失败，当前内容保留。"); }
+    finally { lock.current = false; setBusy(false); }
+  }
   function download() {
     const value = draftRef.current.artifact; if (!value) return;
     if (hasUnsavedContent() && !window.confirm("当前有未保存修改。确定只导出已保存 V" + value.version + "？编辑内容会保留。")) return;
     const url = URL.createObjectURL(new Blob(["# " + value.title + "\n\n" + value.content], { type: "text/markdown;charset=utf-8" }));
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = value.title.replace(/[\\/:*?"<>|]/g, "_") + ".md"; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return { ...draft, dirty, busy: busy || Boolean(options.externalBusy), status, error, pendingAction, dialogRef, editorRef, editBody, editTitle, protect, hasUnsavedContent, cancelAction, resolveAction, showArtifact, clear, setGenerated, save, download };
+  return { ...draft, projectId: options.projectId, historyItems, historyOpen, historyCursor, closeHistory: () => setHistoryOpen(false), loadHistory, changeSavedVersion, selectedScope, selectText, dirty, busy: busy || Boolean(options.externalBusy), status, error, pendingAction, dialogRef, editorRef, editBody, editTitle, protect, hasUnsavedContent, cancelAction, resolveAction, showArtifact, clear, setGenerated, save, download };
 }
 export type ArtifactEditorState = ReturnType<typeof useArtifactEditor>;

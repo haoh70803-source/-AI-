@@ -129,7 +129,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const { session, workspace, role } = await requireWorkspace();
   const query = await searchParams;
   const organization = await getProjectListView({ workspaceId: workspace.id, userId: session.user.id });
-  if (!query.folder && query.view !== "all" && !query.status) return <><ProjectLibrarySync /><FolderLibrary initialView={organization} search={query.search} sort={query.sort} /></>;
+  const projectViews = <nav className="folder-detail-tabs" aria-label="项目业务视图"><Link href="/projects">项目</Link><Link href="/topics">选题管理</Link><Link href="/short-video/tasks">今日任务</Link><Link href="/projects?review=pending">待审核平台稿</Link></nav>;
+  if (!query.folder && query.view !== "all" && !query.status && !query.review) return <>{projectViews}<ProjectLibrarySync /><FolderLibrary initialView={organization} search={query.search} sort={query.sort} /></>;
   const selectedFolder = query.folder && query.folder !== "ungrouped" ? organization.folders.find((folder) => folder.folderId === query.folder) : null;
   if (query.folder && query.folder !== "ungrouped" && !selectedFolder) notFound();
   const folderLabel = query.folder === "ungrouped" ? "未分组" : selectedFolder?.label;
@@ -144,6 +145,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const hasProjects = result.total > 0 || Boolean(query.search);
 
   return <div className={`project-library-page v3-page v3-projects-page reference-project-library ${folderLabel ? "is-folder-detail" : ""}`}>
+    {projectViews}
     <ProjectLibrarySync />
     <nav className="project-library-breadcrumb" aria-label="面包屑"><Link href="/projects">项目库</Link><span>›</span><strong>{folderLabel || "全部创作"}</strong></nav>
     {!folderLabel ? <header className="project-library-header v3-page-header">

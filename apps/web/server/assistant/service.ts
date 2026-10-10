@@ -23,7 +23,7 @@ import { resolveContextReferences, type ContextReference, type SourceReference, 
 import { recallAssistantMemory } from "./memory";
 import { assertAssistantCapacity, consumeAssistantRequest } from "./capacity";
 
-import { continuingReferences, referenceScope } from "../../lib/contracts/references";
+import { continuingReferences, referenceScope } from "../../lib/reference-scope";
 import { assistantSystemPrompt } from "./prompt";
 import { resolveCreationPolicy, paragraphScope, mergeLocalEdit } from "./creation-policy";
 import { creationOptionsSchema, type CreationOptions, type EditScope } from "@/lib/contracts/creation";

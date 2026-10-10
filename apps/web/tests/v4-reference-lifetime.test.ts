@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { db } from "@content-center/db";
 import { MockLLMProvider } from "@content-center/providers";
-import { continuingReferences } from "../lib/contracts/references";
+import { continuingReferences } from "../lib/reference-scope";
 import { getProjectAssistantThread, runProjectAssistant } from "../server/assistant/service";
 import type { ContextReference } from "../lib/contracts/references";
 

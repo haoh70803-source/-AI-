@@ -96,7 +96,7 @@ async function build() {
   if(receipt.status!=="BUILT")process.exitCode=1;
 }
 function existingConfig(mode) {
-  const path=join(root,mode==="daily"?"output/account-upgrade-private/formal-cutover-20261004/daily.env":"output/account-upgrade-private/review.env");
+  const path=resolve(root,process.env.LOCAL_PROFILE_FILE || (mode==="daily"?"output/account-upgrade-private/formal-cutover-20261004/daily.env":"output/account-upgrade-private/review.env"));
   if(!existsSync(path))throw Error("RELEASE_CONFIGURATION_MISSING");
   return parseEnv(readFileSync(path,"utf8"));
 }

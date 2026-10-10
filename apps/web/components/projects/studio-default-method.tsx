@@ -1,5 +1,5 @@
 "use client";
-import { referenceScope } from "@/lib/contracts/references";
+import { referenceScope } from "@/lib/reference-scope";
 import { MAX_PROJECT_SKILLS } from "@/lib/contracts/creation";
 
 import { CreationControls } from "./creation-controls";

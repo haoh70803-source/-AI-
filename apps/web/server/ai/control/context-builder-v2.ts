@@ -222,7 +222,7 @@ export class ContextBuilderV2 {
     const refs = [...(input.references ?? []), ...(input.selectedObjects ?? []).filter(r => r.objectType === "SOURCE_ITEM").map(r => ({ sourceType: "MATERIAL" as const, sourceId: r.objectId }))];
     const resolved = await resolveContextReferences(input, refs, { query: input.userInput });
     const governed = await loadConfirmedProjectFacts(input, refs);
-    let methods: SelectedGenerationMethod[] = [];
+    let methods: SelectedGenerationMethod[];
     const explicitIds = input.skillVersionIds ?? (input.skillVersionId !== undefined ? (input.skillVersionId ? [input.skillVersionId] : []) : undefined);
     if (input.skillVersionIds !== undefined && input.skillVersionId !== undefined) throw new AIControlError("NO_CONTEXT", "请使用一种 Skill 选择方式，避免冲突。");
     if (explicitIds !== undefined) {

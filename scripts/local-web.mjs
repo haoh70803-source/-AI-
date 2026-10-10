@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 try {
   const mode = process.argv[2];
   if (!['review', 'daily', 'live'].includes(mode)) throw Error('Explicit local profile required');
-  const values = parseEnv(readFileSync(resolve(root, mode === 'daily' ? 'output/account-upgrade-private/formal-cutover-20261004/daily.env' : 'output/account-upgrade-private/review.env'), 'utf8'));
+  const values = parseEnv(readFileSync(resolve(root, process.env.LOCAL_PROFILE_FILE || (mode === 'daily' ? 'output/account-upgrade-private/formal-cutover-20261004/daily.env' : 'output/account-upgrade-private/review.env')), 'utf8'));
   const profile = mode === 'daily' ? validateDaily(values) : validateReview(values);
   const action = process.argv[3] ?? 'dev';
   const env = mode === 'live' ? { ...runtimeEnvironment('live', values, process.env), NODE_ENV: 'development', APP_URL: values.APP_URL, AUTH_COOKIE_PREFIX: values.AUTH_COOKIE_PREFIX } : mode === 'daily' ? dailyEnvironment(values, process.env) : reviewEnvironment(values, process.env);

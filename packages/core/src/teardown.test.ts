@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareAuthorLikes, timedTranscript, validateTeardownAnalysis, renderTeardownMarkdown, teardownResearchBlocks, teardownReportOverview, teardownViralityFindings, TEARDOWN_SCHEMA, type BaselineSample, type TeardownAnalysis, type TeardownWork } from "./teardown";
+import { compareAuthorLikes, timedTranscript, validateTeardownAnalysis, renderTeardownMarkdown, teardownResearchBlocks, teardownReportOverview, teardownViralityFindings, TEARDOWN_SCHEMA, type BaselineSample, type TeardownAnalysis, type TeardownWork, type TeardownReport } from "./teardown";
 
 const at = "2026-10-09T00:00:00.000Z";
 const work: TeardownWork = { externalId: "target", title: "表达的结构", authorId: "author", authorName: "老师", url: "https://www.douyin.com/video/123", publishedAt: at, capturedAt: at, metrics: { likes: 400, views: null, favorites: 0, shares: null, comments: 4 } };
@@ -16,7 +16,7 @@ describe("teardown evidence and report", () => {
     expect(() => validateTeardownAnalysis(related, transcript)).toThrow("UNSUPPORTED_TREND");
     expect(validateTeardownAnalysis(related, transcript, {}, trend)).toEqual(related);
     expect(() => validateTeardownAnalysis({ ...related, trendAssessment: { ...related.trendAssessment!, sourceIds: ["fake"] } }, transcript, {}, trend)).toThrow("UNSUPPORTED_TREND");
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis: related, trendContext: trend };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis: related, trendContext: trend };
     const markdown = renderTeardownMarkdown(report).split("## 为什么爆")[1]!.split("## 主线风险")[0]!;
     expect(markdown).not.toContain("（00:");
     expect(markdown).toContain("采集");
@@ -34,7 +34,7 @@ describe("teardown evidence and report", () => {
     expect(validateTeardownAnalysis(changed, transcript, { favoritesPerLike: "0.0%" })).toEqual(changed);
     expect(() => validateTeardownAnalysis(changed, transcript)).toThrow("UNSUPPORTED_NUMBER");
     expect(() => validateTeardownAnalysis({ ...changed, virality: [{ ...changed.virality![0]!, segmentId: 99 }] }, transcript)).toThrow("UNKNOWN_QUOTE");
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis: changed };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis: changed };
     expect(renderTeardownMarkdown(report)).toContain("## 为什么爆");
     expect(renderTeardownMarkdown(report)).toContain(changed.virality![0]!.explanation);
     expect(renderTeardownMarkdown(report)).not.toContain("### 收藏价值");
@@ -44,7 +44,7 @@ describe("teardown evidence and report", () => {
     const legacy = { ...analysis, distractions: [{ explanation: "存在偏离主线的风险", segmentId: 2 }] };
     expect(teardownViralityFindings(legacy)).toEqual([]);
     expect(teardownViralityFindings({ ...legacy, virality: [] })).toEqual([]);
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis: legacy };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis: legacy };
     const markdown = renderTeardownMarkdown(report);
     expect(markdown).toContain("历史报告未生成专门的传播分析");
     expect(markdown.split("## 为什么爆")[1]!.split("## 主线风险")[0]).not.toContain("存在偏离主线的风险");
@@ -52,7 +52,7 @@ describe("teardown evidence and report", () => {
     expect(markdown).toContain("存在偏离主线的风险");
   });
   it("derives ratios and semantic duration while preserving missing data and zero denominators", () => {
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis };
     expect(teardownReportOverview(report)).toMatchObject({ durationMs: 9900, detourMs: 0, detourPercent: 0, ratios: { favorites: 0, shares: null, comments: 1 } });
     expect(teardownReportOverview({ ...report, work: { ...work, metrics: { ...work.metrics, likes: 0 } } }).ratios).toEqual({ favorites: null, shares: null, comments: null });
     const markdown = renderTeardownMarkdown(report);
@@ -64,7 +64,7 @@ describe("teardown evidence and report", () => {
   it("does not double-count overlapping ASR intervals in deviation time", () => {
     const overlapping = timedTranscript([{ startMs: 0, endMs: 4000, text: "第一段" }, { startMs: 3000, endMs: 7000, text: "第二段" }, { startMs: 6500, endMs: 8000, text: "第三段" }]);
     const changed = { ...analysis, sections: [{ ...analysis.sections[0]!, label: "跑题" as const, servesThesis: false }, { ...analysis.sections[1]!, servesThesis: false }] };
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript: overlapping, analysis: changed };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript: overlapping, analysis: changed };
     expect(teardownReportOverview(report)).toMatchObject({ durationMs: 8000, detourMs: 8000, detourPercent: 100 });
   });
   it("computes a median from valid recent author samples and preserves missing counts", () => {
@@ -90,7 +90,7 @@ describe("teardown evidence and report", () => {
     expect(() => timedTranscript([{ startMs: 0, endMs: 0, text: "无时长" }])).toThrow("TIMESTAMPS_REQUIRED");
   });
   it("renders reference report sections and exact ASR quotes while preserving Research provenance", () => {
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work, baseline: compareAuthorLikes(work, [], at), transcript, analysis };
     const markdown = renderTeardownMarkdown(report);
     for (const heading of ["主线一句话", "分段时间轴", "做对了什么", "为什么爆", "主线风险", "逐段原文", "解释边界"]) expect(markdown).toContain(`## ${heading}`);
     expect(markdown).toContain("先说清楚主线。（00:00）");
@@ -102,7 +102,7 @@ describe("teardown evidence and report", () => {
   });
   it("exports transcript-only reports with an explicit gap and no claimed public-data snapshot", () => {
     const unavailable: TeardownWork = { ...work, externalId: null, authorId: null, publicDataStatus: "UNAVAILABLE", metrics: { likes: null, comments: null, shares: null, favorites: null, views: null } };
-    const report = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work: unavailable, baseline: compareAuthorLikes(unavailable, [], at, ["红狐未收录该作品"]), transcript, analysis };
+    const report: TeardownReport = { schema: TEARDOWN_SCHEMA, sourceItemId: "source", transcriptId: "transcript", generatedAt: at, model: "deepseek", work: unavailable, baseline: compareAuthorLikes(unavailable, [], at, ["红狐未收录该作品"]), transcript, analysis };
     const markdown = renderTeardownMarkdown(report);
     expect(markdown).toContain("数据不足，无法比较作者近期表现");
     expect(markdown).toContain("| 点赞 | 未返回 |");

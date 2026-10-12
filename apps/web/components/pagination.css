@@ -1,0 +1,5 @@
+.content-pagination{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:12px 0;color:var(--text-secondary);font-size:12px;grid-column:1/-1;}
+.content-pagination>span{margin-right:auto;}
+.content-pagination>button{border:1px solid var(--border);border-radius:var(--radius-control,8px);background:var(--surface);color:var(--text-primary);padding:6px 10px;white-space:nowrap;}
+.content-pagination>button:hover:not(:disabled){background:var(--surface-secondary);}
+.content-pagination>button:disabled{opacity:.45;cursor:default;}

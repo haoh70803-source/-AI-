@@ -4,7 +4,7 @@
 
   & * { box-sizing: border-box; }
   & :is(button, select, input, textarea) { font: inherit; font-variant-numeric: tabular-nums; }
-  & :is(button, a, select, input, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  & :is(button, a, select, input, textarea):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; }
   & button { cursor: pointer; }
   & button:disabled { opacity: .45; cursor: not-allowed; }
   & a { color: var(--accent); text-decoration: none; }
@@ -29,7 +29,7 @@
   & .va-source-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 0; color: var(--text-secondary); font-size: 12px; }
   & .va-tabs { display: flex; gap: 8px; overflow-x: auto; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 24px; }
   & .va-tabs button { white-space: nowrap; }
-  & :is(.va-tabs, .va-segment) button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
+  & :is(.va-tabs, .va-segment) button[aria-pressed="true"] { background: var(--surface-secondary); color: var(--text-primary); border-color: var(--border); }
   & :is(.va-top-grid, .va-main-grid, .va-bottom-grid) { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 16px; }
   & :is(.va-top-grid, .va-main-grid) { margin-bottom: 24px; }
   & .va-main-grid { align-items: start; }
@@ -172,7 +172,7 @@
   & .va-distribution-row > div { height: 6px; }
   & .va-distribution-row i { border-radius: var(--radius-control); }
   & .va-empty { border: 1px dashed var(--border-strong); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface) 45%, transparent); padding: var(--space-5) var(--space-4); }
-  & :is(button, a, select, input, textarea, [tabindex]):focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 4px var(--accent-ring); }
+  & :is(button, a, select, input, textarea, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; box-shadow: none; }
 }
 
 
@@ -299,3 +299,8 @@
 @media(max-width:700px){.va-secondary-grid{grid-template-columns:1fr;}.va-workspace[data-surface="console-dark"] .va-cockpit .va-trend{min-height:320px;}.va-workspace[data-surface="console-dark"] .va-cockpit .va-chart{height:220px;}}
 
 .va-workspace[data-surface="console-dark"] .va-cockpit .va-account-distribution svg{max-width:180px;}
+
+.va-workspace[data-surface="console-dark"] .va-cockpit{align-items:start;}
+.va-workspace[data-surface="console-dark"] .va-cockpit>.va-panel:not(.va-trend){min-height:0;align-self:start;}
+.va-workspace[data-surface="console-dark"] .va-account-panel{display:block;}
+.va-workspace .va-account-list{min-width:0;}

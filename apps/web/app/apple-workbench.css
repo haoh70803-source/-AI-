@@ -286,7 +286,7 @@ body:is([data-theme="black-titanium"], [data-theme="light"]) {
 
   & :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) { background: var(--surface-secondary); border-color: var(--border-strong); color: var(--text); }
   & :is(input, textarea)::placeholder { color: var(--text-tertiary); }
-  & :is(button, a, input, select, textarea, summary):focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 4px var(--accent-ring); }
+  & :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--focus-ring, var(--text-secondary)); outline-offset: 3px; box-shadow: none; }
   & :is([class~="bg-[var(--accent)]"], .hub-primary, .research-primary, .video-primary, .xsj-send) { background: var(--gradient-brand); border-color: var(--accent-border); color: var(--on-accent); box-shadow: inset 0 1px 0 rgb(255 255 255 / .15); }
   & :is(.hub-primary, .research-primary, .video-primary):disabled { opacity: .45; }
   & :is(.state-APPROVED, .state-CONFIRMED, .state-PUBLISHED) { background: color-mix(in srgb, var(--success) 12%, var(--surface)); color: var(--success); }
@@ -324,3 +324,9 @@ body:is([data-theme="black-titanium"], [data-theme="light"]):has(.app-shell[data
   body:is([data-theme="black-titanium"], [data-theme="light"]) .fusion-auth-story { background-size: auto, 64px 64px; }
   body:is([data-theme="black-titanium"], [data-theme="light"]) .fusion-auth-card { width: 100%; }
 }
+
+body:is([data-theme="light"],[data-theme="black-titanium"]){--focus-ring:color-mix(in srgb,var(--text-secondary) 65%,var(--surface));}
+body:is([data-theme="light"],[data-theme="black-titanium"]) :is(button,a,input,textarea,select,summary):focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;box-shadow:none;}
+body:is([data-theme="light"],[data-theme="black-titanium"]) :is(.home-picker-row[aria-pressed=true],.artifact-editor-view-controls button[aria-pressed=true]){border-color:var(--border);background:var(--surface-secondary);color:var(--text-primary);}
+
+body:is([data-theme="light"],[data-theme="black-titanium"]) :is(input,textarea,select):not([aria-invalid="true"]):focus-visible{border-color:var(--border-strong);}

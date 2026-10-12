@@ -32,7 +32,7 @@
 .asset-paper i:last-child { width: 60%; }
 .asset-library-card:hover .asset-paper:not(.asset-paper-back) { transform: translateY(5px); }
 .asset-library-preview.has-image { padding: 12px; }
-.asset-library-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+.asset-library-preview img { width: 100%; height: 100%; object-fit: contain; border-radius: 10px; }
 .asset-type-badge { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; gap: 4px; align-items: center; padding: 4px 6px; border-radius: 5px; background: var(--surface); color: var(--text-secondary); font-size: 10px; }
 .asset-processing { position: absolute; z-index: 2; bottom: 8px; left: 12px; max-width: calc(100% - 24px); padding: 4px 6px; border-radius: 5px; background: var(--surface); color: var(--text-secondary); font-size: 10px; }
 .asset-processing.is-failed { color: #b14b53; }
@@ -96,3 +96,45 @@ body[data-theme=light] .xin-content-banner h2{font-size:54px;}
 .xin-content-tabs>span{color:var(--text-secondary);font-size:11px;align-self:center;opacity:.7;}
 @media(max-width:900px){.asset-library-page .asset-library-grid:not(.is-list){grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:700px){.asset-library-page{padding-top:22px;}}
+
+/* Resource center: one persistent tool area, using the existing theme tokens. */
+.asset-library-page .xin-content-banner,
+body[data-theme=light] .asset-library-page .xin-content-banner { height: 156px; margin: 20px 0; }
+.asset-library-page .xin-content-banner > img { inset: 50% 24px auto auto; width: auto; max-width: 50%; height: auto; max-height: 100%; object-fit: contain; transform: translateY(-50%); mask-image: linear-gradient(90deg, transparent, #000 22%, #000 88%, transparent), linear-gradient(0deg, transparent, #000 14%, #000 86%, transparent); mask-composite: intersect; }
+.asset-library-page .xin-content-banner:after { pointer-events: none; background: linear-gradient(90deg, var(--surface), transparent 70%); }
+.asset-library-page .xin-content-banner > div { padding: 16px 24px; }
+.asset-library-page .xin-content-banner h2 { font-size: 24px; margin: 8px 0; }
+.asset-library-page .xin-content-banner p { margin: 0; line-height: 1.6; }
+.asset-library-page .xin-content-banner a { margin-top: 6px; }
+.asset-library-tools { margin: 18px 0 24px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.asset-library-tool-row { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+.asset-library-tool-row > span { flex: 0 0 56px; font-size: 12px; color: var(--text-secondary); }
+.asset-library-tool-row nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; min-width: 0; }
+.asset-library-tool-row nav a { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); font-size: 12px; text-decoration: none; }
+.asset-library-tool-row nav a:hover,
+.asset-library-tool-row nav a[aria-current=page] { background: var(--surface-secondary); color: var(--text-primary); border-color: var(--border-strong); }
+body:has(.apple-workspace-marker) .asset-library-tools .asset-library-types a[aria-current=page] { border-color: var(--border-strong); background: var(--surface-secondary); color: var(--text-primary); }
+.asset-library-tools .asset-library-toolbar { border-top: 1px solid var(--border); padding-top: 14px; margin: 14px 0 8px; flex-wrap: wrap; }
+.asset-library-tools .asset-library-toolbar > div { flex-wrap: wrap; min-width: 0; }
+.asset-library-tools .asset-library-toolbar form:focus-within { border-color: var(--border-strong); box-shadow: none; }
+.asset-library-scope { margin: 8px 0 0; font-size: 11px; line-height: 1.7; color: var(--text-secondary); }
+.asset-library-feishu { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; padding: 16px; background: var(--surface-secondary); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; }
+.asset-library-feishu p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; }
+.asset-library-feishu > div:last-child { display: flex; flex-wrap: wrap; gap: 16px; }
+.asset-library-page .asset-library-card-action .project-card-primary { opacity: 1; transform: none; pointer-events: auto; }
+.asset-library-page .asset-card-menu-trigger { opacity: 1; }
+body:has(.apple-workspace-marker) .asset-library-page .asset-library-card:hover { transform: none; border-color: var(--border-strong); }
+.asset-library-page .asset-library-empty { min-height: 220px; }
+@media(max-width:600px) {
+  .asset-library-page .xin-content-banner,
+  body[data-theme=light] .asset-library-page .xin-content-banner { height: auto; min-height: 156px; }
+  .asset-library-page .xin-content-banner > img { right: 0; max-width: 44%; opacity: .65; }
+  .asset-library-page .xin-content-banner > div { max-width: 72%; padding: 16px; }
+  body[data-theme=light] .asset-library-page .xin-content-banner h2 { font-size: 24px; }
+  .asset-library-tools { padding: 12px; }
+  .asset-library-tool-row { gap: 8px; }
+  .asset-library-tool-row nav a { padding: 6px 8px; }
+  .asset-library-tools .asset-library-toolbar form { flex-basis: 100%; width: 100%; }
+  .asset-library-page .asset-library-grid.is-list .asset-library-card { gap: 6px; flex-wrap: wrap; }
+  .asset-library-page .asset-library-grid.is-list .asset-library-card-link { flex-basis: 100%; padding-right: 32px; }
+}

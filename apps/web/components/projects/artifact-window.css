@@ -122,3 +122,31 @@
 .project-conversation-layout>section[aria-label="项目持续对话"]{display:flex;flex-direction:column;}
 .project-conversation-layout .studio-project-assistant{height:auto;min-height:0;flex:1;}
 @media(max-width:760px){.project-conversation-layout .studio-project-assistant{flex:initial;min-height:560px;}.project-conversation-layout .studio-assistant-stream{flex:initial;min-height:240px;max-height:65dvh;overflow:auto;}.project-conversation-layout .studio-assistant-composer{position:relative;flex:none;}}
+
+/* Conversation remains the primary workspace in all panel states. */
+@media(min-width:761px){
+ .project-conversation-layout{grid-template-columns:minmax(150px,180px) minmax(0,1.8fr) minmax(0,1fr);min-height:70dvh;margin:0 24px 24px;}
+ .project-conversation-layout.context-collapsed{grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);}
+ .project-conversation-layout.artifact-collapsed{grid-template-columns:minmax(150px,180px) minmax(0,1fr);}
+ .project-conversation-layout.context-collapsed.artifact-collapsed{grid-template-columns:minmax(0,1fr);}
+}
+@media(min-width:761px) and (max-width:1100px){
+ .project-conversation-layout{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);}
+ .project-conversation-layout>aside{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--border);}
+ .project-conversation-layout.artifact-collapsed{grid-template-columns:minmax(0,1fr);}
+}
+.project-material-reference{background:var(--surface-secondary);min-width:0;}
+.project-material-reference>header{display:flex;align-items:start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding:16px;}
+.project-material-reference h2{font-size:14px;overflow-wrap:anywhere;}
+.project-material-reference small{color:var(--text-secondary);font-size:11px;}
+.project-material-reference button{font-size:12px;white-space:nowrap;}
+.project-material-body{padding:16px;max-height:72dvh;overflow:auto;}
+.paginated-plain-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.9;font-size:14px;}
+.paginated-content .assistant-markdown{overflow-wrap:anywhere;}
+.paginated-content :is(pre,table){display:block;max-width:100%;max-height:55dvh;overflow:auto;}
+.artifact-window.is-embedded .artifact-window-body{padding:16px;max-height:72dvh;overflow:auto;}
+.artifact-window.is-embedded .artifact-editor{padding:16px;}
+.artifact-window.is-embedded .artifact-editor-preview{padding:8px 0;}
+
+.artifact-window.is-embedded .artifact-window-layout>aside{flex-wrap:wrap;}
+.artifact-window.is-embedded .artifact-window-layout>aside>.content-pagination{flex:1 0 100%;padding:4px 0;}

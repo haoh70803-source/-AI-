@@ -234,7 +234,7 @@
 .research-source-empty{padding:32px 0}.research-source-reader .research-source-card .research-button{margin:8px 10px 0 0}
 @media(max-width:600px){.research-source-card{padding:16px}.research-source-tabs{gap:14px;font-size:13px}.research-source-inbox .research-page-heading{display:block}}
 
-/* Research follows the confirmed brand hero, sessions and result layout. */
+/* Research sessions retain their existing reading layout. */
 .research-capability-menu{order:2;margin:0 40px 28px;border-top:1px solid var(--border);padding-top:16px;}
 .research-capability-menu>summary{font-size:12px;color:var(--text-secondary);cursor:pointer;}
 .research-capability-menu .research-navigation{padding:16px 0;background:transparent;}
@@ -270,6 +270,50 @@
 
 .research-main-pane{padding-inline:var(--spacing-page);}
 .xin-research-session-list{align-self:stretch;}
+
+/* Research center Lite: existing tools and workspaces, using theme tokens. */
+.research-center:has(.research-lite-tools){grid-template-columns:minmax(0,1fr);min-height:0}
+.research-lite-tools{margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.research-lite-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.research-lite-heading h1{font-size:26px;line-height:1.45;margin:0;letter-spacing:-.025em}
+.research-lite-heading p{font-size:13px;color:var(--text-secondary);margin-top:6px}
+.research-lite-heading>svg{color:var(--accent);flex-shrink:0}
+.research-lite-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.research-lite-cards>a{display:grid;gap:6px;padding:18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);min-width:0;transition:border-color 140ms,background 140ms}
+.research-lite-cards>a:hover,.research-lite-cards>a[aria-current=page]{border-color:var(--accent-border,var(--accent));background:var(--surface-secondary)}
+.research-lite-cards>a>div{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:var(--accent)}
+.research-lite-cards strong{font-size:15px;color:var(--text-primary)}
+.research-lite-cards p{font-size:12px;color:var(--text-secondary)}
+.research-lite-cards span{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--accent);margin-top:3px}
+.research-lite-workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.research-lite-workspace-heading>span{border-radius:6px;background:var(--surface-secondary);padding:2px 8px;font-size:11px;color:var(--text-secondary)}
+.research-lite-workspace-panel{border:1px solid var(--border);border-radius:10px;padding:20px;min-width:0}
+.research-lite-workspace-panel>.research-page-heading{margin-bottom:12px;align-items:center}
+.research-lite-workspace-panel>.research-page-heading h2{font-size:16px}
+.research-lite-workspace-panel>.research-page-heading p{font-size:12px;margin-top:4px}
+.research-lite-workspace-panel .research-source-empty{padding:20px 12px;text-align:center;display:grid;justify-items:center;gap:8px}
+.research-lite-workspace-panel .teacher-card-grid:empty{margin:0}
+.research-lite-workspace-panel .research-source-empty p{font-size:12px;color:var(--text-secondary);max-width:520px}
+.research-lite-workspace-panel .research-source-empty a{font-size:12px;color:var(--accent)}
+.research-lite-workspace-panel .teacher-filter-form{padding:12px;background:var(--surface-secondary);border-radius:8px}
+.research-lite-workspace-panel .teacher-filter-extra label{min-width:0}
+.research-lite-workspace-panel .teacher-filter-extra input{width:100%}
+.research-lite-workspace-panel .teacher-data-notes{margin-bottom:0}
+.research-lite-continue{display:flex;align-items:center;gap:10px;padding:16px;margin-top:16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px}
+.research-lite-continue>svg{color:var(--accent);flex-shrink:0}
+.research-lite-continue>span:last-child{margin-left:auto;color:var(--accent)}
+.research-lite-question,.research-lite-history{margin-top:22px;border-top:1px solid var(--border);padding-top:16px}
+.research-lite-question>summary,.research-lite-history>summary{font-size:13px;color:var(--text-secondary);cursor:pointer}
+.research-lite-question .xin-research-result{margin-top:14px}
+.research-lite-question .xin-research-result-body{padding:20px}
+.research-lite-question .xin-research-result-body h2{font-size:20px;margin:10px 0 16px}
+.research-lite-history nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.research-lite-history nav a{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:12px;overflow-wrap:anywhere;min-width:0}
+.research-lite-history nav a span{margin-left:auto;white-space:nowrap;color:var(--text-secondary)}
+.research-lite-materials{display:flex;flex-wrap:wrap;gap:14px;padding-top:14px;font-size:12px;color:var(--text-secondary)}
+.research-lite-teardown>.teardown-workspace{margin-top:0}
+@media(max-width:700px){.research-lite-heading h1{font-size:22px}.research-lite-cards{gap:8px}.research-lite-cards>a{padding:12px}.research-lite-cards strong{font-size:13px}.research-lite-cards p{font-size:11px}.research-lite-workspace-panel{padding:14px}.research-lite-history nav{grid-template-columns:minmax(0,1fr)}.research-lite-workspace-panel .teacher-filter-extra{display:grid;grid-template-columns:minmax(0,1fr);width:100%}}
+@media(max-width:420px){.research-lite-cards{grid-template-columns:minmax(0,1fr)}.research-lite-cards>a{grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:6px 10px}.research-lite-cards>a>div{grid-row:span 2;margin:0}.research-lite-cards small{display:none}.research-lite-cards p{grid-column:2}.research-lite-cards span{grid-column:3;grid-row:1 / 3;margin:0}.research-lite-heading>svg{width:22px}}
 
 /* Research uses the same phone navigation as the rest of the workspace. */
 @media(max-width:700px){body:has(.research-center) .xsj-app-sidebar:not(.is-temporary){width:100%!important;min-width:0;}body:has(.research-center) .xsj-app-sidebar:not(.is-temporary) .app-sidebar-navigation .app-sidebar-copy{display:block;}body:has(.research-center) .xsj-app-sidebar:not(.is-temporary) .app-sidebar-navigation .app-sidebar-icon-slot{width:28px;min-width:28px;}body:has(.research-center) .xsj-app-sidebar:not(.is-temporary) .app-sidebar-account .app-sidebar-icon-slot{width:34px;min-width:34px;}}

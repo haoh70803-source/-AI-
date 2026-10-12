@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { PaginatedContent } from "../paginated-content";
 import type { ArtifactEditorState } from "./use-artifact-editor";
 import "./artifact-window.css";
 export function ArtifactEditor({ editor, canWrite }: { editor: ArtifactEditorState; canWrite: boolean }) {
@@ -12,7 +11,7 @@ export function ArtifactEditor({ editor, canWrite }: { editor: ArtifactEditorSta
     <label>成果名称<input aria-label="成果名称" value={editor.title} onChange={event => editor.editTitle(event.target.value)} maxLength={200} disabled={editor.busy || !canWrite || Boolean(editor.artifact?.locked)} /></label>
     <div className="artifact-editor-view-controls" role="group" aria-label="正文显示方式"><button type="button" aria-pressed={!preview} onClick={() => { setPreview(false); requestAnimationFrame(() => editor.editorRef.current?.querySelector("textarea")?.focus({ preventScroll: true })); }}>编辑正文</button><button type="button" aria-pressed={preview} onClick={() => setPreview(true)}>预览排版</button><small>{editor.body.length.toLocaleString("zh-CN")} 字符{preview && editor.dirty ? " · 含未保存修改" : ""}</small></div>
     <label hidden={preview}>成果正文<textarea aria-label="成果正文" value={editor.body} onChange={event => editor.editBody(event.target.value)} onSelect={event => editor.selectText(event.currentTarget.selectionStart, event.currentTarget.selectionEnd)} maxLength={1_000_000} disabled={editor.busy || !canWrite || Boolean(editor.artifact?.locked)} /></label>
-    <section hidden={!preview} className="artifact-editor-preview" aria-label="当前内容预览">{preview ? <article className="assistant-markdown" data-testid="generic-artifact-view"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ img: ({ alt }) => <span>{alt || "图片引用"}</span> }}>{editor.body || "暂无正文，返回编辑后输入内容。"}</ReactMarkdown></article> : null}</section>
+    <section hidden={!preview} className="artifact-editor-preview" aria-label="当前内容预览">{preview ? <PaginatedContent content={editor.body || "暂无正文，返回编辑后输入内容。"} /> : null}</section>
     <div className="artifact-editor-actions"><button type="button" disabled={editor.busy || !canWrite || !editor.dirty} onClick={() => void editor.save()}>{editor.artifact ? "保存修改" : "保存为成果"}</button>{editor.artifact ? <><button type="button" disabled={editor.busy} onClick={editor.download}>导出已保存版本</button><small>导出内容：已保存 V{editor.artifact.version}</small></> : null}</div>
     {editor.artifact ? <div className="artifact-editor-actions"><button type="button" disabled={editor.busy || editor.dirty || !canWrite} onClick={() => void editor.changeSavedVersion("lock")}>{editor.artifact.locked ? "解锁成果" : "确认并锁定成果"}</button><button type="button" disabled={editor.busy} onClick={() => void editor.loadHistory()}>查看版本历史</button></div> : null}
     {editor.artifact ? <small>锁定只保留当前版本，不代表事实已审核或正式发布。</small> : null}

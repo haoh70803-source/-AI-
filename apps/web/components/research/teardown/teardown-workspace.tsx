@@ -1,4 +1,5 @@
 "use client";
+import { ThemedSelect } from "../../themed-select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
@@ -209,7 +210,7 @@ function TeardownReading({ run, report, projects, canWrite, onRefresh, refreshin
         </div>
         {projectMode === "new" ? <label className="teardown-share-field">项目名称<input value={projectTitle} maxLength={200} disabled={sharing} onChange={event => { setProjectTitle(event.target.value); setShareResult(null); }} placeholder="为这次创作取一个项目名称" /></label> : <div className="teardown-share-target">
           <label className="teardown-share-field">搜索项目<input type="search" value={projectSearch} disabled={sharing} onChange={event => { setProjectSearch(event.target.value); setProjectId(""); setShareResult(null); }} placeholder="按项目名称搜索" /></label>
-          <label className="teardown-share-field">目标项目<select value={projectId} disabled={sharing || searchingProjects} onChange={event => { setProjectId(event.target.value); setShareResult(null); }}><option value="">{searchingProjects ? "正在搜索…" : "选择项目"}</option>{projectChoices.map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
+          <label className="teardown-share-field">目标项目<ThemedSelect value={projectId} disabled={sharing || searchingProjects} onChange={event => { setProjectId(event.target.value); setShareResult(null); }}><option value="">{searchingProjects ? "正在搜索…" : "选择项目"}</option>{projectChoices.map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</ThemedSelect></label>
           {!searchingProjects && !projectChoices.length ? <p>没有找到可用项目，可以切换到“新建项目”。</p> : null}
         </div>}
         <details className="teardown-share-preview"><summary>{sharePreview ? `查看将加入的内容 · ${sharePreview.blockCount} 个结论、${sharePreview.sourceCount} 个来源` : "正在读取报告预览…"}</summary><pre>{sharePreview?.body || "等待报告读取完成后再加入项目。"}</pre></details>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartNoAxesCombined, ChevronDown, BookOpen, House, LayoutGrid, PanelLeftClose, PanelLeftOpen, Sparkles, Settings } from "lucide-react";
+import { CircleHelp, ChartNoAxesCombined, ChevronDown, BookOpen, House, LayoutGrid, PanelLeftClose, PanelLeftOpen, Sparkles, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type RefObject } from "react";
@@ -45,6 +45,8 @@ type SidebarProps = {
   workspaceName: string;
   isSystemAdmin: boolean;
   accountRef: RefObject<HTMLDetailsElement | null>;
+  onOpenHelp?: () => void;
+  helpExpanded?: boolean;
 };
 
 export function SidebarFoundation({
@@ -65,6 +67,8 @@ export function SidebarFoundation({
   workspaceName,
   isSystemAdmin,
   accountRef,
+  onOpenHelp,
+  helpExpanded = false,
 }: SidebarProps) {
   const pathname=usePathname();
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -108,6 +112,7 @@ export function SidebarFoundation({
 
 
 
+    {onOpenHelp ? <button type="button" className="app-sidebar-help" aria-label="帮助与视图" title="帮助与视图" aria-expanded={helpExpanded} aria-controls="app-shell-help-menu" onClick={onOpenHelp}><CircleHelp size={19}/><span className="app-sidebar-copy">帮助与视图</span></button> : null}
     <Link href="/settings" className="app-sidebar-settings" aria-label="设置与服务" title="设置与服务"><Settings size={19}/><span className="app-sidebar-copy">设置与服务</span></Link>
     <details
       ref={accountRef}
@@ -127,6 +132,7 @@ export function SidebarFoundation({
         <Link href="/settings/members" onClick={() => { if (accountRef.current) accountRef.current.open = false; }}>成员与权限</Link>
         {isSystemAdmin ? <><span className="app-sidebar-account-divider" /><Link href="/admin">系统管理</Link></> : null}
         <span className="app-sidebar-account-divider" />
+        {onOpenHelp ? <button type="button" className="app-account-help" onClick={() => { if (accountRef.current) accountRef.current.open = false; onOpenHelp(); }}>帮助与视图</button> : null}
         <LogoutButton />
       </div>
     </details>

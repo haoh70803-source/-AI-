@@ -13,10 +13,11 @@ type SkillCard = { id: string; title: string; summary: string; scenarios: string
 export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }: { canCreate: boolean; draftKey: string; initialSkillId?: string; overview?: ReactNode }) {
   const homeRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const materialPickerAnchor = useRef<HTMLButtonElement>(null);
   const inFlight = useRef(false);
   const [idea, setIdea] = useState("");
   const [busy, setBusy] = useState(false);
-  const [composerOpen, setComposerOpen] = useState(Boolean(initialSkillId));
+  const [materialPickerRequest, setMaterialPickerRequest] = useState(0);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"inspiration" | "skills">("inspiration");
   const [category, setCategory] = useState("推荐");
@@ -58,7 +59,6 @@ export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }
     try { sessionStorage.setItem(draftKey, value); } catch { /* The in-memory draft remains usable. */ }
   }
   function usePrompt(value: string) {
-    setComposerOpen(true);
     setPreviousIdea(idea);
     changeIdea(value);
     requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
@@ -87,7 +87,6 @@ export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }
   const filtered = creationPrompts.filter(item => category === "推荐" || item.platform === category);
   const cards = [...filtered.slice(offset % filtered.length), ...filtered.slice(0, offset % filtered.length)].slice(0, category === "推荐" ? 8 : 12);
   function focusComposer() {
-    setComposerOpen(true);
     requestAnimationFrame(() => {
     document.getElementById("home-start")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
     inputRef.current?.focus({ preventScroll: true });
@@ -100,10 +99,9 @@ export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }
       <span className="xin-hero-signature">XIN WORLD — BEYOND THE HORIZON</span>
     </section>
     <section id="home-start" className="xin-home-start" aria-label="开始创作">
-      <header><div><h2>今天，想把什么变成现实？</h2><p>一个项目，连接对话、资料与成果。</p></div><div><button type="button" disabled={!canCreate || busy} onClick={focusComposer}>开始对话 <ArrowRight size={15}/></button><Link href="/library?upload=1">带着资料开始</Link><Link href="/projects?view=all">浏览我的内容</Link></div></header>
-      <div className="xin-home-composer" hidden={!composerOpen}>
-        <button className="xin-composer-close" type="button" disabled={busy} onClick={() => setComposerOpen(false)}>收起创作输入 ↑</button>
-        <HomeComposer initialSkillId={initialSkillId} idea={idea} onIdeaChange={changeIdea} inputRef={inputRef} canCreate={canCreate} busy={busy} draftKey={draftKey} error={error} onSubmit={(selection) => void start(selection)} />
+      <header><div><h2>今天，想把什么变成现实？</h2><p>一个项目，连接对话、资料与成果。</p></div><div><button type="button" disabled={!canCreate || busy} onClick={focusComposer}>开始对话 <ArrowRight size={15}/></button><button ref={materialPickerAnchor} type="button" aria-haspopup="dialog" disabled={!canCreate || busy} onClick={() => setMaterialPickerRequest(value => value + 1)}>带着资料开始 ▾</button><Link href="/projects?view=all">浏览我的内容</Link></div></header>
+      <div className="xin-home-composer">
+        <HomeComposer materialPickerAnchor={materialPickerAnchor} materialPickerRequest={materialPickerRequest} initialSkillId={initialSkillId} idea={idea} onIdeaChange={changeIdea} inputRef={inputRef} canCreate={canCreate} busy={busy} draftKey={draftKey} error={error} onSubmit={(selection) => void start(selection)} />
         {appliedPrompt ? <div className="xsj-prompt-applied" role="status">已套用「{appliedPrompt}」{previousIdea !== null ? <button type="button" disabled={busy} onClick={() => { changeIdea(previousIdea); setPreviousIdea(null); setAppliedPrompt(""); }}>撤销套用</button> : null}</div> : null}
       </div>
     </section>

@@ -25,7 +25,8 @@ body:has(.app-shell[data-shell="v4"]) .app-main {
   transition: margin-left 220ms cubic-bezier(.2,.8,.2,1), width 220ms cubic-bezier(.2,.8,.2,1);
 }
 
-body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-pinned) .app-main {
+body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-pinned) .app-main,
+body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-temporary) .app-main {
   width: calc(100% - var(--app-shell-sidebar-expanded));
   margin-left: var(--app-shell-sidebar-expanded);
 }
@@ -261,7 +262,8 @@ body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-pinned) .app-main {
 
 @media (hover: none), (pointer: coarse) {
   body:has(.app-shell[data-shell="v4"]) .app-main,
-  body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-pinned) .app-main {
+  body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-pinned) .app-main,
+  body:has(.app-shell[data-shell="v4"] .xsj-app-sidebar.is-temporary) .app-main {
     width: calc(100% - var(--app-shell-sidebar-collapsed));
     margin-left: var(--app-shell-sidebar-collapsed);
   }
@@ -543,3 +545,62 @@ body:is([data-theme="black-titanium"],[data-theme="light"]) .app-sidebar-navigat
 .xsj-skip:focus{top:12px;}
 
 @media(min-width:701px){.xsj-app-sidebar.is-collapsed .app-sidebar-navigation .app-sidebar-search{display:block;}}
+
+/* A single sidebar owns navigation; no topbar reserves or overlays content. */
+body:has(.app-shell[data-shell="v4"]) .app-shell {
+  --app-shell-topbar: 0px;
+}
+body:has(.app-shell[data-shell="v4"]) .app-main {
+  min-height: 100dvh;
+  margin-top: 0;
+}
+.app-shell-help .app-topbar-menu-backdrop {
+  inset: 0;
+  height: 100dvh;
+  z-index: 61;
+}
+.app-shell-help .app-topbar-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  bottom: 100px;
+  left: 72px;
+  z-index: 62;
+  max-width: calc(100vw - 88px);
+}
+.app-shell:has(.xsj-app-sidebar.is-pinned) .app-shell-help .app-topbar-menu {
+  left: calc(var(--app-shell-sidebar-expanded) + 8px);
+  max-width: calc(100vw - var(--app-shell-sidebar-expanded) - 24px);
+}
+.app-sidebar-help {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 12px;
+  min-height: 44px;
+  margin-top: auto;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.app-sidebar-help:hover { background: var(--surface-secondary); }
+.app-sidebar-help + .app-sidebar-settings { margin-top: 0; }
+.xsj-app-sidebar:not(.is-collapsed) .app-sidebar-help { justify-content: flex-start; padding-left: 12px; }
+.app-sidebar-help svg { flex-shrink: 0; }
+.app-sidebar-account-menu .app-account-help { display: none; }
+@media (max-width: 700px) {
+  .xsj-app-sidebar:not(.is-temporary) .app-sidebar-help { display: none; }
+  .app-sidebar-account-menu .app-account-help { display: flex; }
+  .app-shell-help .app-topbar-menu,
+  .app-shell:has(.xsj-app-sidebar.is-pinned) .app-shell-help .app-topbar-menu {
+    left: 16px;
+    right: 16px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+  }
+}

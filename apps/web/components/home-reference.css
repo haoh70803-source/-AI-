@@ -154,7 +154,7 @@ body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspac
   & .xsj-hero-brand p { color: var(--text-secondary); }
   & .xsj-composer { max-width: none; background: var(--background); border-color: var(--border-strong); border-radius: var(--radius-control); box-shadow: none; }
   & .xsj-composer textarea { background: transparent; }
-  & .xsj-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  & .xsj-composer:focus-within { border-color: var(--border-strong); box-shadow: none; }
   & .xsj-explore { margin-top: var(--space-5); }
   & :is(.xsj-prompt-grid, .xsj-inspiration-grid) { gap: var(--space-4); }
   & :is(.xsj-prompt-card, .xsj-skill-card) { background: var(--gradient-panel); border-radius: var(--radius-card); border-color: var(--border); box-shadow: var(--shadow-card); padding: var(--space-5); }
@@ -175,7 +175,8 @@ body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspac
   & .fusion-flow > a > b { color: var(--accent-strong); background: var(--nav-active); border-color: transparent; }
   & :is(.xsj-composer-popover, .home-picker) { background: var(--surface); border-color: var(--border-strong); }
   & .xsj-home-error { color: var(--danger); }
-  & :is(button, a, input, textarea):focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 4px var(--accent-ring); }
+  & :is(button, a, input, textarea):focus-visible { outline: 2px solid var(--focus-ring, var(--text-secondary)); outline-offset: 3px; box-shadow: none; }
+  & .xsj-composer textarea:focus-visible { outline: none; box-shadow: none; }
 }
 @media (max-width: 900px) {
   body:is([data-theme="black-titanium"], [data-theme="light"]):has(.apple-workspace-marker) .xsj-home .fusion-overview-panels { grid-template-columns: 1fr; }

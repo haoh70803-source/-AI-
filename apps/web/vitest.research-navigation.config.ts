@@ -6,5 +6,5 @@ export default defineConfig({
   root: fileURLToPath(new URL("../../", import.meta.url)),
   oxc: { jsx: { runtime: "automatic" } },
   resolve: { alias: { "@": fileURLToPath(new URL("./", import.meta.url)) } },
-  test: { include: ["apps/web/tests/research-navigation.test.tsx", "apps/web/tests/sidebar-state.test.ts"] },
+  test: { include: ["apps/web/tests/research-navigation.test.tsx", "apps/web/tests/sidebar-state.test.ts", "apps/web/tests/research-lite.test.tsx", "apps/web/tests/resource-center-lite.test.tsx", "apps/web/tests/feishu-wiki-browser.test.tsx", "apps/web/tests/feishu-knowledge-subscriptions.test.tsx"] },
 });

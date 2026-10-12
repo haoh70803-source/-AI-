@@ -74,7 +74,7 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
     const project = await request("/api/projects", "POST", { title: header.title.slice(0, 200), sourceItemId: header.id });
     if (!project.id) throw new Error("创建对话失败");
     window.dispatchEvent(new Event("project-list-changed"));
-    router.push(`/dashboard?project=${project.id}`);
+    router.push(`/dashboard?project=${project.id}&source=${encodeURIComponent(header.id)}&focus=conversation`);
   }
   async function requestTranscription() {
     await request(`/api/source-items/${header.id}/transcribe`);

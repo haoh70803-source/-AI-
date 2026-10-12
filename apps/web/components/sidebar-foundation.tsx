@@ -1,20 +1,31 @@
 "use client";
 
-import { ChevronDown, Compass, House, FileText, Folder, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { CircleHelp, ChartNoAxesCombined, ChevronDown, BookOpen, House, LayoutGrid, PanelLeftClose, PanelLeftOpen, Sparkles, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type RefObject } from "react";
 import type { ProjectListView } from "@/server/sidebar/view-model";
 import { LogoutButton } from "./logout-button";
 import { NewProjectDialog } from "./sidebar/new-project-dialog";
+import { isResearchPath } from "./research/navigation";
 import { SidebarProjectSections } from "./sidebar/project-sections";
+import { GlobalSearch } from "./global-search";
 import type { SidebarInteractionLock, SidebarVisualState } from "./sidebar-state";
 
-const groups=[
- {label:"内容创作",icon:Folder,items:[{label:"今日任务",href:"/short-video/tasks"},{label:"项目管理",href:"/projects"},{label:"选题中心",href:"/topics"},{label:"内容审核",href:"/content-review"}]},
- {label:"知识与资料",icon:FileText,items:[{label:"资料库",href:"/library"},{label:"知识中心",href:"/knowledge"},{label:"事实确认",href:"/knowledge/facts"},{label:"创作方法",href:"/library/methods"},{label:"IP 背景信息",href:"/ip-context"}]},
- {label:"研究与洞察",icon:Compass,items:[{label:"开始研究",href:"/research/new"},{label:"对标研究",href:"/research/benchmarks"},{label:"热点趋势",href:"/research/trends"},{label:"研究成果",href:"/research/results"},{label:"研究总览",href:"/research"}]},
+export const mainNavigation = [
+ { label: "首页", href: "/home", icon: House },
+ { label: "AI 创作", href: "/projects", icon: Sparkles },
+ { label: "内容中心", href: "/library", icon: LayoutGrid },
+ { label: "研究", href: "/research/new", icon: BookOpen },
+ { label: "数据中台", href: "/short-video", icon: ChartNoAxesCombined },
 ];
+function primaryDestination(pathname: string, currentProjectId: string | null) {
+ if (pathname === "/short-video") return "/short-video";
+ if (currentProjectId || pathname.startsWith("/projects") || ["/topics", "/content-review", "/short-video/tasks"].some(path => pathname === path || pathname.startsWith(path + "/"))) return "/projects";
+ if (pathname.startsWith("/library") || pathname.startsWith("/knowledge") || pathname.startsWith("/ip-context")) return "/library";
+ if (isResearchPath(pathname) || pathname.startsWith("/discovery") || pathname.startsWith("/recommendations")) return "/research/new";
+ return ["/home", "/dashboard", "/short-video"].includes(pathname) ? "/home" : null;
+}
 
 type SidebarProps = {
   visualState: SidebarVisualState;
@@ -34,6 +45,8 @@ type SidebarProps = {
   workspaceName: string;
   isSystemAdmin: boolean;
   accountRef: RefObject<HTMLDetailsElement | null>;
+  onOpenHelp?: () => void;
+  helpExpanded?: boolean;
 };
 
 export function SidebarFoundation({
@@ -54,9 +67,10 @@ export function SidebarFoundation({
   workspaceName,
   isSystemAdmin,
   accountRef,
+  onOpenHelp,
+  helpExpanded = false,
 }: SidebarProps) {
   const pathname=usePathname();
-  const [openGroups,setOpenGroups]=useState<Record<string,boolean>>({});
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const collapsed = visualState === "COLLAPSED";
   const pinned = visualState === "PINNED_EXPANDED";
@@ -90,17 +104,16 @@ export function SidebarFoundation({
     </header>
 
     <nav className="app-sidebar-navigation" aria-label="主导航">
-      <Link href="/home" aria-label="首页" aria-current={pathname==="/home"||pathname==="/short-video"?"page":undefined}><span className="app-sidebar-icon-slot"><House/></span><span className="app-sidebar-copy">首页</span></Link>
-      <Link href="/dashboard" aria-label="工作台" aria-current={pathname==="/dashboard"&&!currentProjectId?"page":undefined}><span className="app-sidebar-icon-slot"><Plus/></span><span className="app-sidebar-copy">工作台</span></Link>
-      {groups.map(group=>{const active=group.items.some(item=>pathname===item.href);const open=openGroups[group.label]??active;return <div className="nav-group" key={group.label}><button aria-label={group.label} aria-expanded={open&&!collapsed} aria-controls={"nav-"+group.label} title={collapsed?group.label:undefined} onClick={()=>{if(collapsed)toggle();setOpenGroups(prev=>({...prev,[group.label]:!open}));}}><span className="app-sidebar-icon-slot"><group.icon strokeWidth={1.8}/></span><span className="app-sidebar-copy">{group.label}</span><ChevronDown className="nav-chevron"/></button>{open&&<div id={"nav-"+group.label} className="nav-group-items">{group.items.map(item=><Link key={item.href} href={item.href} aria-current={pathname===item.href?"page":undefined}>{item.label}</Link>)}</div>}</div>})}
-
-      {currentProjectId && !collapsed ? <Link href={`/research?projectId=${encodeURIComponent(currentProjectId)}`} aria-label="从此项目开始研究" title={collapsed ? "从此项目开始研究" : undefined}><span className="app-sidebar-icon-slot"><Compass strokeWidth={1.8} /></span><span className="app-sidebar-copy">从此项目开始研究</span></Link> : null}
+      {mainNavigation.map(item => <Link key={item.href} href={item.href} aria-label={item.label} title={collapsed ? item.label : undefined} aria-current={primaryDestination(pathname, currentProjectId) === item.href ? "page" : undefined}><span className="app-sidebar-icon-slot"><item.icon strokeWidth={1.8}/></span><span className="app-sidebar-copy">{item.label}</span></Link>)}
+      <div className="app-sidebar-search"><GlobalSearch compact onOpenChange={open => onInteractionLockChange("SEARCH", open)} /></div>
     </nav>
 
     <details className="sidebar-recent-fold" open><summary>最近项目</summary><SidebarProjectSections view={projectListView} currentProjectId={currentProjectId} onViewChange={onProjectListViewChange} onOpenNewProject={() => setNewProjectOpen(true)} onInteractionLockChange={onInteractionLockChange} /></details>
 
 
 
+    {onOpenHelp ? <button type="button" className="app-sidebar-help" aria-label="帮助与视图" title="帮助与视图" aria-expanded={helpExpanded} aria-controls="app-shell-help-menu" onClick={onOpenHelp}><CircleHelp size={19}/><span className="app-sidebar-copy">帮助与视图</span></button> : null}
+    <Link href="/settings" className="app-sidebar-settings" aria-label="设置与服务" title="设置与服务"><Settings size={19}/><span className="app-sidebar-copy">设置与服务</span></Link>
     <details
       ref={accountRef}
       className="app-sidebar-account"
@@ -119,6 +132,7 @@ export function SidebarFoundation({
         <Link href="/settings/members" onClick={() => { if (accountRef.current) accountRef.current.open = false; }}>成员与权限</Link>
         {isSystemAdmin ? <><span className="app-sidebar-account-divider" /><Link href="/admin">系统管理</Link></> : null}
         <span className="app-sidebar-account-divider" />
+        {onOpenHelp ? <button type="button" className="app-account-help" onClick={() => { if (accountRef.current) accountRef.current.open = false; onOpenHelp(); }}>帮助与视图</button> : null}
         <LogoutButton />
       </div>
     </details>

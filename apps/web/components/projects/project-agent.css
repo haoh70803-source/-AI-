@@ -17,6 +17,8 @@
 .studio-project-assistant .studio-assistant-stream{min-height:0;flex:1;overflow:auto}
 .studio-project-assistant .studio-assistant-composer{flex-shrink:0}
 .agent-reference-results{max-height:240px;overflow:auto}
+.studio-assistant-references>span>a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;text-decoration:none}
+.studio-assistant-references>span>a:hover{text-decoration:underline}
 @media(max-width:600px){.agent-composer-tools select{max-width:110px}.assistant-markdown{font-size:14px}}
 /* Project chat polish: scoped to the existing conversation surface. */
 .dashboard-workbench .content-workbench .workbench-assistant { background:var(--surface,var(--surface)); }
@@ -100,3 +102,14 @@
 .dashboard-workbench .agent-chat .studio-assistant-stream { margin-top:8px;overflow-anchor:none; }
 
 .agent-research-handoff{padding:16px;margin:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-secondary);font-size:13px;min-width:0}.agent-research-handoff h3{font-size:15px;margin:0 0 8px}.agent-research-handoff p{margin:8px 0;overflow-wrap:anywhere}.agent-research-handoff button{margin:8px 8px 0 0;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-primary);font:inherit}.agent-research-handoff details{max-height:240px;overflow:auto;margin-top:10px}.agent-research-handoff button:focus-visible{outline:2px solid var(--accent,#6f52ed);outline-offset:2px}
+
+.agent-creation-controls { padding: 8px 12px; border-bottom: 1px solid var(--border, #34445b); font-size: 12px; }
+.agent-creation-controls > div, .agent-creation-controls details > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.agent-creation-controls label { display: grid; gap: 4px; min-width: 0; margin-bottom: 6px; }
+.agent-creation-controls select, .agent-creation-controls input { max-width: 100%; background: transparent; color: inherit; border: 1px solid var(--border, #34445b); border-radius: 6px; padding: 4px; }
+.agent-creation-controls select option { color: #252a2e; background: #fff; }
+.agent-creation-controls textarea { min-height: 52px; font-size: 12px; padding: 8px; }
+.agent-creation-controls small { display: block; margin: 6px 0; opacity: .75; }
+.agent-creation-controls summary { cursor: pointer; }
+.agent-creation-controls details[open] { max-height: 250px; overflow-y: auto; }
+@media (max-width: 620px) { .agent-creation-controls > div { gap: 4px; } .agent-creation-controls select { max-width: 88px; } }

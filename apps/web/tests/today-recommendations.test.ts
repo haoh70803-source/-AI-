@@ -109,7 +109,10 @@ describe("Content Discovery D4 today recommendations", () => {
     }
     expect(await db.contentIdea.count({ where: { workspaceId } })).toBe(0);
     expect((await getRecommendationItem({ workspaceId, userId: ownerId, itemId: batch.items[0]!.id }))?.status).toBe("NEW");
+    await expect(generateRecommendationBatch({ workspaceId, userId: otherId }, { runtime })).rejects.toMatchObject({ code: "RECOMMENDATION_NO_DATA" });
+    const personalSource = await db.sourceItem.create({ data: { workspaceId, createdById: otherId, sourceType: "TEXT", sourcePlatform: "GENERIC", title: "同事自己的客户沟通观察", description: "本人明确收录的资料", status: "READY" } });
     const own = await generateRecommendationBatch({ workspaceId, userId: otherId }, { runtime });
+    expect(own.items.flatMap(item => item.evidence.filter(evidence => evidence.type === "SOURCE_ITEM").map(evidence => evidence.referenceId))).toEqual([personalSource.id]);
     expect((await getCurrentRecommendationBatch({ workspaceId, userId: otherId }))?.id).toBe(own.id);
     expect((await getCurrentRecommendationBatch({ workspaceId, userId: ownerId }))?.id).toBe(batch.id);
   });

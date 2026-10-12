@@ -26,6 +26,7 @@ type ControlExecutionInput<T> = {
   conversationHistory?: ConversationContextMessage[];
   references?: ContextReference[];
   skillVersionId?: string | null;
+  skillVersionIds?: string[];
   modelSelection?: LLMModelSelection | null;
   historySummary?: string;
   preparedContext?: ContextBuilderV2Result;
@@ -90,7 +91,7 @@ export class AIControlService {
     if (!role) throw new AIControlError("PERMISSION_DENIED");
     const scope = this.scopeGate.evaluate(input);
     if (scope.decision === "OUT_OF_SCOPE") throw new AIControlError("OUT_OF_SCOPE", scope.employeeMessage);
-    const context = input.preparedContext ?? (input.projectId ? await this.contextBuilder.build({ workspaceId: input.workspaceId, userId: input.userId, projectId: input.projectId, taskType: input.taskType, action: input.action, studioAction: input.studioAction, selectedObjects: input.selectedObjects, resolvedContextItems: input.resolvedContextItems, conversationHistory: input.conversationHistory, references: input.references, skillVersionId: input.skillVersionId, userInput: input.userInput, historySummary: input.historySummary }) : null);
+    const context = input.preparedContext ?? (input.projectId ? await this.contextBuilder.build({ workspaceId: input.workspaceId, userId: input.userId, projectId: input.projectId, taskType: input.taskType, action: input.action, studioAction: input.studioAction, selectedObjects: input.selectedObjects, resolvedContextItems: input.resolvedContextItems, conversationHistory: input.conversationHistory, references: input.references, skillVersionId: input.skillVersionId, skillVersionIds: input.skillVersionIds, userInput: input.userInput, historySummary: input.historySummary }) : null);
     if (!context) throw new AIControlError("NO_CONTEXT");
     input.onContext?.(context);
     const fact = this.factGate.evaluate({ items: context.manifest.items, ownFacts: context.ownFacts.map(({ text }) => text), instruction: input.userInput });

@@ -84,6 +84,34 @@ export function inspectStudioFactText(text: string, ownFacts: string[]) {
   return { state, blocked: hasPromise || state === "UNVERIFIED_JUDGMENT", reasons };
 }
 
+/** Stricter project-creation checks; legacy quick actions retain their compatibility policy. */
+export function inspectCreationFactText(text: string, ownFacts: string[], sources: Array<{ citation?: number; excerpt: string }> = []) {
+  const passage = text.replace(/\[\d+\]/gu, "").replace(/^\s*(?:【需要确认】|[-*+#]+|\d+[.)、])\s*/u, "");
+  const clean = (value: string) => normalize(value).replace(/[*#>]/gu, "");
+  const normalized = clean(passage);
+  const exactOwn = ownFacts.some(fact => normalized.length >= 4 && normalize(fact).includes(normalized));
+  const citations = [...text.matchAll(/\[(\d+)\]/gu)].map(match => Number(match[1]));
+  const exactSource = normalized.length >= 8 && sources.some(source => citations.includes(source.citation ?? -1) && clean(source.excerpt).includes(normalized));
+  // A trailing example or the words "external case" cannot authenticate preceding claims.
+  const hypothesis = /^\s*(?:[-*+#>]+\s*)?(?:假设(?:示例|场景)?|假如|示例|模拟场景|比如|举个例子|如果有一位|如果有一家)[：:，,\s]?/u.test(text)
+    && !/(?:真实经历|确实|实际上|已经验证|已经实现|亲历)/u.test(text);
+  const inspectText = text.replace(/第[一二三]人称|[一二三四五六七八九十\d]+\s*个[^。！？\n]{0,10}(?:角度|选题|方案)/gu, "写作结构").replace(/假设|假如|比如|举个例子|举例来说|示例|模拟场景|对标账号|外部(?:视频|案例|资料)|原视频|该账号|对方|第三方|案例中的/gu, "");
+  const base = inspectStudioFactText(inspectText, exactOwn ? [inspectText] : []);
+  const reasons = new Set<string>(base.reasons);
+  // Permit grounded numeric paraphrases only against a single actually cited source.
+  // This is a numeric consistency check, not proof of narrative or entity correctness.
+  const numbers = matches(inspectText, numericTokens), terms = matches(inspectText, experienceTerms);
+  if (!/(?:我|我们|我的|我们的)/u.test(passage) && numbers.length && terms.length && sources.some(source => citations.includes(source.citation ?? -1) && numbers.every(number => clean(source.excerpt).includes(number)) && terms.some(term => clean(source.excerpt).includes(term)))) reasons.delete("包含无来源的具体数字");
+  if (exactOwn || exactSource || hypothesis) {
+    reasons.delete("包含无来源的第一人称经历"); reasons.delete("包含无来源的具体数字"); reasons.delete("把未验证判断写成已经有效");
+  }
+  if (exactSource && /(?:我|我们|我的|我们的)/u.test(passage) && !exactOwn) reasons.add("外部来源不能确认本人经历");
+  if (!exactOwn && !exactSource && !hypothesis && /(?:我|我们)(?:在|曾|当年|以前|昨天|上周|学校|机构|校区|课程|安排|组织|接待|收到|看见|记得|发现)|(?:课程|学校|机构)(?:提供|实行|安排|包含|承诺|要求)/u.test(passage)) reasons.add("经历或课程安排缺少对应依据");
+  if (/(?:包过|保录|保证通过|保证录取|承诺.{0,8}(?:效果|成绩|录取)|无效退款|全额退费)/u.test(passage) && !/(?:不|不能|不得|不要|没有).{0,8}(?:包过|保录|保证|承诺|退费)/u.test(passage)) reasons.add("包含待核实的招生或退费承诺");
+  if (citations.some(id => !sources.some(source => source.citation === id))) reasons.add("引用编号没有对应的已读取来源");
+  return { ...base, blocked: reasons.size > 0, reasons: [...reasons] };
+}
+
 function sentences(text: string) { return text.split(/(?<=[。！？!?])|\n+/u).map((item) => item.trim()).filter(Boolean); }
 
 function inspectPassage(text: string, ownFacts: string[]) {

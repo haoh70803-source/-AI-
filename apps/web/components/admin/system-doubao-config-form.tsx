@@ -48,6 +48,7 @@ export function SystemDoubaoConfigForm({ view }: { view: SystemDoubaoAdminView }
       authMode,
       baseUrl: String(formData.get("baseUrl") ?? ""),
       resourceId: String(formData.get("resourceId") ?? ""),
+      flashResourceId: String(formData.get("flashResourceId") ?? ""),
       appId: String(formData.get("appId") ?? ""),
       boostingTableId: String(formData.get("boostingTableId") ?? ""),
       boostingTableName: String(formData.get("boostingTableName") ?? ""),
@@ -109,6 +110,7 @@ export function SystemDoubaoConfigForm({ view }: { view: SystemDoubaoAdminView }
         <summary className="cursor-pointer text-sm font-medium">高级设置</summary>
         <div className="mt-4 grid gap-4">
           <label className="grid gap-1.5 text-sm">热词表 ID（可选）<Input name="boostingTableId" defaultValue={text(config, "boostingTableId")} /></label>
+          <label className="grid gap-1.5 text-sm">优先极速识别 Resource ID（可选）<Input name="flashResourceId" defaultValue={text(config, "flashResourceId")} placeholder="已开通后填写 volc.bigasr.auc_turbo" /><span className="text-xs text-[var(--text-secondary)]">资料转写优先使用已开通的极速版，未授权时使用原接口；留空保持现有接口。</span></label>
           <label className="grid gap-1.5 text-sm">热词表名称（可选）<Input name="boostingTableName" defaultValue={text(config, "boostingTableName")} /></label>
         </div>
       </details>

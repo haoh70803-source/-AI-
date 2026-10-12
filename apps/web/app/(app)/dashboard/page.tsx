@@ -25,7 +25,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       if (!data.project.sources.some(source => source.sourceItem.id === sourceId)) notFound();
       redirect(`/library/${encodeURIComponent(sourceId)}`);
     }
-    return <div className="dashboard-workbench"><div className="studio-page"><StudioShell {...data} activeNode={node} initialRequest={query.start === "1" && data.project.description ? { content: data.project.description, sourceItemIds: data.project.sources.map(source => source.sourceItem.id), skillVersionId: data.methods.selected[0]?.methodVersionId ?? null, modelSelection: creationModelSchema.safeParse(data.project.creationModel).data ?? null } : undefined} /></div></div>;
+    return <div className="dashboard-workbench"><div className="studio-page"><StudioShell key={data.project.id} {...data} activeNode={node} initialRequest={query.start === "1" && data.project.description ? { content: data.project.description, sourceItemIds: data.project.sources.map(source => source.sourceItem.id), skillVersionIds: data.methods.selected.filter(method => !method.isDisabled).map(method => method.methodVersionId), modelSelection: creationModelSchema.safeParse(data.project.creationModel).data ?? null } : undefined} /></div></div>;
   }
 
   return <WorkbenchStart overview={<FusionOverview workspaceId={workspace.id} userId={session.user.id} />} initialSkillId={typeof query.skill === "string" ? query.skill : undefined} canCreate={role !== "VIEWER"} draftKey={`xsj-start-draft:${workspace.id}:${session.user.id}`} />;

@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemedSelect } from "../themed-select";
 import { AudioLines, Expand, FileText, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { SourceWorkspaceModel } from "@/server/material-detail/read-model";
@@ -91,7 +92,7 @@ export function SourceViewer({ model, mediaRef, onMediaReady }: {
         <span aria-label="图片缩放比例">{Math.round(scale * 100)}%</span>
         <button type="button" aria-label="放大图片" disabled={zoom >= 4} onClick={() => setZoom(Math.min(4, zoom + .25))}><ZoomIn size={15} /></button>
       </div> : null}
-      {preview.type === "VIDEO" && !unavailable ? <label>倍速 <select aria-label="播放速度" defaultValue="1" onChange={(event) => { if (mediaRef.current) mediaRef.current.playbackRate = Number(event.target.value); }}>{[.75, 1, 1.25, 1.5, 2].map((rate) => <option key={rate} value={rate}>{rate}×</option>)}</select></label> : null}
+      {preview.type === "VIDEO" && !unavailable ? <label>倍速 <ThemedSelect aria-label="播放速度" defaultValue="1" onChange={(event) => { if (mediaRef.current) mediaRef.current.playbackRate = Number(event.target.value); }}>{[.75, 1, 1.25, 1.5, 2].map((rate) => <option key={rate} value={rate}>{rate}×</option>)}</ThemedSelect></label> : null}
       {notice ? <span role="status">{notice}</span> : null}
     </footer>
   </section>;

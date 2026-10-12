@@ -12,7 +12,7 @@ V1.1 在保留豆包云端 ASR 的同时，新增免费的本地 FunASR Provider
 
 ## 安装
 
-当前 Windows 验证环境使用 Python `3.11.9`。不要把依赖安装到系统 Python。
+2026-09-02 的 Windows benchmark 使用 Python `3.11.9`；2026-10-10 的环境恢复使用已有 Python `3.12.13`，实际中文 GPU 转写已通过，详见 [恢复记录](local-asr-recovery-20261010.md)。不要把依赖安装到系统 Python。
 
 ```powershell
 py -3.11 -m venv services/local-asr/.venv
@@ -26,6 +26,25 @@ PyTorch 使用官方 CUDA 13.0 wheel。无 NVIDIA CUDA 的机器可用 SenseVoic
 模型由 ModelScope 下载到用户缓存，当前 Windows 默认位置是 `%USERPROFILE%\.cache\modelscope\models`；权重不进入 Git 仓库。管理员也可在「设置 → AI 与外部服务 → 语音转写 → 高级设置」初始化当前质量档所需模型。
 
 ## 启动与检查
+
+本机日常使用 `pnpm dev:live` 时，现有统一启动入口会自动检查并拉起 ASR，无需再单独执行语音启动命令。离线 review 不启动语音服务。此集成不是开机自启或生产崩溃托管；正式上线职责及未完成项见 [运维说明](local-asr-operations.md)。
+
+Windows 也可使用后台启动入口；它检查已有服务，避免重复启动，仅监听本机，日志保存在 `output/local-asr/`。它不会自动安装依赖、下载模型或调用云端服务。
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-local-asr.ps1
+```
+
+首次安装时，如果机器只有 Python 3.12 和 uv，可在项目根目录使用现有固定依赖清单建立独立环境：
+
+```powershell
+uv venv --python python services/local-asr/.venv
+uv pip install --python services/local-asr/.venv/Scripts/python.exe --index-url https://pypi.org/simple --index-strategy unsafe-best-match -r services/local-asr/requirements.txt
+```
+
+上述多索引参数用于官方 PyPI 与官方 PyTorch 索引：避免 uv 默认优先索引策略从 PyTorch 索引选到过旧的通用依赖。GPU 推理依赖首次下载体积较大。模型是否就绪应以当前 `/health` 返回及实际转写验证为准，不能用历史 benchmark 代替。
+
+保留原有前台启动方式：
 
 ```powershell
 pnpm dev:asr

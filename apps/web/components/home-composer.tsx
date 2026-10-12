@@ -1,4 +1,5 @@
 "use client";
+import { MAX_PROJECT_SKILLS } from "@/lib/contracts/creation";
 
 import { ArrowUp, Box, Check, ChevronDown, FileText, Folder, Loader2, Plus, X, Zap } from "lucide-react";
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { createPortal } from "react-dom";
 import type { CreationModel } from "@/server/creation/models";
 import "./home-composer.css";
+import { Pagination } from "./pagination";
 import { VoiceInput } from "./voice-input";
 
 type Attachment = { key: string; id?: string; title: string; state: "UPLOADING" | "READING" | "READY" | "FAILED"; message: string; requiresImage?: boolean; jobId?: string | null };
@@ -23,8 +25,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, draftKey, error, onSubmit, initialSkillId }: {
-  initialSkillId?: string; idea: string; onIdeaChange: (value: string) => void; inputRef: RefObject<HTMLTextAreaElement | null>; canCreate: boolean; busy: boolean; draftKey: string; error: string; onSubmit: (selection: ComposerSelection) => void;
+export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, draftKey, error, onSubmit, initialSkillId, materialPickerRequest = 0, materialPickerAnchor }: {
+  materialPickerAnchor?: RefObject<HTMLButtonElement | null>; materialPickerRequest?: number; initialSkillId?: string; idea: string; onIdeaChange: (value: string) => void; inputRef: RefObject<HTMLTextAreaElement | null>; canCreate: boolean; busy: boolean; draftKey: string; error: string; onSubmit: (selection: ComposerSelection) => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const files = useRef(new Map<string, File>());
@@ -32,6 +34,7 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
   const formRef = useRef<HTMLFormElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const anchors = useRef<Partial<Record<Panel, HTMLButtonElement | null>>>({});
+  const libraryOrigin = useRef<HTMLButtonElement | null>(null);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [position, setPosition] = useState({ left: 0, top: 0, width: 340, maxHeight: 360 });
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -44,6 +47,10 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
   const [folderId, setFolderId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [newFolder, setNewFolder] = useState("");
+  const [libraryPage, setLibraryPage] = useState(1);
+  const [libraryPages, setLibraryPages] = useState(1);
+  const [libraryTotal, setLibraryTotal] = useState(0);
+  useEffect(() => { if (materialPickerRequest) { libraryOrigin.current = materialPickerAnchor?.current ?? null; setSearch(""); setLibraryPage(1); setPanel("library"); } }, [materialPickerRequest, materialPickerAnchor]);
   const [library, setLibrary] = useState<Array<{ id: string; title: string | null }>>([]);
   const [notice, setNotice] = useState("");
   const [voiceBusy, setVoiceBusy] = useState(false);
@@ -68,7 +75,7 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
       const stored = JSON.parse(sessionStorage.getItem(storageKey) || "null");
       if (stored) {
         replaceAttachments(() => Array.isArray(stored.attachments) ? stored.attachments.filter((item: Attachment) => item.id).slice(0, 8).map((item: Attachment) => ({ ...item, state: "READING", message: "正在检查资料…" })) : []);
-        setModel(stored.model ?? null); setSkillIds(Array.isArray(stored.skillIds) ? stored.skillIds.slice(0, 1) : []); setFolderId(stored.folderId ?? null);
+        setModel(stored.model ?? null); setSkillIds(Array.isArray(stored.skillIds) ? stored.skillIds.slice(0, MAX_PROJECT_SKILLS) : []); setFolderId(stored.folderId ?? null);
       }
     } catch { /* The current draft still works without browser storage. */ }
     setRestored(true);
@@ -97,11 +104,11 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
     void poll();
     return () => { active = false; clearTimeout(timer); };
   }, [attachmentIds, replaceAttachments, sourceRefresh]);
-  const close = useCallback(() => { if (panel) anchors.current[panel]?.focus({ preventScroll: true }); setPanel(null); }, [panel]);
+  const close = useCallback(() => { if (panel) (panel === "library" ? libraryOrigin.current ?? anchors.current.library : anchors.current[panel])?.focus({ preventScroll: true }); setPanel(null); }, [panel]);
   useEffect(() => {
     if (!panel) return;
     const focusTimer = window.setTimeout(() => panelRef.current?.querySelector<HTMLElement>("input:not([type=checkbox]), .home-picker-row")?.focus({ preventScroll: true }), 100);
-    const outside = (event: PointerEvent) => { if (!panelRef.current?.contains(event.target as Node) && !Object.values(anchors.current).some((anchor) => anchor?.contains(event.target as Node))) setPanel(null); };
+    const outside = (event: PointerEvent) => { if (!panelRef.current?.contains(event.target as Node) && !Object.values(anchors.current).some((anchor) => anchor?.contains(event.target as Node)) && !libraryOrigin.current?.contains(event.target as Node)) setPanel(null); };
     const keyboard = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); close(); } };
     document.addEventListener("pointerdown", outside); document.addEventListener("keydown", keyboard);
     return () => { window.clearTimeout(focusTimer); document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", keyboard); };
@@ -109,7 +116,8 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
   useLayoutEffect(() => {
     if (!panel) return;
     const positionPanel = () => {
-      const anchor = anchors.current[panel]?.getBoundingClientRect(); if (!anchor) return;
+      const anchor = (panel === "library" ? libraryOrigin.current ?? anchors.current.library : anchors.current[panel])?.getBoundingClientRect(); if (!anchor) return;
+      if (anchor.bottom < 12 || anchor.top > window.innerHeight - 12) { setPanel(null); return; }
       const width = Math.min(360, window.innerWidth - 24);
       const below = window.innerHeight - anchor.bottom - 20;
       const upward = below < 280 && anchor.top > below;
@@ -118,22 +126,25 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
       setPosition({ left: Math.max(12, Math.min(anchor.left, window.innerWidth - width - 12)), top: upward ? anchor.top - height - 8 : anchor.bottom + 8, width, maxHeight });
     };
     positionPanel(); const observer = new ResizeObserver(positionPanel); if (panelRef.current) observer.observe(panelRef.current);
+    const home = formRef.current?.closest(".xsj-home"); if (home) observer.observe(home);
+    const anchor = panel === "library" ? libraryOrigin.current ?? anchors.current.library : anchors.current[panel]; if (anchor) observer.observe(anchor);
     window.addEventListener("resize", positionPanel); window.addEventListener("scroll", positionPanel, true);
     return () => { observer.disconnect(); window.removeEventListener("resize", positionPanel); window.removeEventListener("scroll", positionPanel, true); };
-  }, [panel]);
+  }, [panel, materialPickerRequest]);
   useEffect(() => {
     if (!panel) return;
     let active = true; setPanelLoading(true); setPanelError("");
+    if (panel === "library") setLibrary([]);
     const timer = setTimeout(() => {
       const load = panel === "models" ? request<Models>("/api/creation/models").then((data) => { if (active) setModels(data); })
         : panel === "skills" ? request<Skill[]>("/api/methods").then((data) => { if (active) setSkills(data); })
         : panel === "folders" ? request<{ folders: FolderOption[] }>("/api/sidebar").then((data) => { if (active) setFolders(data.folders); })
-        : request<{ items: Array<{ id: string; title: string | null }> }>(`/api/source-items?pageSize=50&search=${encodeURIComponent(search)}`).then((data) => { if (active) setLibrary(data.items); });
+        : request<{ items: Array<{ id: string; title: string | null }>; page: number; pages: number; total: number }>(`/api/source-items?pageSize=12&page=${libraryPage}&search=${encodeURIComponent(search)}`).then((data) => { if (active) { setLibrary(data.items); setLibraryPage(data.page); setLibraryPages(data.pages); setLibraryTotal(data.total); } });
       void load.catch((cause) => { if (active) setPanelError(cause.message); }).finally(() => { if (active) setPanelLoading(false); });
     }, panel === "library" ? 180 : 0);
     return () => { active = false; clearTimeout(timer); };
-  }, [panel, search]);
-  function open(next: Panel) { setSearch(""); setPanelError(""); setPanel(panel === next ? null : next); }
+  }, [panel, search, libraryPage]);
+  function open(next: Panel) { if (next === "library") libraryOrigin.current = null; setSearch(""); setLibraryPage(1); setPanelError(""); setPanel(panel === next ? null : next); }
   async function upload(key: string, file: File) {
     replaceAttachments((current) => current.map((item) => item.key === key ? { ...item, state: "UPLOADING", message: "正在上传…" } : item));
     try {
@@ -181,17 +192,18 @@ export function HomeComposer({ idea, onIdeaChange, inputRef, canCreate, busy, dr
   const matches = (value: string) => value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
   const popup = panel ? createPortal(<div ref={panelRef} role="dialog" aria-label={{ models: "选择模型", skills: "选择 Skill", folders: "选择项目文件夹", library: "从资料库选择" }[panel]} className="home-picker" style={{ ...position, position: "fixed" }}>
     <header><strong>{{ models: "选择模型", skills: "选择 Skill", folders: "选择项目文件夹", library: "从资料库选择" }[panel]}</strong><button type="button" aria-label="关闭选择框" onClick={close}><X size={16} /></button></header>
-    {panel !== "models" ? <input autoFocus aria-label={{ skills: "搜索 Skill", folders: "搜索项目文件夹", library: "搜索已有资料" }[panel]} placeholder="搜索…" value={search} onChange={(event) => setSearch(event.target.value)} /> : null}
+    {panel !== "models" ? <input autoFocus aria-label={{ skills: "搜索 Skill", folders: "搜索项目文件夹", library: "搜索已有资料" }[panel]} placeholder="搜索…" value={search} onChange={(event) => { setSearch(event.target.value); setLibraryPage(1); }} /> : null}
     {panelLoading ? <p role="status">正在读取…</p> : null}{panelError ? <p role="alert">{panelError}</p> : null}
     <div className="home-picker-list">
       {panel === "models" ? <>{models?.configured ? <button type="button" className="home-picker-row" aria-pressed={!model} onClick={() => { setModel(null); close(); }}><Box /><span><b>跟随工作区默认</b><small>{models.models.find((item) => item.modelId === models.defaultModelId)?.label || models.defaultLabel}</small></span>{!model ? <Check /> : null}</button> : <p>还没有配置可用模型。</p>}{models?.models.filter(item => item.modelId !== models.defaultModelId).map((item) => <button type="button" className="home-picker-row" key={item.modelId} aria-pressed={model?.modelId === item.modelId} onClick={() => { setModel({ provider: item.provider, modelId: item.modelId }); close(); }}><Box /><span><b>{item.label}</b><small>{item.description}</small></span>{model?.modelId === item.modelId ? <Check /> : null}</button>)}</> : null}
-      {panel === "skills" ? skills.filter((skill) => skill.status !== "DISABLED" && matches(`${skill.current.title} ${skill.current.steps.join(" ")}`)).map((skill) => <label className="home-picker-row" key={skill.id}><input type="checkbox" checked={skillIds.includes(skill.current.id)} disabled={!skillIds.includes(skill.current.id) && skillIds.length >= 1} onChange={() => setSkillIds((current) => current.includes(skill.current.id) ? current.filter((id) => id !== skill.current.id) : [...current, skill.current.id])} /><span><b>{skill.current.title}</b><small>{skill.current.steps[0] || "用于本次创作"}</small></span></label>) : null}
+      {panel === "skills" ? skills.filter((skill) => skill.status !== "DISABLED" && matches(`${skill.current.title} ${skill.current.steps.join(" ")}`)).map((skill) => <label className="home-picker-row" key={skill.id}><input type="checkbox" checked={skillIds.includes(skill.current.id)} disabled={!skillIds.includes(skill.current.id) && skillIds.length >= MAX_PROJECT_SKILLS} onChange={() => setSkillIds((current) => current.includes(skill.current.id) ? current.filter((id) => id !== skill.current.id) : [...current, skill.current.id])} /><span><b>{skill.current.title}</b><small>{skill.current.steps[0] || "用于本次创作"}</small></span></label>) : null}
       {panel === "skills" && !panelLoading && !skills.some((skill) => skill.status !== "DISABLED" && matches(`${skill.current.title} ${skill.current.steps.join(" ")}`)) ? <p>没有匹配的可用 Skill。</p> : null}
       {panel === "folders" ? <><button type="button" className="home-picker-row" aria-pressed={!folderId} onClick={() => { setFolderId(null); close(); }}><Folder /><span>未分组</span>{!folderId ? <Check /> : null}</button>{folders.filter((folder) => matches(folder.label)).map((folder) => <button type="button" className="home-picker-row" key={folder.folderId} aria-pressed={folderId === folder.folderId} onClick={() => { setFolderId(folder.folderId); close(); }}><Folder /><span>{folder.label}</span>{folderId === folder.folderId ? <Check /> : null}</button>)}</> : null}
       {panel === "library" ? library.map((source) => <label className="home-picker-row" key={source.id}><input type="checkbox" checked={attachments.some((item) => item.id === source.id)} disabled={!attachments.some((item) => item.id === source.id) && attachments.length >= 8} onChange={() => toggleSource(source)} /><span>{source.title || "未命名资料"}</span></label>) : null}
       {panel === "library" && !panelLoading && !library.length ? <p>没有匹配的资料。</p> : null}
     </div>
-    <footer>{panel === "models" ? <Link href="/settings/integrations">管理模型服务</Link> : panel === "skills" ? <><span>已选 {skillIds.length}/1</span><Link href="/library/methods">管理 / 导入 Skill</Link></> : panel === "library" ? <><span>已选 {attachments.length}/8</span><Link href="/library">打开资料库</Link></> : <div className="home-new-folder"><input aria-label="新项目文件夹名称" placeholder="新建项目文件夹" maxLength={80} value={newFolder} onChange={(event) => setNewFolder(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createFolder(); }} /><button type="button" disabled={!newFolder.trim() || creatingFolder} onClick={() => void createFolder()}><Plus size={14} />创建</button></div>}</footer>
+    {panel === "library" ? <Pagination label="资料选择分页" page={libraryPage} pages={libraryPages} total={libraryTotal} disabled={panelLoading} onChange={setLibraryPage}/> : null}
+    <footer>{panel === "models" ? <Link href="/settings/integrations">管理模型服务</Link> : panel === "skills" ? <><span>已选 {skillIds.length}/{MAX_PROJECT_SKILLS}</span><Link href="/library/methods">管理 / 导入 Skill</Link></> : panel === "library" ? <><span>已选 {attachments.length}/8</span><Link href="/library">打开资料库</Link></> : <div className="home-new-folder"><input aria-label="新项目文件夹名称" placeholder="新建项目文件夹" maxLength={80} value={newFolder} onChange={(event) => setNewFolder(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createFolder(); }} /><button type="button" disabled={!newFolder.trim() || creatingFolder} onClick={() => void createFolder()}><Plus size={14} />创建</button></div>}</footer>
   </div>, document.body) : null;
   return <div className="home-composer-stack">
     <form ref={formRef} className={`xsj-composer home-composer ${keepOpen ? "is-expanded" : ""} ${panel ? "has-popover" : ""} ${dragging ? "is-dragging" : ""}`} onSubmit={(event) => { event.preventDefault(); submit(); }} onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); setDragging(true); } }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(Array.from(event.dataTransfer.files)); }} onPaste={(event) => { const pasted = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith("image/")); if (pasted.length) { event.preventDefault(); addFiles(pasted); } }}>

@@ -1,2 +1,2 @@
-import { ContentHub } from '@/components/content-hub';
-export default function Page(){return <ContentHub mode="review"/>;}
+import { redirect } from "next/navigation";
+export default function Page() { redirect("/topics?view=review"); }

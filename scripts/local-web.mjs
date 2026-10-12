@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 try {
   const mode = process.argv[2];
   if (!['review', 'daily', 'live'].includes(mode)) throw Error('Explicit local profile required');
-  const values = parseEnv(readFileSync(resolve(root, mode === 'daily' ? 'output/account-upgrade-private/formal-cutover-20261004/daily.env' : 'output/account-upgrade-private/review.env'), 'utf8'));
+  const values = parseEnv(readFileSync(resolve(root, process.env.LOCAL_PROFILE_FILE || (mode === 'daily' ? 'output/account-upgrade-private/formal-cutover-20261004/daily.env' : 'output/account-upgrade-private/review.env')), 'utf8'));
   const profile = mode === 'daily' ? validateDaily(values) : validateReview(values);
   const action = process.argv[3] ?? 'dev';
   const env = mode === 'live' ? { ...runtimeEnvironment('live', values, process.env), NODE_ENV: 'development', APP_URL: values.APP_URL, AUTH_COOKIE_PREFIX: values.AUTH_COOKIE_PREFIX } : mode === 'daily' ? dailyEnvironment(values, process.env) : reviewEnvironment(values, process.env);
@@ -24,6 +24,8 @@ try {
         const probe = spawnSync(executable, ['-version'], { env, windowsHide: true, stdio: 'ignore', timeout: 10000 });
         if (probe.status !== 0) throw Error('LIVE_MEDIA_TOOLS_NOT_READY: configure FFMPEG_PATH and FFPROBE_PATH in the local profile');
       }
+      const asr = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', resolve(root, 'scripts/start-local-asr.ps1')], { cwd: root, env: process.env, windowsHide: true, stdio: 'inherit', timeout: 210000 });
+      if (asr.status !== 0) console.error('LIVE_ASR_UNAVAILABLE: inspect output/local-asr; voice remains unavailable while Web startup continues');
       const queue = spawnSync('docker', ['compose', '-f', resolve(root, 'docker-compose.material.yml'), 'up', '-d', '--wait', '--wait-timeout', '45'], { env: process.env, windowsHide: true, stdio: 'inherit', timeout: 55000 });
       if (queue.status !== 0) throw Error('LIVE_QUEUE_NOT_READY: start Docker Desktop and retry');
     }

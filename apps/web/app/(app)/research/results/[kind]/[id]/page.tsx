@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import type { ResearchBlock } from "@content-center/core";
 import { requireWorkspace } from "@/server/access";
@@ -12,6 +12,7 @@ import { workCreationChoices } from "@/server/research/work-research-service";
 import { type WorkCreationChoices } from "@/components/research/work-creation-action";
 import { researchScopeSchema, type ResearchScope } from "@/server/research/contracts";
 import { ResearchCoverageSummary } from "@/components/research/research-coverage";
+import { TEARDOWN_SCHEMA } from "@content-center/core";
 
 function ReadingPage({ id, kind, title, date, blocks, canWrite, continueHref, coverage, creation, saved = true, scope, manual = false }: { id: string; kind: "run" | "study"; title: string; date: Date; blocks: ResearchBlock[]; projects: Array<{ id: string; title: string }>; canWrite: boolean; continueHref: string; coverage: ReactNode; saved?: boolean; manual?: boolean; scope?: ResearchScope; creation?: { choices: WorkCreationChoices; sessionId: string } }) {
   return <article className="research-result-page research-reader-page">
@@ -34,6 +35,7 @@ export default async function ResultPage({ params }: { params: Promise<{ kind: s
       return <ReadingPage id={id} kind={kind} title={result.title} date={result.createdAt} blocks={result.blocks} projects={projects} canWrite={role !== "VIEWER"} continueHref={`/research/benchmarks/${result.accountId}`} coverage={<section className="research-coverage-summary"><header><h2>历史样本范围</h2><span>保存时记录</span></header><p><strong>{result.sampleCount}</strong> 条保存样本 · <strong>{result.traceableCount}</strong> 条仍可追溯资料；不代表账号全量。</p></section>} />;
     }
     const [result, projects, choices] = await Promise.all([getResearchResult(actor, id, { includeUnsaved: true }), researchProjectOptions(actor), workCreationChoices(actor)]);
+    if (result.coverage && typeof result.coverage === "object" && !Array.isArray(result.coverage) && result.coverage.schema === TEARDOWN_SCHEMA) redirect(`/research/teardown?run=${id}`);
     return <ReadingPage id={id} kind={kind} title={result.resultTitle || result.question} date={result.savedAt ?? result.finishedAt ?? result.createdAt} manual={Boolean(result.coverage && typeof result.coverage === "object" && !Array.isArray(result.coverage) && result.coverage.manualClipping === true)} saved={Boolean(result.savedAt)} scope={researchScopeSchema.safeParse(result.inputScope).data} blocks={result.blocks} projects={projects} canWrite={role !== "VIEWER"} continueHref={`/research/session/${result.sessionId}`} creation={{ choices, sessionId: result.sessionId }} coverage={<ResearchCoverageSummary value={result.coverage} />} />;
   } catch (error) {
     if (error instanceof ResearchError && error.status === 404) notFound();

@@ -57,6 +57,8 @@ async function build() {
   const directory=join(releases,id), workspace=join(directory,"workspace"), sources=[];
   mkdirSync(workspace,{recursive:true});
   for(const folder of ["apps","packages","scripts"])copyTree(join(root,folder),join(workspace,folder),sources);
+  // Legacy writing-method routes read these committed files at runtime.
+  if(existsSync(join(root,"vendor")))copyTree(join(root,"vendor"),join(workspace,"vendor"),sources);
   for(const name of ["package.json","pnpm-lock.yaml","pnpm-workspace.yaml","turbo.json","eslint.config.mjs","vitest.config.ts","tsconfig.json"]) if(existsSync(join(root,name))) {copyFileSync(join(root,name),join(workspace,name));sources.push({path:name,sha256:sha256(readFileSync(join(root,name)))});}
   // Reuse installed dependencies read-only; no install, lifecycle script or new credential.
   symlinkSync(join(root,"node_modules"),join(workspace,"node_modules"),"junction");
@@ -96,7 +98,7 @@ async function build() {
   if(receipt.status!=="BUILT")process.exitCode=1;
 }
 function existingConfig(mode) {
-  const path=join(root,mode==="daily"?"output/account-upgrade-private/formal-cutover-20261004/daily.env":"output/account-upgrade-private/review.env");
+  const path=resolve(root,process.env.LOCAL_PROFILE_FILE || (mode==="daily"?"output/account-upgrade-private/formal-cutover-20261004/daily.env":"output/account-upgrade-private/review.env"));
   if(!existsSync(path))throw Error("RELEASE_CONFIGURATION_MISSING");
   return parseEnv(readFileSync(path,"utf8"));
 }

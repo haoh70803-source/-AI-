@@ -1,4 +1,5 @@
 import "server-only";
+import { MAX_PROJECT_SKILLS, projectSkillVersionIdsSchema } from "../../lib/contracts/creation";
 
 import { db, type Prisma } from "@content-center/db";
 import { listMethods } from "../methods/service";
@@ -6,9 +7,8 @@ import { z } from "zod";
 import { isDefaultContentMethodPayload, parseDefaultContentMethodPayload } from "../default-content-method/schemas";
 import type { WorkflowSkillContract } from "../workflow-skill/contract";
 
-const methodVersionId = z.string().trim().min(1).max(200);
 export const methodSelectionSchema = z.object({
-  methodVersionIds: z.array(methodVersionId).max(20).transform((ids) => [...new Set(ids)]).refine((ids) => ids.length <= 3, "当前版本最多加载 3 个 Skill（兼容限制）。"),
+  methodVersionIds: projectSkillVersionIdsSchema,
 }).strict();
 
 export class ProjectMethodError extends Error {
@@ -116,7 +116,7 @@ export async function setProjectMethodSelections(input: { workspaceId: string; u
   const membership = await db.workspaceMember.findUnique({ where: { workspaceId_userId: { workspaceId: input.workspaceId, userId: input.userId } }, select: { role: true } });
   if (!membership || membership.role === "VIEWER") throw new ProjectMethodError("METHOD_SELECTION_FORBIDDEN", "当前用户不能修改方法选择。");
   const ids = [...new Set(input.methodVersionIds)];
-  if (ids.length > 3) throw new ProjectMethodError("METHOD_SELECTION_INVALID", "当前版本最多加载 3 个 Skill（兼容限制）。");
+  if (ids.length > MAX_PROJECT_SKILLS) throw new ProjectMethodError("METHOD_SELECTION_INVALID", "当前版本最多加载 3 个 Skill（兼容限制）。");
   const rows = ids.length ? await db.methodVersion.findMany({ where: { id: { in: ids }, asset: { workspaceId: input.workspaceId, ownerUserId: input.userId, status: { not: "DISABLED" } }, }, select: { id: true, assetId: true, steps: true } }) : [];
   const versions = rows.filter(({ steps }) => !isDefaultContentMethodPayload(steps));
   if (versions.length !== ids.length || new Set(versions.map(({ assetId }) => assetId)).size !== versions.length) throw new ProjectMethodError("METHOD_SELECTION_FORBIDDEN", "只能选择自己的可用方法。");
@@ -135,7 +135,7 @@ export async function getSelectedGenerationMethods(input: { workspaceId: string;
     orderBy: { createdAt: "asc" },
     include: { methodVersion: { select: { version: true, title: true, steps: true, applicableScenarios: true, boundaries: true, workflowContract: true } } },
   });
-  if (rows.length > 3) throw new ProjectMethodError("METHOD_SELECTION_INVALID", "本次选择的 Skill 超过当前兼容上限 3 个，请刷新后重试。");
+  if (rows.length > MAX_PROJECT_SKILLS) throw new ProjectMethodError("METHOD_SELECTION_INVALID", "本次选择的 Skill 超过当前兼容上限 3 个，请刷新后重试。");
   return rows.filter(({ methodVersion }) => !isDefaultContentMethodPayload(methodVersion.steps)).map(({ methodAssetId, methodVersionId, methodVersion }) => ({ methodAssetId, methodVersionId, version: methodVersion.version, title: methodVersion.title, steps: strings(methodVersion.steps), applicableScenarios: strings(methodVersion.applicableScenarios), boundaries: strings(methodVersion.boundaries), workflowContract: methodVersion.workflowContract && typeof methodVersion.workflowContract === "object" && !Array.isArray(methodVersion.workflowContract) ? methodVersion.workflowContract as unknown as WorkflowSkillContract : null }));
 }
 
@@ -146,7 +146,7 @@ export async function recordSelectedMethodUsages(input: { workspaceId: string; u
 export async function recordGenerationMethodUsages(input: { workspaceId: string; userId: string; projectId: string; aiRunId: string; selectedMethodVersionIds: string[]; defaultMethodVersionId?: string }) {
   await projectForUser(input);
   const ids = [...new Set(input.selectedMethodVersionIds)];
-  if (ids.length > 3) throw new ProjectMethodError("METHOD_SELECTION_INVALID", "本次选择的 Skill 超过当前兼容上限 3 个，请刷新后重试。");
+  if (ids.length > MAX_PROJECT_SKILLS) throw new ProjectMethodError("METHOD_SELECTION_INVALID", "本次选择的 Skill 超过当前兼容上限 3 个，请刷新后重试。");
   if (!ids.length && !input.defaultMethodVersionId) return [];
   return db.$transaction(async (tx) => {
     const run = await tx.aIRun.findFirst({ where: { id: input.aiRunId, workspaceId: input.workspaceId, projectId: input.projectId, userId: input.userId, status: "RUNNING" }, select: { id: true } });

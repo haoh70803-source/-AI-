@@ -162,6 +162,7 @@ export function IntegrationCard({ integration, canManage, encryptionConfigured }
         ...(doubaoAccessToken ? { accessToken: doubaoAccessToken } : {}),
         resourceId: String(formData.get("resourceId") || ""),
         protocol: String(formData.get("protocol") || "FLASH"),
+        flashResourceId: String(formData.get("flashResourceId") || ""),
         boostingTableId: String(formData.get("boostingTableId") || ""),
         boostingTableName: String(formData.get("boostingTableName") || ""),
       };
@@ -224,6 +225,7 @@ export function IntegrationCard({ integration, canManage, encryptionConfigured }
                     </div>
                   ) : null}
                   <label className="grid gap-1.5 text-sm">热词表 ID（可选）<Input name="boostingTableId" aria-label="豆包热词表 ID" defaultValue={value(integration.publicConfig, "boostingTableId")} /></label>
+                  <label className="grid gap-1.5 text-sm">优先使用极速识别（可选 Resource ID）<Input name="flashResourceId" aria-label="豆包极速识别 Resource ID" defaultValue={value(integration.publicConfig, "flashResourceId")} placeholder="已开通极速版后填写 volc.bigasr.auc_turbo" /><span className="text-xs text-[var(--text-secondary)]">填写后，资料转写优先使用极速版；未授权时回到原识别接口。留空则使用上方已配置接口。长视频自动分片并保存进度。</span></label>
                   <label className="grid gap-1.5 text-sm">热词表名称（可选）<Input name="boostingTableName" aria-label="豆包热词表名称" defaultValue={value(integration.publicConfig, "boostingTableName")} /></label>
                 </div>
               </details>

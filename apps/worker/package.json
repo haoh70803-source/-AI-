@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./video-preview": "./src/video-preview.ts",
+    "./teardown-queue": "./src/teardown/queue.ts",
+    "./teardown-worker": "./src/teardown/worker.ts",
     "./redis-connection": "./src/redis-connection.ts",
     "./experience-limits": "./src/experience-limits.ts",
     "./queue": "./src/queue.ts",

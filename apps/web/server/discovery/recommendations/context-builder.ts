@@ -3,6 +3,7 @@ import "server-only";
 import { buildRecommendationCandidates, normalizeRecommendationTitle, type RecommendationCandidate, type RecommendationEvidenceInput } from "@content-center/core";
 import { db } from "@content-center/db";
 import { listTrendOpportunities } from "../trends/read-model";
+import { researchMember } from "../../research/access";
 
 function strings(value: unknown, take = 12) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).slice(0, take) : [];
@@ -14,13 +15,14 @@ function profileMatches(title: string, topics: string[]) {
 }
 
 export async function buildRecommendationContext(input: { workspaceId: string; userId: string; now?: Date }) {
+  await researchMember(input);
   const now = input.now ?? new Date();
   const [profile, benchmarkContents, ideas, projects, sources, hot, surging, darkHorse] = await Promise.all([
     db.creatorProfile.findUnique({ where: { workspaceId_userId: { workspaceId: input.workspaceId, userId: input.userId } } }),
     db.benchmarkContentSnapshot.findMany({ where: { workspaceId: input.workspaceId }, orderBy: { observedAt: "desc" }, take: 20 }),
-    db.contentIdea.findMany({ where: { workspaceId: input.workspaceId, status: { not: "ARCHIVED" } }, orderBy: { updatedAt: "desc" }, take: 20, select: { id: true, title: true, description: true, status: true, updatedAt: true } }),
-    db.contentProject.findMany({ where: { workspaceId: input.workspaceId }, orderBy: { updatedAt: "desc" }, take: 12, select: { id: true, title: true, status: true, updatedAt: true } }),
-    db.sourceItem.findMany({ where: { workspaceId: input.workspaceId, status: "READY" }, orderBy: { updatedAt: "desc" }, take: 12, select: { id: true, title: true, description: true, sourcePlatform: true, updatedAt: true } }),
+    db.contentIdea.findMany({ where: { workspaceId: input.workspaceId, createdById: input.userId, status: { not: "ARCHIVED" } }, orderBy: { updatedAt: "desc" }, take: 20, select: { id: true, title: true, description: true, status: true, updatedAt: true } }),
+    db.contentProject.findMany({ where: { workspaceId: input.workspaceId, createdById: input.userId, status: { not: "ARCHIVED" } }, orderBy: { updatedAt: "desc" }, take: 12, select: { id: true, title: true, status: true, updatedAt: true } }),
+    db.sourceItem.findMany({ where: { workspaceId: input.workspaceId, createdById: input.userId, status: "READY" }, orderBy: { updatedAt: "desc" }, take: 12, select: { id: true, title: true, description: true, sourcePlatform: true, updatedAt: true } }),
     listTrendOpportunities({ workspaceId: input.workspaceId, window: "TODAY", platform: "ALL", type: "HOT", take: 8, now }),
     listTrendOpportunities({ workspaceId: input.workspaceId, window: "TODAY", platform: "ALL", type: "SURGING", take: 8, now }),
     listTrendOpportunities({ workspaceId: input.workspaceId, window: "TODAY", platform: "ALL", type: "DARK_HORSE", take: 8, now }),

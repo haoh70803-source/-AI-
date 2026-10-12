@@ -53,7 +53,7 @@ const queuedTimeoutMessage = "研究尚未开始且已超过等待时限，请�
 const uncertainRunningMessage = "研究执行结果尚未确认，请先核查，避免重复调用。";
 async function settleExpiredQueuedResearchRuns(actor: ResearchActor, sessionId: string, runId?: string, client: Pick<Prisma.TransactionClient, "researchRun"> = db) {
   return client.researchRun.updateMany({ where: { ...(runId ? { id: runId } : {}), sessionId, workspaceId: actor.workspaceId, requestedById: actor.userId,
-    session: { ...personalSessionWhere(actor), workspace: { disabledAt: null, members: { some: { userId: actor.userId, disabledAt: null, user: { disabledAt: null } } } } },
+    session: { ...personalSessionWhere(actor), entryTemplate: { not: "TEARDOWN" }, workspace: { disabledAt: null, members: { some: { userId: actor.userId, disabledAt: null, user: { disabledAt: null } } } } },
     status: "QUEUED", startedAt: null, finishedAt: null, aiRunId: null, createdAt: { lt: new Date(Date.now() - RESEARCH_LEASE_MS) } },
     data: { status: "FAILED", stage: "FAILED", errorCode: "INTERRUPTED", errorMessage: queuedTimeoutMessage, finishedAt: new Date() } });
 }
@@ -62,6 +62,7 @@ function runningStatusMessage(run: { status: string; createdAt: Date; errorMessa
 }
 export async function reserveResearchRun(actor: ResearchActor, sessionId: string, value: unknown) {
   const session = await researchSessionForUser({ ...actor, sessionId }, true);
+  if (session.entryTemplate === "TEARDOWN") throw new ResearchError("DEDICATED_MODULE_REQUIRED", "请在作品拆解模块重新发起任务。", 409);
   const input = runInputSchema.parse(value);
   const [requested, latest] = await Promise.all([
     db.researchRun.findUnique({ where: { sessionId_requestKey: { sessionId, requestKey: input.requestKey } } }),
@@ -127,6 +128,7 @@ export async function reserveResearchRun(actor: ResearchActor, sessionId: string
 
 export async function executeResearchRun(actor: ResearchActor, sessionId: string, runId: string, dependencies: { runtime?: LLMRuntime } = {}) {
   const session = await researchSessionForUser({ ...actor, sessionId }, true);
+  if (session.entryTemplate === "TEARDOWN") throw new ResearchError("DEDICATED_MODULE_REQUIRED", "作品拆解由专属后台任务执行。", 409);
   const mode: ResearchMode = ["DIRECT", "BREAKDOWN", "BENCHMARK", "OPPORTUNITY"].includes(session.entryTemplate) ? session.entryTemplate as ResearchMode : "DIRECT";
   const claimed = await db.researchRun.updateMany({ where: { id: runId, sessionId, workspaceId: actor.workspaceId, requestedById: actor.userId, status: "QUEUED", startedAt: null, finishedAt: null, aiRunId: null, createdAt: { gte: new Date(Date.now() - RESEARCH_LEASE_MS) } }, data: { status: "RUNNING", stage: "READING", startedAt: new Date() } });
   if (!claimed.count) return;

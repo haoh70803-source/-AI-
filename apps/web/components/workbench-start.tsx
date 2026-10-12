@@ -13,9 +13,11 @@ type SkillCard = { id: string; title: string; summary: string; scenarios: string
 export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }: { canCreate: boolean; draftKey: string; initialSkillId?: string; overview?: ReactNode }) {
   const homeRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const materialPickerAnchor = useRef<HTMLButtonElement>(null);
   const inFlight = useRef(false);
   const [idea, setIdea] = useState("");
   const [busy, setBusy] = useState(false);
+  const [materialPickerRequest, setMaterialPickerRequest] = useState(0);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"inspiration" | "skills">("inspiration");
   const [category, setCategory] = useState("推荐");
@@ -84,17 +86,27 @@ export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }
   }
   const filtered = creationPrompts.filter(item => category === "推荐" || item.platform === category);
   const cards = [...filtered.slice(offset % filtered.length), ...filtered.slice(0, offset % filtered.length)].slice(0, category === "推荐" ? 8 : 12);
+  function focusComposer() {
+    requestAnimationFrame(() => {
+    document.getElementById("home-start")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    inputRef.current?.focus({ preventScroll: true });
+    });
+  }
   return <div ref={homeRef} className="xsj-home" data-testid="reference-home">
-    <section className="xsj-hero" aria-labelledby="xsj-home-title">
-      <div className="xsj-hero-status"><i />CONTENT OS · 创作工作台<ArrowRight size={14} /></div>
-      <div className="xsj-morph-layer">
-        <div className="xsj-hero-brand"><img src="/brand/xin-world-mark-dark.svg" alt="" /><div><h1 id="xsj-home-title">鑫世界工作台</h1><p>把灵感、资料与创作连接起来</p></div></div>
-        <HomeComposer initialSkillId={initialSkillId} idea={idea} onIdeaChange={changeIdea} inputRef={inputRef} canCreate={canCreate} busy={busy} draftKey={draftKey} error={error} onSubmit={(selection) => void start(selection)} />
+    <section className="xin-home-hero" aria-labelledby="xsj-home-title">
+      <div className="xin-home-hero-art" aria-hidden="true" />
+      <div className="xin-home-hero-copy"><p className="xin-eyebrow"><i/>A NEW HORIZON FOR YOUR IDEAS</p><h1 id="xsj-home-title">好想法，<br/>值得一个新世界。</h1><p className="xin-home-intro">从第一点灵感，到下一件作品。<br/>与 AI 持续协作，让每一次创作都有迹可循。</p><div className="xin-home-actions"><button type="button" disabled={!canCreate} onClick={focusComposer}>＋ 开启新项目</button><Link href="/projects">回到我的创作 <ArrowRight size={16}/></Link></div></div>
+      <span className="xin-hero-signature">XIN WORLD — BEYOND THE HORIZON</span>
+    </section>
+    <section id="home-start" className="xin-home-start" aria-label="开始创作">
+      <header><div><h2>今天，想把什么变成现实？</h2><p>一个项目，连接对话、资料与成果。</p></div><div><button type="button" disabled={!canCreate || busy} onClick={focusComposer}>开始对话 <ArrowRight size={15}/></button><button ref={materialPickerAnchor} type="button" aria-haspopup="dialog" disabled={!canCreate || busy} onClick={() => setMaterialPickerRequest(value => value + 1)}>带着资料开始 ▾</button><Link href="/projects?view=all">浏览我的内容</Link></div></header>
+      <div className="xin-home-composer">
+        <HomeComposer materialPickerAnchor={materialPickerAnchor} materialPickerRequest={materialPickerRequest} initialSkillId={initialSkillId} idea={idea} onIdeaChange={changeIdea} inputRef={inputRef} canCreate={canCreate} busy={busy} draftKey={draftKey} error={error} onSubmit={(selection) => void start(selection)} />
         {appliedPrompt ? <div className="xsj-prompt-applied" role="status">已套用「{appliedPrompt}」{previousIdea !== null ? <button type="button" disabled={busy} onClick={() => { changeIdea(previousIdea); setPreviousIdea(null); setAppliedPrompt(""); }}>撤销套用</button> : null}</div> : null}
       </div>
     </section>
     {overview}
-    <section className="xsj-explore" id="xsj-explore" aria-label="创作模板与 Skill">
+    <details className="xin-home-explore"><summary>创作模板与可选技能</summary><section className="xsj-explore" id="xsj-explore" aria-label="创作模板与 Skill">
       <div className="xsj-tabs" role="tablist" aria-label="探索内容"><button role="tab" aria-selected={tab === "inspiration"} aria-controls="inspiration-panel" id="inspiration-tab" onClick={() => setTab("inspiration")}>创作模板</button><button role="tab" aria-selected={tab === "skills"} aria-controls="skills-panel" id="skills-tab" onClick={() => setTab("skills")}>Skill</button></div>
       {tab === "inspiration" ? <div role="tabpanel" id="inspiration-panel" aria-labelledby="inspiration-tab">
         <div className="xsj-prompt-heading"><div><h2>从你想做的内容开始</h2><p>选一个模板，提示词会填入上方输入框。补一句主题，就能开始。</p></div></div>
@@ -106,7 +118,7 @@ export function WorkbenchStart({ canCreate, draftKey, initialSkillId, overview }
         {skillState === "loading" ? <p className="xsj-empty" role="status">正在读取 Skill…</p> : skillState === "error" ? <div className="xsj-empty" role="alert">暂时无法读取 Skill。<button onClick={() => setReload((value) => value + 1)}>重试</button></div> : <div className="xsj-inspiration-grid">{skills.filter((skill) => [skill.title, skill.summary, ...skill.scenarios].join(" ").includes(skillSearch.trim())).map((skill) => <Link className="xsj-skill-card" href={`/library/methods/${skill.id}`} key={skill.id}><Zap /><span>{skill.enabled ? "可使用" : "已停用"}</span><h2>{skill.title}</h2><p>{skill.summary}</p><small>{skill.scenarios.slice(0, 2).join(" · ")}</small></Link>)}</div>}
         {skillState === "ready" && !skills.length ? <div className="xsj-empty"><Zap /><h2>从第一个 Skill 开始</h2><p>把常用Skill保存下来，需要时再加入工作。</p><Link href="/library/methods">导入 Skill<ArrowRight size={15} /></Link></div> : null}
       </div>}
-    </section>
+    </section></details>
 
   </div>;
 }

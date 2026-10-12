@@ -1,0 +1,9 @@
+body:is([data-theme="light"],[data-theme="black-titanium"]) select.themed-select{
+ appearance:none;color-scheme:var(--theme-color-scheme);font-family:var(--font-ui);font-size:12px;
+ min-height:36px;max-width:100%;border:1px solid var(--border);border-radius:var(--radius-control,8px);
+ background-color:var(--surface);color:var(--text-primary);padding:7px 30px 7px 10px;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23858fa3' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+ background-position:right 10px center;background-repeat:no-repeat;
+}
+select.themed-select option{background:var(--surface);color:var(--text-primary);}
+body:is([data-theme="light"],[data-theme="black-titanium"]) select.themed-select:focus-visible{outline:2px solid var(--focus-ring,#7a9cc6);outline-offset:2px;box-shadow:none;border-color:var(--border-strong);}

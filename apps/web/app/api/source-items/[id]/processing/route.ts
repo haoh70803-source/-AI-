@@ -3,6 +3,7 @@ import { db } from "@content-center/db";
 import { NextResponse } from "next/server";
 import { apiError, getApiWorkspaceContext } from "@/server/api-access";
 import { understandingExpired } from "@/server/material-detail/understanding";
+import { transcriptionProgressLabel } from "@/lib/source-processing-state";
 
 export async function GET(_request: Request, route: { params: Promise<{ id: string }> }) {
   const context = await getApiWorkspaceContext();
@@ -46,6 +47,7 @@ export async function GET(_request: Request, route: { params: Promise<{ id: stri
       status: latestTranscription.status,
       progress: latestTranscription.progress,
       stage: safeStage,
+      detail: transcriptionProgressLabel(metadata),
       errorMessage: latestTranscription.status === "FAILED" ? latestTranscription.errorMessage?.slice(0, 200) ?? null : null,
     } : null,
     hasTranscript: Boolean(source.transcript),

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { db } from "@content-center/db";
 import { requireWorkspace } from "@/server/access";
@@ -12,11 +13,11 @@ export default async function AppLayout({ children, settings }: { children: Reac
     getProjectListView({ workspaceId: workspace.id, userId: session.user.id }),
     cookies(),
   ]);
-  const initialPinned = cookieStore.get(SIDEBAR_PIN_COOKIE)?.value !== "0";
+  const initialPinned = cookieStore.get(SIDEBAR_PIN_COOKIE)?.value === "1";
   return (
     <div className="app-shell" data-shell="v4" data-sidebar-initial={initialPinned ? "pinned" : "collapsed"}>
       <AppShell initialPinned={initialPinned} workspaceName={workspace.name} userName={session.user.name} isSystemAdmin={user?.systemRole === "SYSTEM_ADMIN"} initialProjectListView={initialProjectListView} />
-      <main id="main-content" className="app-main">{children}</main>
+      <main id="main-content" className="app-main">{children}<footer className="xin-page-footer"><span>鑫世界 XIN WORLD · 让想法，成为作品。</span><Link href="/settings">设置与服务 →</Link></footer></main>
       {settings}
     </div>
   );

@@ -13,6 +13,7 @@ export function projectApiError(error: unknown) {
     return NextResponse.json({ error: error.code, message: error.message }, { status: 409 });
   }
   if (error instanceof ProjectServiceError) {
+    if (error.code === "PROJECT_FORBIDDEN") return NextResponse.json({ error: error.code, message: "当前账号没有创建项目的权限。" }, { status: 403 });
     if(error.code === "PROJECT_RETAINED") return NextResponse.json({error:error.code,message:"此项目关联了选题审核历史，请归档项目以保留记录。"},{status:409});
     if (error.code === "PROJECT_CONFLICT") return NextResponse.json({ error: error.code, message: "项目状态已发生变化，请刷新后重试。" }, { status: 409 });
     const status = error.code === "SOURCE_LIMIT_EXCEEDED" ? 400 : error.code === "SOURCE_ALREADY_ADDED" ? 409 : 404;

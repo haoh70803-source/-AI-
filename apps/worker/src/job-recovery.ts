@@ -39,14 +39,16 @@ export async function withIngestExecution<T>(job: Job<ContentIngestPayload>, exe
       await settleRelated(tx,record,"TASK_AUTHORIZATION_REVOKED");
       return {status:"authorization-revoked"};
     }
-    if (record.status === "RUNNING" && record.provider !== "MANUAL") {
+    const checkpoint = record.metadata && typeof record.metadata === "object" && !Array.isArray(record.metadata) ? record.metadata.chunkCheckpoint : undefined;
+    const resumable = record.jobType === "TRANSCRIBE" && checkpoint && typeof checkpoint === "object" && !Array.isArray(checkpoint) && checkpoint.version === 1;
+    if (record.status === "RUNNING" && record.provider !== "MANUAL" && !resumable) {
       await tx.ingestJob.updateMany({ where: { id: record.id, workspaceId: record.workspaceId, status: "RUNNING" }, data: { status: "FAILED", errorCode: "RECOVERY_REVIEW_REQUIRED", errorMessage: "任务中断，外部调用结果需要人工核对后重试。", finishedAt: new Date() } });
       await settleRelated(tx,record,"RECOVERY_REVIEW_REQUIRED");
       return { status: "recovery-review-required" };
     }
     if (record.attempt >= record.maxAttempts) throw new UnrecoverableError("Job attempt budget exhausted");
     return execute();
-  }, { timeout: 15 * 60 * 1000, maxWait: 10000 });
+  }, { timeout: job.name === TRANSCRIBE_SOURCE ? 8 * 60 * 60_000 : 15 * 60_000, maxWait: 10000 });
 }
 
 // Expire abandoned material work even when no worker is running. Never take over a live execution lock.
@@ -55,7 +57,7 @@ export const MATERIAL_RUN_MS = 15 * 60_000;
 export async function expireMaterialProcessing(input: { workspaceId?: string; sourceItemId?: string; now?: Date } = {}) {
   const now = input.now ?? new Date(), queuedBefore = new Date(now.getTime() - MATERIAL_QUEUE_WAIT_MS), runningBefore = new Date(now.getTime() - MATERIAL_RUN_MS);
   const scope = { ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}), ...(input.sourceItemId ? { sourceItemId: input.sourceItemId } : {}) };
-  const rows = await db.ingestJob.findMany({ where: { ...scope, jobType: { in: ["EXTRACT_TEXT", "FETCH_URL", "PROCESS_MEDIA", "TRANSCRIBE"] }, OR: [{ status: "QUEUED", updatedAt: { lte: queuedBefore } }, { status: "RUNNING", OR: [{ startedAt: { lte: runningBefore } }, { startedAt: null, updatedAt: { lte: runningBefore } }] }] }, take: 50, orderBy: { updatedAt: "asc" } });
+  const rows = await db.ingestJob.findMany({ where: { ...scope, jobType: { in: ["EXTRACT_TEXT", "FETCH_URL", "PROCESS_MEDIA", "TRANSCRIBE"] }, OR: [{ status: "QUEUED", updatedAt: { lte: queuedBefore } }, { status: "RUNNING", OR: [{ jobType: "TRANSCRIBE", updatedAt: { lte: runningBefore } }, { jobType: { not: "TRANSCRIBE" }, OR: [{ startedAt: { lte: runningBefore } }, { startedAt: null, updatedAt: { lte: runningBefore } }] }] }] }, take: 50, orderBy: { updatedAt: "asc" } });
   for (const row of rows) {
     await db.$transaction(async tx => {
       if (!await executionLock(tx, row.workspaceId, row.id)) return;

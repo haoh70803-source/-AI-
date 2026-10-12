@@ -2,8 +2,8 @@ export type ReferenceType = "MATERIAL" | "RESEARCH" | "ARTIFACT" | "BENCHMARK" |
 
 export type ResearchSelection = { kind: "run" | "study"; version: number; items: Array<{ id: string; text: string }> };
 
-export type ContextReference = { sourceType: ReferenceType; sourceId: string; researchSelection?: ResearchSelection };
-
+export type ReferenceScope = "TURN" | "TASK" | "PROJECT";
+export type ContextReference = { sourceType: ReferenceType; sourceId: string; researchSelection?: ResearchSelection; scope?: ReferenceScope; sourceVersion?: string | number };
 export type SourceReference = ContextReference & { title: string; href: string; generated: boolean; version?: string | number; updatedAt?: string; anchor?: string };
 
 export type ReferenceOption = SourceReference & { description: string };

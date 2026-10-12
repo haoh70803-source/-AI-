@@ -55,7 +55,7 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
     : progressStage === "UPLOADING_AUDIO" ? "正在保存音频"
       : progressStage === "PERSISTING" ? "正在保存文字稿"
         : transcriptionState === "QUEUED" ? "排队等待转录"
-          : transcriptionState === "PROCESSING" ? "正在转写" : null;
+          : transcriptionState === "PROCESSING" ? snapshot?.transcription?.detail ?? workspace.processingLabel ?? "正在转写" : null;
   const textLabel = media ? "文字稿" : detail.preview.type === "IMAGE" ? "补充文字" : detail.preview.type === "DOCUMENT" ? "提取正文" : "正文";
   async function request(url: string, method = "POST", body?: unknown) {
     const response = await fetch(url, { signal: AbortSignal.timeout(30_000), method, ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}) });
@@ -74,7 +74,7 @@ export function SourceWorkspace({ model }: { model: SourceWorkspaceModel }) {
     const project = await request("/api/projects", "POST", { title: header.title.slice(0, 200), sourceItemId: header.id });
     if (!project.id) throw new Error("创建对话失败");
     window.dispatchEvent(new Event("project-list-changed"));
-    router.push(`/dashboard?project=${project.id}`);
+    router.push(`/dashboard?project=${project.id}&source=${encodeURIComponent(header.id)}&focus=conversation`);
   }
   async function requestTranscription() {
     await request(`/api/source-items/${header.id}/transcribe`);

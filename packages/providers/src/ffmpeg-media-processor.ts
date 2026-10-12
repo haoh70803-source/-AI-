@@ -7,6 +7,8 @@ import { MAX_ASR_FLASH_BYTES, MAX_ASR_FLASH_DURATION_MS } from "@content-center/
 export type MediaProcessorErrorCode =
   | "ASR_PROCESS_TIMEOUT"
   | "FFMPEG_NOT_AVAILABLE"
+  | "VIDEO_TRACK_MISSING"
+  | "VIDEO_PREVIEW_FAILED"
   | "ASR_AUDIO_EXTRACTION_FAILED"
   | "ASR_AUDIO_TOO_LARGE"
   | "ASR_AUDIO_TOO_LONG";
@@ -28,7 +30,7 @@ export function assertFlashAudioLimits(input: { sizeBytes: number; durationMs: n
 }
 
 type ProcessorOptions = { ffmpegPath?: string; ffprobePath?: string; timeoutMs?: number };
-type ExtractAudioOptions = { limits?: "DOUBAO_FLASH" | "NONE"; maxDurationMs?: number; localOnly?: boolean };
+type ExtractAudioOptions = { limits?: "DOUBAO_FLASH" | "NONE"; startMs?: number; maxDurationMs?: number; localOnly?: boolean };
 
 async function runProcess(command: string, args: string[], failureCode: MediaProcessorErrorCode, timeoutMs: number) {
   return new Promise<string>((resolve, reject) => {
@@ -79,7 +81,36 @@ export class FFmpegMediaProcessor {
     return Math.round(durationSeconds * 1_000);
   }
 
+  async probeVideo(input: string) {
+    const raw = await runProcess(this.ffprobePath, ["-v", "error", "-show_entries", "stream=codec_type,codec_name,pix_fmt,width,height:format=format_name,duration", "-of", "json", input], "VIDEO_PREVIEW_FAILED", Math.min(this.timeoutMs, 30_000));
+    const result = JSON.parse(raw) as { streams?: Array<{ codec_type?: string; codec_name?: string; pix_fmt?: string; width?: number; height?: number }>; format?: { format_name?: string; duration?: string } };
+    const video = result.streams?.find(stream => stream.codec_type === "video" && (stream.width ?? 0) > 0 && (stream.height ?? 0) > 0);
+    if (!video) throw new MediaProcessorError("VIDEO_TRACK_MISSING", "下载的文件没有有效画面轨道，请重新获取原视频；不能用转写音频替代视频。");
+    const durationMs = Math.round(Number(result.format?.duration) * 1000);
+    if (!Number.isFinite(durationMs) || durationMs <= 0) throw new MediaProcessorError("VIDEO_PREVIEW_FAILED", "无法读取原视频时长。");
+    const audio = result.streams?.find(stream => stream.codec_type === "audio");
+    return { codec: video.codec_name ?? "unknown", width: video.width!, height: video.height!, durationMs, browserCompatible: video.codec_name === "h264" && video.pix_fmt === "yuv420p" && Boolean(result.format?.format_name?.includes("mp4")) && (!audio || audio.codec_name === "aac") };
+  }
+
+  /** Produce a separate derivative. Never overwrite the original or the ASR audio. */
+  async createVideoPreview(input: string, durationMs: number) {
+    if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > 6 * 60 * 60_000) throw new MediaProcessorError("VIDEO_PREVIEW_FAILED", "视频时长无效或超过当前六小时预览范围，请裁剪后重试。");
+    const directory = await mkdtemp(join(tmpdir(), "content-center-video-preview-"));
+    const outputPath = join(directory, "preview.mp4");
+    const cleanup = () => rm(directory, { recursive: true, force: true });
+    try {
+      await runProcess(this.ffmpegPath, ["-nostdin", "-hide_banner", "-loglevel", "error", "-threads", "2", "-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-vf", "scale=w='min(1280,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2", "-r", "30", "-c:v", "libx264", "-threads", "2", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", "-y", outputPath], "VIDEO_PREVIEW_FAILED", Math.min(60 * 60_000, Math.max(120_000, durationMs + 60_000)));
+      const probe = await this.probeVideo(outputPath);
+      if (!probe.browserCompatible || Math.abs(probe.durationMs - durationMs) > 1000) throw new MediaProcessorError("VIDEO_PREVIEW_FAILED", "视频预览画面或时长校验失败，请重试。");
+      return { path: outputPath, sizeBytes: (await stat(outputPath)).size, probe, cleanup };
+    } catch (error) { await cleanup(); throw error; }
+  }
+
   async extractAudio(input: string, options: ExtractAudioOptions = {}) {
+    if ((options.startMs !== undefined && (!Number.isFinite(options.startMs) || options.startMs < 0)) ||
+      (options.maxDurationMs !== undefined && (!Number.isFinite(options.maxDurationMs) || options.maxDurationMs <= 0))) {
+      throw new MediaProcessorError("ASR_AUDIO_EXTRACTION_FAILED", "音频切片范围无效。");
+    }
     const directory = await mkdtemp(join(tmpdir(), "content-center-asr-"));
     const outputPath = join(directory, "audio.mp3");
     const cleanup = () => rm(directory, { recursive: true, force: true });
@@ -89,6 +120,7 @@ export class FFmpegMediaProcessor {
         "-hide_banner",
         "-loglevel", "error",
         ...(options.localOnly ? ["-protocol_whitelist", "file,pipe"] : []),
+        ...(options.startMs ? ["-ss", String(options.startMs / 1000)] : []),
         "-i", input,
         ...(options.maxDurationMs ? ["-t", String(options.maxDurationMs / 1000)] : []),
         "-vn",

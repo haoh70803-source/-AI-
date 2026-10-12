@@ -1,6 +1,7 @@
 import type { ReferenceOption, ResearchCreationDraft } from "./contracts/references";
+import { projectSkillVersionIdsSchema } from "./contracts/creation";
 type Scope = { workspaceId: string; userId: string; projectId: string };
-export type ProjectInputDraft = { input: string; references: ReferenceOption[]; materialIds: string[]; skillId: string; modelId: string };
+export type ProjectInputDraft = { input: string; references: ReferenceOption[]; materialIds: string[]; skillId: string; skillIds?: string[]; modelId: string };
 const prefix = "research-creation:";
 const ttl = 30 * 60 * 1000;
 const key = (scope: Scope, kind: string) => prefix + scope.workspaceId + ":" + scope.userId + ":" + scope.projectId + ":" + kind;
@@ -27,7 +28,7 @@ export function readResearchHandoff(scope: Scope): ResearchCreationDraft | null 
 export function clearResearchHandoff(scope: Scope) { try { sessionStorage.removeItem(key(scope, "pending")); } catch { /* In-memory choice remains usable. */ } }
 export function readProjectInput(scope: Scope): ProjectInputDraft | null {
   const value = load(scope, "composer") as { draft?: ProjectInputDraft } | null, draft = value?.draft;
-  return draft && typeof draft.input === "string" && draft.input.length <= 4000 && Array.isArray(draft.references) && draft.references.length <= 8 && Array.isArray(draft.materialIds) && draft.materialIds.length <= 8 && typeof draft.skillId === "string" && typeof draft.modelId === "string" ? draft : null;
+  return draft && typeof draft.input === "string" && draft.input.length <= 4000 && Array.isArray(draft.references) && draft.references.length <= 8 && Array.isArray(draft.materialIds) && draft.materialIds.length <= 8 && typeof draft.skillId === "string" && (draft.skillIds === undefined || projectSkillVersionIdsSchema.safeParse(draft.skillIds).success) && typeof draft.modelId === "string" ? draft : null;
 }
 export function writeProjectInput(scope: Scope, draft: ProjectInputDraft) {
   try { if (!draft.input.trim() && !draft.references.length && !draft.materialIds.length && !draft.skillId && !draft.modelId) sessionStorage.removeItem(key(scope, "composer"));

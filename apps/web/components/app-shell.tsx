@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, Minus, X } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState } from "react";
@@ -12,7 +12,6 @@ import {
   type SidebarInteractionLock,
 } from "./sidebar-state";
 import { SidebarFoundation } from "./sidebar-foundation";
-import { GlobalSearch } from "./global-search";
 import type { ProjectListView } from "@/server/sidebar/view-model";
 import "./app-shell.css";
 
@@ -56,7 +55,7 @@ export function AppShell({ userName, workspaceName, isSystemAdmin, initialPinned
   const accountRef = useRef<HTMLDetailsElement>(null);
   const lockCounts = useRef<Record<SidebarInteractionLock, number>>({ MENU: 0, SEARCH: 0, DIALOG: 0 });
   const visualState = sidebarVisualState(
-    hoverCapable ? machine : { ...machine, pinned: false, pointerInside: false },
+    hoverCapable ? { ...machine, pointerInside: false } : { ...machine, pinned: false, pointerInside: false },
     hoverCapable,
   );
 
@@ -167,7 +166,7 @@ export function AppShell({ userName, workspaceName, isSystemAdmin, initialPinned
   return <SidebarInteractionContext.Provider value={setInteractionLock}>
     {!pathname.startsWith("/settings") && !pathname.startsWith("/admin") ? <span hidden className="apple-workspace-marker" /> : null}
     <a className="xsj-skip" href="#main-content">跳到主要内容</a>
-    <AppTopbar visualState={visualState} menu={menu} setMenu={setMenu} toggleRail={toggleRail} fullscreen={fullscreen} setNotice={setNotice} onSearchOpenChange={(open) => setInteractionLock("SEARCH", open)} />
+    <AppHelpMenu hoverCapable={hoverCapable} visualState={visualState} menu={menu} setMenu={setMenu} toggleRail={toggleRail} fullscreen={fullscreen} setNotice={setNotice} />
     <SidebarFoundation
       visualState={visualState}
       hoverCapable={hoverCapable}
@@ -186,37 +185,29 @@ export function AppShell({ userName, workspaceName, isSystemAdmin, initialPinned
       workspaceName={workspaceName}
       isSystemAdmin={isSystemAdmin}
       accountRef={accountRef}
+      onOpenHelp={() => setMenu(menu ? null : "帮助")}
+      helpExpanded={Boolean(menu)}
     />
     {visualState === "TEMP_EXPANDED" && !hoverCapable ? <button className="xsj-sidebar-backdrop" type="button" aria-label="关闭侧栏" onClick={() => dispatch({ type: "CLOSE_TOUCH" })} /> : null}
     {notice ? <div className="xsj-browser-notice" role="status">{notice}<button aria-label="关闭提示" onClick={() => setNotice("")}><X /></button></div> : null}
   </SidebarInteractionContext.Provider>;
 }
 
-function AppTopbar({ visualState, menu, setMenu, toggleRail, fullscreen, setNotice, onSearchOpenChange }: {
+function AppHelpMenu({ hoverCapable, visualState, menu, setMenu, toggleRail, fullscreen, setNotice }: {
+  hoverCapable: boolean;
   visualState: "COLLAPSED" | "TEMP_EXPANDED" | "PINNED_EXPANDED";
   menu: string | null;
   setMenu: (value: string | null) => void;
   toggleRail: () => void;
   fullscreen: () => Promise<void>;
   setNotice: (value: string) => void;
-  onSearchOpenChange: (open: boolean) => void;
 }) {
-  const expanded = visualState !== "COLLAPSED";
-  return <header className="xsj-app-topbar" data-shell-part="topbar">
-    <div className="app-topbar-traffic" aria-hidden="true"><i /><i /><i /></div>
-    <Link href="/home" className="app-topbar-name"><img src="/brand/xin-world-mark-dark.svg" alt="" width={24} height={24} />鑫世界工作台</Link>
-    <div className="app-topbar-search"><GlobalSearch onOpenChange={onSearchOpenChange} /></div>
-    <nav aria-label="工作台菜单">{["文件", "编辑", "视图", "窗口", "帮助"].map((label) => <button key={label} type="button" aria-expanded={menu === label} onClick={() => setMenu(menu === label ? null : label)}>{label}</button>)}</nav>
-    <div className="app-topbar-window-controls">
-      <button type="button" aria-label={expanded ? "收起侧栏" : "展开侧栏"} title="切换侧栏" onClick={toggleRail}><Minus /></button>
-      <button type="button" aria-label="切换全屏" onClick={() => void fullscreen()}><Maximize2 /></button>
-      <button type="button" aria-label="关闭浮层" title="关闭浮层" onClick={() => { setMenu(null); setNotice(""); }}><X /></button>
-    </div>
-    {menu ? <><button className="app-topbar-menu-backdrop" aria-label="关闭菜单" onClick={() => setMenu(null)} /><section className="app-topbar-menu" aria-label={menu}>
-      {menu === "文件" ? <><Link href="/dashboard">开始工作</Link><Link href="/projects">打开已有项目</Link><Link href="/library">打开资料</Link></>
-        : menu === "编辑" ? <><button onClick={() => { document.getElementById("workbench-idea")?.focus(); setMenu(null); }}>编辑创作描述</button><span>选中文本后，可使用系统复制与粘贴快捷键。</span></>
+  const expanded = hoverCapable ? visualState === "PINNED_EXPANDED" : visualState !== "COLLAPSED";
+  return <div className="app-shell-help">
+    {menu ? <><button className="app-topbar-menu-backdrop" aria-label="关闭菜单" onClick={() => setMenu(null)} /><section id="app-shell-help-menu" className="app-topbar-menu" aria-label={menu}>
+      {menu === "编辑" ? <><button onClick={() => { document.getElementById("workbench-idea")?.focus(); setMenu(null); }}>编辑创作描述</button><span>选中文本后，可使用系统复制与粘贴快捷键。</span></>
           : menu === "视图" || menu === "窗口" ? <><button onClick={() => { toggleRail(); setMenu(null); }}>{expanded ? "收起侧栏" : "展开侧栏"}</button><button onClick={() => { void fullscreen(); setMenu(null); }}>切换全屏</button><button onClick={() => { window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); setMenu(null); }}>回到顶部</button></>
-            : <><strong>鑫世界工作台</strong><span>输入任务开始工作，或从资料与研究中寻找方向。</span><Link href="/settings">设置与服务</Link></>}
+            : <><strong>鑫世界工作台</strong><span>输入任务开始工作，或从资料与研究中寻找方向。</span><button onClick={() => { toggleRail(); setMenu(null); }}>{expanded ? "收起侧栏" : "展开侧栏"}</button><button onClick={() => { void fullscreen(); setMenu(null); }}>切换全屏</button><Link href="/settings">设置与服务</Link><button onClick={() => { setMenu(null); setNotice(""); }}>关闭提示</button></>}
     </section></> : null}
-  </header>;
+  </div>;
 }

@@ -1,0 +1,130 @@
+name: Workbench verification
+on:
+  pull_request:
+  push:
+    branches: ["integration/**", "delivery/**"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      ENVIRONMENT_ID: LOCAL_TEST
+      DATABASE_URL: postgresql://content_center_test:content_center_test@127.0.0.1:55433/content_center_test?schema=public
+      REDIS_URL: redis://127.0.0.1:6380
+      APP_URL: http://127.0.0.1:3001
+      AUTH_SECRET: CI_TEST_ONLY_NOT_A_RUNTIME_CREDENTIAL_20261010
+      EXTERNAL_CALLS_DISABLED: "true"
+      MOCK_MODE: "true"
+      SYSTEM_MANAGED_PROVIDERS: "false"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Startup and browser boundary tests
+        run: node --experimental-vm-modules --test scripts/check-client-boundaries.test.mjs scripts/fusion-config.test.mjs scripts/local-profile.test.mjs scripts/local-web.test.mjs scripts/release-profile.test.mjs
+      - name: Unit tests with explicit offline fixtures
+        run: pnpm exec vitest run packages/core/src apps/web/tests/creation-policy.test.ts apps/web/tests/creation-fact-safety.test.ts apps/web/tests/release-readiness.test.ts apps/web/tests/source-processing-state.test.ts packages/integrations/src/feishu/client.test.ts packages/integrations/src/feishu/docx.test.ts --no-file-parallelism
+      - run: pnpm build
+      - name: Verify production artifact
+        run: node scripts/verify-build-artifact.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: build-evidence-${{ matrix.os }}
+          path: |
+            output/architecture-upgrade-20261005/releases/*/receipt.json
+            output/architecture-upgrade-20261005/releases/*/build.log
+          if-no-files-found: warn
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: content_center_test
+          POSTGRES_USER: content_center_test
+          POSTGRES_PASSWORD: content_center_test
+        ports: ["55433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U content_center_test -d content_center_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ["6380:6379"]
+    env:
+      ENVIRONMENT_ID: LOCAL_TEST
+      DATABASE_URL: postgresql://content_center_test:content_center_test@127.0.0.1:55433/content_center_test?schema=public
+      REDIS_URL: redis://127.0.0.1:6380
+      APP_URL: http://127.0.0.1:3001
+      AUTH_SECRET: CI_TEST_ONLY_NOT_A_RUNTIME_CREDENTIAL_20261010
+      INTEGRATION_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      EXTERNAL_CALLS_DISABLED: "true"
+      SYSTEM_MANAGED_PROVIDERS: "false"
+      MOCK_MODE: "true"
+      STORAGE_DRIVER: S3_COMPATIBLE
+      S3_ENDPOINT: http://127.0.0.1:9002
+      S3_REGION: us-east-1
+      S3_BUCKET: content-center-test
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_FORCE_PATH_STYLE: "true"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare isolated storage from pinned official source or approved image
+        env:
+          TEST_S3_IMAGE: ${{ vars.TEST_S3_IMAGE }}
+        run: |
+          if [ -z "$TEST_S3_IMAGE" ]; then
+            docker build --progress=plain -f config/testing/minio-source.Dockerfile -t xsj-audit-minio:source-9e49d5e config/testing
+            TEST_S3_IMAGE=xsj-audit-minio:source-9e49d5e
+          elif [[ ! "$TEST_S3_IMAGE" =~ @sha256:[a-f0-9]{64}$ ]]; then
+            echo "TEST_STORAGE_IMAGE_DIGEST_REQUIRED: an override must use an approved registry image with a fixed sha256 digest"
+            exit 1
+          fi
+          docker run -d --name test-storage --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /data:rw,mode=0777 --tmpfs /tmp:rw,mode=0777 -p 127.0.0.1:9002:9000 -e HOME=/tmp -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin "$TEST_S3_IMAGE" server /data
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:9002/minio/health/live; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Create disposable test schema (never production)
+        run: pnpm --filter @content-center/db exec prisma db push --schema prisma/schema.prisma --skip-generate
+      - name: Media tooling
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Full existing automation
+        run: pnpm exec vitest run apps/web/tests apps/worker/src packages --no-file-parallelism --maxWorkers=1 --reporter=json --outputFile=output/ci-tests.json
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Existing browser tests (test environment only)
+        run: pnpm --filter @content-center/web exec playwright test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: integration-results
+          path: output/ci-tests.json
+          if-no-files-found: warn

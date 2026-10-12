@@ -9,4 +9,5 @@ export type ArtifactSummaryView = {
 
 export type ArtifactView = ArtifactSummaryView & {
   content: string;
+  locked?: boolean;
 };

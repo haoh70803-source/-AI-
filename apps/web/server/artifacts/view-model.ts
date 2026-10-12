@@ -11,7 +11,7 @@ type ArtifactViewRow = {
   type: "TEXT";
   title: string;
   updatedAt: Date;
-  draftBranch: { version: number; workingBody: string };
+  draftBranch: { version: number; workingBody: string; confirmedRevisionId?: string | null };
 };
 
 function excerpt(value: string) {
@@ -24,5 +24,5 @@ export function artifactSummaryView(row: ArtifactViewRow): ArtifactSummaryView {
 }
 
 export function artifactView(row: ArtifactViewRow): ArtifactView {
-  return { ...artifactSummaryView(row), content: row.draftBranch.workingBody };
+  return { ...artifactSummaryView(row), content: row.draftBranch.workingBody, locked: Boolean(row.draftBranch.confirmedRevisionId) };
 }

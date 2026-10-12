@@ -39,7 +39,7 @@ export type DraftBranchDTO = {
 };
 
 export class DraftServiceError extends Error {
-  constructor(readonly code: "PROJECT_NOT_FOUND" | "DRAFT_NOT_FOUND" | "DRAFT_FORBIDDEN" | "DRAFT_INVALID" | "DRAFT_VERSION_CONFLICT" | "DRAFT_PRIMARY_CONFLICT" | "DRAFT_PRIMARY_DELETE_FORBIDDEN" | "DRAFT_EMPTY") {
+  constructor(readonly code: "PROJECT_NOT_FOUND" | "DRAFT_NOT_FOUND" | "DRAFT_FORBIDDEN" | "DRAFT_INVALID" | "DRAFT_VERSION_CONFLICT" | "DRAFT_PRIMARY_CONFLICT" | "DRAFT_PRIMARY_DELETE_FORBIDDEN" | "DRAFT_EMPTY" | "DRAFT_LOCKED") {
     const messages: Record<typeof code, string> = {
       PROJECT_NOT_FOUND: "项目不存在。",
       DRAFT_NOT_FOUND: "稿件不存在。",
@@ -49,6 +49,7 @@ export class DraftServiceError extends Error {
       DRAFT_PRIMARY_CONFLICT: "当前主稿已经变化，请刷新后重试。",
       DRAFT_PRIMARY_DELETE_FORBIDDEN: "这是当前主稿，请先选择其他稿件作为主稿。",
       DRAFT_EMPTY: "稿件还没有可用内容。",
+      DRAFT_LOCKED: "成果已锁定，请先解锁。",
     };
     super(messages[code]);
     this.name = "DraftServiceError";
@@ -110,6 +111,9 @@ async function ensurePrimaryBranch(input: { workspaceId: string; userId: string;
   const project = await projectForUser(input);
   if (project.primaryDraftBranchId && (project.primaryDraftBranch?.currentRevisionId || !project.motherContent)) return project;
   await db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`draft-init:${input.workspaceId}:${input.projectId}`}))`;
+    const member = await tx.workspaceMember.findFirst({ where: { workspaceId: input.workspaceId, userId: input.userId, disabledAt: null, workspace: { disabledAt: null }, user: { disabledAt: null } } });
+    if (!member) throw new DraftServiceError("PROJECT_NOT_FOUND");
     const current = await tx.contentProject.findUnique({ where: { id: project.id }, select: { primaryDraftBranchId: true, primaryDraftBranch: { select: { id: true, currentRevisionId: true, version: true } }, motherContent: true } });
     if (!current) throw new DraftServiceError("PROJECT_NOT_FOUND");
     let branch = current.primaryDraftBranch;
@@ -146,6 +150,7 @@ async function writeRevision(tx: Prisma.TransactionClient, input: {
     const legacyContent = input.branch.id === input.primaryDraftBranchId ? await tx.motherContent.findUnique({ where: { projectId: input.projectId } }) : null;
     return { branch: branchDTO(branch, input.primaryDraftBranchId), revision: revisionDTO(input.branch.currentRevision!, input.branch.currentRevisionId), legacyContent, checkpointCreated: false };
   }
+  if (input.branch.confirmedRevisionId && await tx.artifact.findUnique({ where: { draftBranchId: input.branch.id }, select: { id: true } })) throw new DraftServiceError("DRAFT_LOCKED");
   if (!content.title && !content.body.trim() && content.outline.length === 0) {
     const branch = await tx.draftBranch.findUniqueOrThrow({ where: { id: input.branch.id }, include: branchInclude });
     return { branch: branchDTO(branch, input.primaryDraftBranchId), revision: null, legacyContent: null, checkpointCreated: false };
@@ -278,6 +283,7 @@ export async function saveDraftWorkingState(input: { workspaceId: string; userId
       const legacyContent = branch.id === project.primaryDraftBranchId ? await tx.motherContent.findUnique({ where: { projectId: input.projectId } }) : null;
       return { branch: branchDTO(branch, project.primaryDraftBranchId), legacyContent, workingChanged: false };
     }
+    if (branch.confirmedRevisionId && await tx.artifact.findUnique({ where: { draftBranchId: branch.id }, select: { id: true } })) throw new DraftServiceError("DRAFT_LOCKED");
     const changed = await tx.draftBranch.updateMany({ where: { id: branch.id, version: input.expectedVersion }, data: { workingTitle: working.title, workingBody: working.body, workingOutline: json(working.outline), workingOrigin: "HUMAN", workingOriginNote: null, workingGenerateRunId: null, confirmedRevisionId: null, version: { increment: 1 }, updatedById: input.userId } });
     if (changed.count !== 1) throw new DraftServiceError("DRAFT_VERSION_CONFLICT");
     let legacyContent = null;

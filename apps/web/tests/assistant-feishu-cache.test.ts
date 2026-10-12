@@ -1,14 +1,19 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ member: vi.fn(), search: vi.fn(), connection: vi.fn(), chunks: vi.fn(), get: vi.fn(), set: vi.fn() }));
+const mocks = vi.hoisted(() => ({ member: vi.fn(), search: vi.fn(), connection: vi.fn(), chunks: vi.fn(), get: vi.fn(), set: vi.fn(), allowed: vi.fn() }));
 vi.mock("server-only", () => ({}));
-vi.mock("@content-center/integrations", () => ({ feishuMember: mocks.member, searchFeishu: mocks.search }));
+vi.mock("@content-center/integrations", () => ({ feishuMember: mocks.member, searchFeishu: mocks.search, feishuExternalCallsAllowed: mocks.allowed, feishuReadableKinds: () => ['docx', 'wiki'], feishuDocumentScope: () => ({ kind: { in: ['docx', 'wiki'] } }) }));
 vi.mock("@content-center/db", () => ({ db: { feishuConnection: { findUnique: mocks.connection }, feishuChunk: { findMany: mocks.chunks } } }));
 vi.mock("../server/assistant/cache", () => ({ assistantCache: { get: mocks.get, set: mocks.set }, assistantCacheKey: (namespace: string, scope: unknown) => namespace + JSON.stringify(scope) }));
 import { feishuContextItems } from "../server/feishu/service";
 const actor = { workspaceId: "w", userId: "u" };
 const match = { id: "chunk", sourceItemId: "source", title: "客户沟通", url: "https://example.feishu.cn/docx/test", category: "KNOWLEDGE", text: "新正文", version: "2", checkedAt: new Date().toISOString() };
-beforeEach(() => { mocks.member.mockResolvedValue({}); mocks.connection.mockResolvedValue({ id: "connection", enabled: true, revision: 1 }); mocks.get.mockResolvedValue(null); mocks.set.mockResolvedValue(undefined); mocks.search.mockResolvedValue([match]); mocks.chunks.mockResolvedValue([]); });
+beforeEach(() => { mocks.allowed.mockReturnValue(true); mocks.member.mockResolvedValue({}); mocks.connection.mockResolvedValue({ id: "connection", enabled: true, revision: 1 }); mocks.get.mockResolvedValue(null); mocks.set.mockResolvedValue(undefined); mocks.search.mockResolvedValue([match]); mocks.chunks.mockResolvedValue([]); });
 afterEach(() => vi.resetAllMocks());
+it("does not reuse cached external documents when the environment forbids authorization checks", async () => {
+  mocks.allowed.mockReturnValue(false); mocks.get.mockResolvedValue('["chunk"]');
+  expect(await feishuContextItems(actor, "客户沟通")).toEqual([]);
+  expect(mocks.get).not.toHaveBeenCalled(); expect(mocks.search).not.toHaveBeenCalled();
+});
 it("stores only scoped chunk identifiers, not document text or completed creative replies", async () => {
   expect((await feishuContextItems(actor, "客户沟通"))[0]?.ownership).toBe("EXTERNAL");
   expect(mocks.set).toHaveBeenCalledWith(expect.stringContaining('"userId":"u"'), '["chunk"]', 30);

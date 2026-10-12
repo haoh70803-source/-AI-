@@ -27,3 +27,10 @@ output/
 .next-release-check/
 
 .next-account-review/
+
+.next-local-test/
+
+# Private QA snapshots may include user data or credentials.
+qa-reports/
+.dsh-audit-css.py
+**/.next-production/

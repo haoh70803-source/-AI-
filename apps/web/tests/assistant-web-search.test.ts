@@ -4,6 +4,8 @@ import { parseDeepSeekSearch, searchQueryForMessage, parseSearchResponse } from 
 describe("assistant web search", () => {
  it("only searches explicit or current-information requests and respects opt-out", () => {
    expect(searchQueryForMessage("写一段桌面整理建议")).toBeNull();
+   expect(searchQueryForMessage("解释联网搜索的原理")).toBeNull();
+   expect(searchQueryForMessage("什么是知识库检索")).toBeNull();
    expect(searchQueryForMessage("不要联网，改写已有文字")).toBeNull();
    expect(searchQueryForMessage("搜索教育部最新通知")).toBe("搜索教育部最新通知");
    expect(searchQueryForMessage("搜索这个 API Key sk-secret")).toBeNull();

@@ -13,7 +13,8 @@ import {
   type ExternalAccount,
   type ExternalContent,
 } from "@content-center/providers";
-import { addProjectSource, createProject } from "../project-service";
+import { createProject } from "../project-service";
+import { researchMember } from "../research/access";
 import { createSourceAndJob } from "../source-service";
 import type { ExternalAccountInput, ExternalContentInput } from "./schemas";
 
@@ -445,6 +446,7 @@ export async function createProjectFromExternalContent(input: { workspaceId: str
 }
 
 export async function startIdeaProject(input: { workspaceId: string; userId: string; ideaId: string; collectMissing: boolean }) {
+  await researchMember(input, true);
   const idea = await getIdea(input.workspaceId, input.ideaId);
   if (!idea) throw new DiscoveryServiceError("DISCOVERY_NOT_FOUND", "选题不存在。");
   if (idea.project) return { projectId: idea.project.id, existing: true as const };
@@ -477,13 +479,16 @@ export async function startIdeaProject(input: { workspaceId: string; userId: str
       sourceIds.push(collected.sourceItem.id);
     }
   }
-  const project = await createProject({ workspaceId: input.workspaceId, userId: input.userId, title: idea.title, description: idea.description ?? undefined, sourceItemId: sourceIds[0] });
-  for (const sourceItemId of sourceIds.slice(1)) await addProjectSource({ workspaceId: input.workspaceId, userId: input.userId, projectId: project.id, sourceItemId, role: "REFERENCE" });
-  await db.$transaction([
-    db.contentIdea.update({ where: { id: idea.id }, data: { projectId: project.id, status: "IN_PROGRESS" } }),
-    db.auditLog.create({ data: { workspaceId: input.workspaceId, userId: input.userId, action: "discovery.idea_started", resourceType: "content_idea", resourceId: idea.id, metadata: { projectId: project.id, sourceCount: sourceIds.length } } }),
-  ]);
-  return { projectId: project.id, existing: false as const };
+  return db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`idea-start:${input.workspaceId}:${idea.id}`}))`;
+    const current = await tx.contentIdea.findFirst({ where: { id: idea.id, workspaceId: input.workspaceId }, select: { projectId: true, title: true, description: true } });
+    if (!current) throw new DiscoveryServiceError("DISCOVERY_NOT_FOUND", "选题不存在。");
+    if (current.projectId) return { projectId: current.projectId, existing: true as const };
+    const project = await createProject({ workspaceId: input.workspaceId, userId: input.userId, title: current.title, description: current.description ?? undefined, sourceItemIds: [...new Set(sourceIds)] }, tx);
+    await tx.contentIdea.update({ where: { id: idea.id }, data: { projectId: project.id, status: "IN_PROGRESS" } });
+    await tx.auditLog.create({ data: { workspaceId: input.workspaceId, userId: input.userId, action: "discovery.idea_started", resourceType: "content_idea", resourceId: idea.id, metadata: { projectId: project.id, sourceCount: [...new Set(sourceIds)].length } } });
+    return { projectId: project.id, existing: false as const };
+  });
 }
 
 export function clearDiscoveryCacheForTests() {

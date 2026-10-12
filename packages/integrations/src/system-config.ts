@@ -21,6 +21,7 @@ const systemDoubaoConfigSchema = z.object({
   authMode: z.enum(DOUBAO_AUTH_MODES),
   baseUrl: z.string().trim().url().max(2_000),
   resourceId: z.string().trim().min(1).max(500),
+  flashResourceId: optionalText(500),
   apiKey: optionalText(10_000),
   appId: optionalText(500),
   accessToken: optionalText(10_000),

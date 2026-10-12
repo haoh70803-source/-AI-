@@ -37,6 +37,18 @@ export function getCreatorProfile(workspaceId: string, userId: string) {
   return db.creatorProfile.findUnique({ where: { workspaceId_userId: { workspaceId, userId } } });
 }
 
+/** Explicit writing preferences update only these fields, preserving profile facts. */
+export async function saveCreatorWritingPreference(input: { workspaceId: string; userId: string; persona: string; style: string }) {
+  return db.$transaction(async tx => {
+    const member = await tx.workspaceMember.findFirst({ where: { workspaceId: input.workspaceId, userId: input.userId, disabledAt: null, role: { not: "VIEWER" }, workspace: { disabledAt: null }, user: { disabledAt: null } } });
+    if (!member) throw new Error("WRITING_PREFERENCE_FORBIDDEN");
+    const data = { displayName: input.persona.trim(), preferredStyle: input.style.trim() };
+    const profile = await tx.creatorProfile.upsert({ where: { workspaceId_userId: { workspaceId: input.workspaceId, userId: input.userId } }, update: data, create: { workspaceId: input.workspaceId, userId: input.userId, ...data, coreTopics: [], personalViews: [], brandTerms: [], forbiddenTerms: [], hookPreferences: [], structurePreferences: [], ctaPreferences: [], examplePhrases: [] } });
+    await tx.auditLog.create({ data: { workspaceId: input.workspaceId, userId: input.userId, action: "creator_profile.writing_preference_saved", resourceType: "creator_profile", resourceId: profile.id, metadata: { changedFields: ["displayName", "preferredStyle"] } } });
+    return { persona: profile.displayName, style: profile.preferredStyle };
+  });
+}
+
 export async function saveCreatorProfile(input: { workspaceId: string; userId: string; data: CreatorProfileInput }) {
   const data = normalizeCreatorProfileInput(input.data);
   return db.$transaction(async (tx) => {

@@ -8,6 +8,7 @@ import { getSelectedResearch } from "./read-model";
 import { researchBlocksSchema } from "./contracts";
 import { researchMember, ResearchError, type ResearchActor } from "./access";
 import { getLegacyResearchResult } from "./legacy";
+import { createProject, ProjectServiceError } from "../project-service";
 
 const shareableKinds = new Set<ResearchSource["kind"]>(["MATERIAL", "BENCHMARK_ACCOUNT", "BENCHMARK_WORK", "BENCHMARK_COMMENT", "TREND"]);
 async function createSharedArtifact(tx: Prisma.TransactionClient, actor: ResearchActor, project: { id: string; primaryDraftBranchId: string | null }, source: { kind: "run" | "study"; id: string; title: string; blocks: ResearchBlock[]; userSelected?: boolean }) {
@@ -46,33 +47,36 @@ export function buildResearchSharePreview(title: string, blocks: ResearchBlock[]
   return { body: lines.join("\n"), sourceCount: used.size, blockCount: selected.length, omitted: blocks.length - selected.length };
 }
 
-export async function shareResearchRunToProject(actor: ResearchActor, runId: string, projectId: string, selection?: ResearchSelection) {
+export async function shareResearchRunToProject(actor: ResearchActor, runId: string, target: string | { title: string; clientRequestId: string }, selection?: ResearchSelection, expectedVersion?: number) {
   await researchMember(actor, true);
   const chosen = selection ? await getSelectedResearch(actor, "run", runId, selection) : null;
-  if (!projectId || projectId.length > 200) throw new ResearchError("INVALID_PROJECT", "请选择有效项目。", 400);
-  if (!await db.researchRun.findFirst({ where: { id: runId, workspaceId: actor.workspaceId, requestedById: actor.userId, status: "COMPLETED", ...(selection ? {} : { savedAt: { not: null } }), session: { workspaceId: actor.workspaceId, createdById: actor.userId } }, select: { id: true } })) throw new ResearchError("RESULT_NOT_FOUND", "只能共享自己已保存的完成研究成果。", 404);
-  if (!await db.contentProject.findFirst({ where: { id: projectId, workspaceId: actor.workspaceId, status: { not: "ARCHIVED" } }, select: { id: true } })) throw new ResearchError("PROJECT_NOT_FOUND", "项目不存在或已归档。", 404);
-  const existing = await db.artifact.findFirst({ where: { workspaceId: actor.workspaceId, projectId, sourceResearchRunId: runId }, select: { id: true } });
-  if (existing) return { ...await getArtifactForUser({ ...actor, projectId, artifactId: existing.id }), alreadyShared: true };
-  let artifactId: string;
-  try {
-    artifactId = await db.$transaction(async tx => {
-      const project = await tx.contentProject.findFirst({ where: { id: projectId, workspaceId: actor.workspaceId, status: { not: "ARCHIVED" }, workspace: { disabledAt: null, members: { some: { userId: actor.userId, disabledAt: null, user: { disabledAt: null }, role: { not: "VIEWER" } } } } }, select: { id: true, primaryDraftBranchId: true } });
-      if (!project) throw new ResearchError("PROJECT_NOT_FOUND", "项目不存在或没有写入权限。", 404);
+  if (typeof target === "string" ? !target || target.length > 200 : !target.title.trim() || target.title.trim().length > 200 || !/^[0-9a-f-]{36}$/i.test(target.clientRequestId)) throw new ResearchError("INVALID_PROJECT", "请选择有效项目或填写项目名称。", 400);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+    const shared = await db.$transaction(async tx => {
+      // Recheck membership inside the same transaction as creation and sharing.
+      const member = await tx.workspaceMember.findFirst({ where: { ...actor, disabledAt: null, workspace: { disabledAt: null }, user: { disabledAt: null }, role: { not: "VIEWER" } }, select: { id: true } });
+      if (!member) throw new ResearchError("FORBIDDEN", "当前账号没有执行此操作的权限。", 403);
       const run = await tx.researchRun.findFirst({ where: { id: runId, workspaceId: actor.workspaceId, requestedById: actor.userId, status: "COMPLETED", ...(selection ? {} : { savedAt: { not: null } }), session: { workspaceId: actor.workspaceId, createdById: actor.userId } }, select: { id: true, resultTitle: true, question: true, blocks: true, version: true } });
       if (!run) throw new ResearchError("RESULT_NOT_FOUND", "只能共享自己已保存的完成研究成果。", 404);
-      if (chosen && run.version !== chosen.version) throw new ResearchError("RESULT_CHANGED", "研究版本已变化，请重新审阅。", 409);
+      if (chosen && run.version !== chosen.version || expectedVersion !== undefined && run.version !== expectedVersion) throw new ResearchError("RESULT_CHANGED", "研究版本已变化，请重新审阅。", 409);
+      const created = typeof target === "string" ? null : await createProject({ ...actor, title: target.title, clientRequestId: target.clientRequestId, description: `从研究报告 ${runId} 开始的持续工作项目` }, tx);
+      const project = await tx.contentProject.findFirst({ where: { id: created?.id ?? target as string, workspaceId: actor.workspaceId, status: { not: "ARCHIVED" } }, select: { id: true, title: true, primaryDraftBranchId: true } });
+      if (!project) throw new ResearchError("PROJECT_NOT_FOUND", "项目不存在或已归档。", 404);
+      const existing = await tx.artifact.findFirst({ where: { workspaceId: actor.workspaceId, projectId: project.id, sourceResearchRunId: runId }, select: { id: true } });
+      if (existing) return { artifactId: existing.id, projectId: project.id, projectTitle: project.title, alreadyShared: true };
       if (selection) await tx.researchRun.updateMany({ where: { id: run.id, savedAt: null }, data: { savedAt: new Date() } });
-      return createSharedArtifact(tx, actor, project, { kind: "run", id: run.id, title: run.resultTitle || run.question, blocks: chosen?.blocks ?? researchBlocksSchema.parse(run.blocks), userSelected: Boolean(chosen) });
+      const artifactId = await createSharedArtifact(tx, actor, project, { kind: "run", id: run.id, title: run.resultTitle || run.question, blocks: chosen?.blocks ?? researchBlocksSchema.parse(run.blocks), userSelected: Boolean(chosen) });
+      return { artifactId, projectId: project.id, projectTitle: project.title, alreadyShared: false };
     }, { isolationLevel: "Serializable" });
-  } catch (error) {
-    if (error && typeof error === "object" && "code" in error && (error.code === "P2002" || error.code === "P2034")) {
-      const duplicate = await db.artifact.findFirst({ where: { workspaceId: actor.workspaceId, projectId, sourceResearchRunId: runId }, select: { id: true } });
-      if (duplicate) return { ...await getArtifactForUser({ ...actor, projectId, artifactId: duplicate.id }), alreadyShared: true };
+      return { ...await getArtifactForUser({ ...actor, projectId: shared.projectId, artifactId: shared.artifactId }), ...shared };
+    } catch (error) {
+      if (error instanceof ProjectServiceError) throw new ResearchError(error.code, "创建请求已变化，请重新选择项目或重新创建。", 409);
+      if (attempt < 2 && error && typeof error === "object" && "code" in error && (error.code === "P2002" || error.code === "P2034")) continue;
+      throw error;
     }
-    throw error;
   }
-  return { ...await getArtifactForUser({ ...actor, projectId, artifactId }), alreadyShared: false };
+  throw new ResearchError("SHARE_CONFLICT", "项目正在更新，请重试。", 409);
 }
 
 export async function shareLegacyStudyToProject(actor: ResearchActor, studyId: string, projectId: string, selection?: ResearchSelection) {

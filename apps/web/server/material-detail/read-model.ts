@@ -159,10 +159,11 @@ export async function getSourceWorkspaceModel(input: { workspaceId: string; user
       try { url = (await storage.getSignedUrl(asset.storageKey, 300, { assetScope: { workspaceId: input.workspaceId, sourceItemId: source.id, assetId: asset.id } })).data.url; }
       catch { /* Preserve the material detail even when this preview is unavailable. */ }
     }
-    return { id: asset.id, assetType: asset.assetType, status: asset.status, url, mimeType: asset.mimeType, sizeBytes: asset.sizeBytes?.toString() ?? null };
+    return { id: asset.id, assetType: asset.assetType, status: asset.status, sourceProvider: asset.sourceProvider, url, mimeType: asset.mimeType, sizeBytes: asset.sizeBytes?.toString() ?? null };
   }));
   const primaryType = source.sourceType === "TEXT" ? "DOCUMENT" : source.sourceType;
-  const primaryAsset = assets.find((asset) => asset.assetType === primaryType && asset.status === "STORED") ?? assets.find((asset) => asset.assetType === primaryType);
+  const primaryAsset = assets.find((asset) => asset.assetType === primaryType && asset.status === "STORED" && asset.sourceProvider !== "FFMPEG_VIDEO_PREVIEW") ?? assets.find((asset) => asset.assetType === primaryType && asset.sourceProvider !== "FFMPEG_VIDEO_PREVIEW");
+  const previewAsset = source.sourceType === "VIDEO" ? assets.find(asset => asset.assetType === "VIDEO" && asset.status === "STORED" && asset.sourceProvider === "FFMPEG_VIDEO_PREVIEW" && source.assets.some(original => original.id === asset.id && original.metadata && typeof original.metadata === "object" && !Array.isArray(original.metadata) && original.metadata.derivedFromAssetId === primaryAsset?.id)) ?? primaryAsset : primaryAsset;
   const capabilities = sourceCapabilities(source.sourceType, primaryAsset?.mimeType);
   const visual = capabilities.includes("understand") || capabilities.includes("understandPages");
   const savedUnderstanding = visual ? await db.sourceUnderstanding.findFirst({ where: { sourceItemId: source.id, workspaceId: input.workspaceId } }) : null;
@@ -179,12 +180,12 @@ export async function getSourceWorkspaceModel(input: { workspaceId: string; user
   const processing = getSourceProcessingState({ sourceStatus: source.status, transcriptionStatus: configured ? "CONFIGURED" : "UNCONFIGURED", hasTranscript: mediaSource ? Boolean(source.transcript?.fullText.trim()) : Boolean(text), assets: source.assets, jobs: materialJobs });
   const transcriptionState = materialTranscriptionViewState(source.sourceType, processing.transcription);
   const sourcePlatformLabel = originalUrl ? platformLabels[source.sourcePlatform] || "外部来源" : source.assets.length ? "本地上传" : "手动录入";
-  const playable = Boolean(primaryAsset?.url && mediaSource);
+  const playable = Boolean(previewAsset?.url && mediaSource);
 
   return {
     detail: {
       header: { id: source.id, title, author, publishTime: external?.publishedAt ?? null, typeLabel: typeLabels[source.sourceType], platformLabel: sourcePlatformLabel, durationLabel: durationLabel(durationMs), sourceLabel: sourcePlatformLabel, originalUrl },
-      preview: { type: source.sourceType, playable, mediaUrl: primaryAsset?.url ?? null, coverUrl: cover, documentUrl: primaryAsset?.url ?? null, rawTextPreview: text?.slice(0, 800) ?? null, unavailableReason: source.status === "FAILED" ? "视频或原件下载失败，尚不能播放。请查看资料信息中的失败原因并重试。" : mediaSource && !primaryAsset?.url && !busy ? (text ? "已保存文字内容，但没有保存原音视频文件。可阅读文字，或打开原始来源查看。" : "这条资料尚未保存原音视频文件，当前没有可播放的内容。") : playable || cover || text ? null : "原始资料暂时没有可用的预览资源。" },
+      preview: { type: source.sourceType, playable, mediaUrl: previewAsset?.url ?? null, coverUrl: cover, documentUrl: primaryAsset?.url ?? null, rawTextPreview: text?.slice(0, 800) ?? null, unavailableReason: source.status === "FAILED" ? "视频或原件下载失败，尚不能播放。请查看资料信息中的失败原因并重试。" : mediaSource && !primaryAsset?.url && !busy ? (text ? "已保存文字内容，但没有保存原音视频文件。可阅读文字，或打开原始来源查看。" : "这条资料尚未保存原音视频文件，当前没有可播放的内容。") : playable || cover || text ? null : "原始资料暂时没有可用的预览资源。" },
       transcript: { state: transcriptionState, text, segments: segments(source.transcript?.segments) },
       tags: source.tags.map(({ tag }) => ({ id: tag.id, name: tag.name })),
     },

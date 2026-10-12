@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// This suite injects a synthetic project store; connector authorization has its own boundary tests.
+vi.mock("../server/knowledge/feishu-context", () => ({ feishuContextItems: async () => [] }));
 const executeStructuredAIRun = vi.hoisted(() => vi.fn());
 vi.mock("../server/ai/ai-run-service", () => ({ executeStructuredAIRun }));
 
@@ -20,7 +22,7 @@ const baseItem: ContextItem = { objectType: "PROJECT", objectId: "project-1", ve
 describe("AI control foundation", () => {
   it("blocks explicitly unrelated requests without a model call and keeps project content tasks in scope", () => {
     const gate = new ScopeGate();
-    expect(gate.evaluate({ userId: "u", workspaceId: "w", taskType: "GENERAL_QUERY", userInput: "帮我做数学作业" })).toMatchObject({ decision: "OUT_OF_SCOPE", reason: "EXPLICITLY_UNRELATED" });
+    expect(gate.evaluate({ userId: "u", workspaceId: "w", taskType: "DRAFT_SUGGESTION", userInput: "帮我做数学作业" })).toMatchObject({ decision: "OUT_OF_SCOPE", reason: "EXPLICITLY_UNRELATED" });
     expect(gate.evaluate({ userId: "u", workspaceId: "w", projectId: "p", taskType: "TOPIC_CANDIDATES", userInput: "换一组选题" })).toMatchObject({ decision: "ALLOW_WITH_CONTEXT" });
   });
 
@@ -120,7 +122,7 @@ describe("AI control foundation", () => {
     executeStructuredAIRun.mockClear();
     const contextBuilder = { build: vi.fn() };
     const service = new AIControlService({ contextBuilder: contextBuilder as unknown as ContextBuilderV2, roleLoader: async () => "OWNER" });
-    await expect(service.execute({ workspaceId: "workspace", userId: "user", projectId: "project-1", taskType: "GENERAL_QUERY", requestedAction: "GENERATE_SUGGESTIONS", userInput: "帮我做数学作业", action: "REWRITE_SELECTION", operation: "GENERAL_QUERY", promptVersion: 1, inputSummary: () => ({}), generate: async () => ({ providerMode: "MOCK", data: { value: {}, text: "{}", model: "unused" } }) })).rejects.toMatchObject({ code: "OUT_OF_SCOPE" } satisfies Partial<AIControlError>);
+    await expect(service.execute({ workspaceId: "workspace", userId: "user", projectId: "project-1", taskType: "DRAFT_SUGGESTION", requestedAction: "GENERATE_SUGGESTIONS", userInput: "帮我做数学作业", action: "REWRITE_SELECTION", operation: "GENERAL_QUERY", promptVersion: 1, inputSummary: () => ({}), generate: async () => ({ providerMode: "MOCK", data: { value: {}, text: "{}", model: "unused" } }) })).rejects.toMatchObject({ code: "OUT_OF_SCOPE" } satisfies Partial<AIControlError>);
     expect(contextBuilder.build).not.toHaveBeenCalled();
     expect(executeStructuredAIRun).not.toHaveBeenCalled();
   });

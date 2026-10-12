@@ -1,9 +1,13 @@
 import { markDispatchPending } from "./job-recovery";
+import { ensureVideoPreview } from "./video-preview";
 import { randomUUID } from "node:crypto";
 import { reserveExperienceUsage } from "./experience-limits";
-import { createReadStream } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { join, resolve } from "node:path";
 import { ASR_AUDIO_SIGNED_URL_TTL_SECONDS, MAX_ASR_BINARY_DATA_BYTES, readAsrAudioRetentionHours } from "@content-center/config";
 import { db, type Prisma } from "@content-center/db";
 import {
@@ -41,8 +45,9 @@ import {
 } from "@content-center/providers";
 import { UnrecoverableError, type Job } from "bullmq";
 import { enqueueTranscribeSource, type TranscribeSourcePayload } from "./transcription-queue";
+import { audioChunks, checkpointKey, readChunkCheckpoint, transcribeChunks, TranscriptionChunkError, TRANSCRIPTION_CHUNK_MS } from "./transcription-chunks";
 
-type ProgressStage = "QUEUED" | "EXTRACTING_AUDIO" | "UPLOADING_AUDIO" | "TRANSCRIBING" | "PERSISTING" | "SUCCEEDED";
+type ProgressStage = "QUEUED" | "PREPARING_VIDEO_PREVIEW" | "EXTRACTING_AUDIO" | "UPLOADING_AUDIO" | "TRANSCRIBING" | "PERSISTING" | "SUCCEEDED";
 type TranscriptionRecord = Prisma.IngestJobGetPayload<{ include: { sourceItem: { include: { assets: true } } } }>;
 type TranscriptionProviderName = "LOCAL_FUNASR" | "DOUBAO_ASR";
 type WorkspaceTranscriptionConfig = {
@@ -135,6 +140,7 @@ function object(value: Prisma.JsonValue | null): Record<string, unknown> {
 }
 
 function publicFailure(error: unknown) {
+  if (error instanceof TranscriptionChunkError) return { code: error.code, message: error.message, retryable: false };
   if (error instanceof DoubaoError || error instanceof LocalAsrError) {
     return { code: error.code, message: error.code.endsWith("TIMEOUT") ? "转录超时，已停止等待。请重试，已保存的原文件会保留。" : error.message, retryable: error.retryable && !error.code.endsWith("TIMEOUT") };
   }
@@ -145,10 +151,10 @@ function publicFailure(error: unknown) {
   return { code: "INTERNAL_ERROR", message: "视频转写失败。", retryable: false };
 }
 
-async function updateProgress(jobId: string, amount: number, stage: ProgressStage, plan?: TranscriptionPlan) {
+async function updateProgress(jobId: string, amount: number, stage: ProgressStage, plan?: TranscriptionPlan, metadata: Record<string, unknown> = {}) {
   await db.ingestJob.update({
     where: { id: jobId },
-    data: { progress: amount, metadata: json({ progressStage: stage, ...(plan ? { transcriptionPlan: plan } : {}) }) },
+    data: { progress: amount, metadata: json({ ...metadata, progressStage: stage, ...(plan ? { transcriptionPlan: plan } : {}) }) },
   });
 }
 
@@ -235,7 +241,7 @@ export async function resolveWorkspaceTranscriptionPlan(workspaceId: string, pol
   if (policy === "CLOUD_FIRST") {
     try {
       const doubao = await loadDoubaoConfig(workspaceId);
-      return { provider: "DOUBAO_ASR", qualityMode: config.qualityMode, fallbackToDoubao: false, fallbackToLocal: true, protocol: doubao.protocol };
+      return { provider: "DOUBAO_ASR", qualityMode: config.qualityMode, fallbackToDoubao: false, fallbackToLocal: true, protocol: doubao.flashResourceId ? "FLASH" : doubao.protocol };
     } catch (cloudError) {
       try {
         return { ...await resolveLocalPlan(config), fallbackToDoubao: false, fallbackUsed: true };
@@ -270,6 +276,7 @@ export async function requestSourceTranscription(input: {
   const mediaAsset = await db.sourceAsset.findFirst({
     where: {
       id: mediaAssetId,
+      ...(!mediaAssetId ? { sourceProvider: { not: "FFMPEG_VIDEO_PREVIEW" } } : {}),
       workspaceId: input.workspaceId,
       sourceItemId: input.sourceItemId,
       assetType: { in: ["VIDEO", "AUDIO"] },
@@ -292,6 +299,11 @@ export async function requestSourceTranscription(input: {
       orderBy: { createdAt: "desc" },
     });
     if (active) throw new TranscriptionAlreadyRunningError(active.id);
+    const previous = await tx.ingestJob.findFirst({
+      where: { workspaceId: input.workspaceId, sourceItemId: input.sourceItemId, jobType: "TRANSCRIBE", status: "FAILED" },
+      orderBy: { createdAt: "desc" }, select: { metadata: true },
+    });
+    const prior = object(previous?.metadata ?? null);
     await reserveExperienceUsage({ workspaceId: input.workspaceId, userId: input.requestedById, operation: "TRANSCRIBE" });
     const created = await tx.ingestJob.create({
       data: {
@@ -304,7 +316,10 @@ export async function requestSourceTranscription(input: {
         status: "QUEUED",
         progress: 0,
         maxAttempts: 3,
-        metadata: json({ progressStage: "QUEUED", mediaAssetId: mediaAsset.id, transcriptionPlan: plan }),
+        metadata: json({ progressStage: "QUEUED", mediaAssetId: mediaAsset.id, transcriptionPlan: plan,
+          ...(prior.mediaAssetId === mediaAsset.id && prior.chunkCheckpoint ? { chunkCheckpoint: prior.chunkCheckpoint } : {}),
+          ...(prior.mediaAssetId === mediaAsset.id && prior.chunkCheckpoints ? { chunkCheckpoints: prior.chunkCheckpoints } : {}),
+        }),
       },
     });
     await tx.auditLog.create({
@@ -345,6 +360,7 @@ async function recordUsage(input: {
   metadata?: Record<string, unknown>;
   protocol?: DoubaoProtocol;
   errorCode?: string;
+  partId?: string;
 }) {
   await db.apiUsage.create({
     data: {
@@ -352,7 +368,7 @@ async function recordUsage(input: {
       userId: input.record.requestedById,
       provider: input.provider,
       operation: transcriptionUsageOperation(input.provider, input.protocol ?? (input.metadata?.protocol as DoubaoProtocol | undefined)),
-      requestId: `${input.record.id}:${input.attempt}:${input.provider}`,
+      requestId: `${input.record.id}:${input.attempt}:${input.provider}${input.partId ? `:${input.partId}` : ""}`,
       providerRequestId: input.providerRequestId,
       success: input.success,
       units: 1,
@@ -380,7 +396,7 @@ export async function cleanupExpiredAsrAudio(now = Date.now(), workspaceId?: str
   const retentionHours = readAsrAudioRetentionHours();
   const cutoff = new Date(now - retentionHours * 60 * 60 * 1_000);
   const assets = await db.sourceAsset.findMany({
-    where: { ...(workspaceId ? { workspaceId } : {}), assetType: "AUDIO", storageKey: { not: null }, OR: [{ sourceProvider: "FFMPEG", sourceItem: { sourceType: "VIDEO" }, status: "STORED", storedAt: { lt: cutoff } }, { sourceProvider: "VOICE_INPUT", sourceItem: { status: "ARCHIVED" }, status: { in: ["STORED", "DOWNLOADING"] }, storedAt: { lt: new Date(now - 10 * 60_000) } }] },
+    where: { ...(workspaceId ? { workspaceId } : {}), assetType: "AUDIO", storageKey: { not: null }, sourceItem: { ingestJobs: { none: { jobType: "TRANSCRIBE", status: { in: ["QUEUED", "RUNNING"] } } } }, OR: [{ sourceProvider: "FFMPEG", sourceItem: { sourceType: "VIDEO" }, status: "STORED", storedAt: { lt: cutoff } }, { sourceProvider: "VOICE_INPUT", sourceItem: { status: "ARCHIVED" }, status: { in: ["STORED", "DOWNLOADING"] }, storedAt: { lt: new Date(now - 10 * 60_000) } }] },
     select: { id: true, workspaceId: true, sourceItemId: true, storageKey: true, metadata: true, sourceProvider: true },
     take: 100,
   });
@@ -427,12 +443,38 @@ function durationFromMetadata(metadata: Prisma.JsonValue | null) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+export function offlineTranscriptionTimeout(protocol: DoubaoProtocol | "LOCAL", durationMs: number) {
+  if (protocol === "STREAMING_2_0") return Math.min(60 * 60_000, Math.max(120_000, durationMs * 1.5 + 60_000));
+  if (protocol === "FLASH") return Math.min(20 * 60_000, Math.max(120_000, durationMs / 4 + 60_000));
+  return Math.min(60 * 60_000, Math.max(8 * 60_000, durationMs * 1.5 + 60_000));
+}
+
+async function downloadAudioForChunks(signedUrl: string, expectedBytes: number) {
+  const directory = await mkdtemp(join(tmpdir(), "content-center-asr-chunks-"));
+  const path = join(directory, "audio");
+  const cleanup = () => rm(directory, { recursive: true, force: true });
+  try {
+    const response = await fetch(signedUrl, { signal: AbortSignal.timeout(120_000) });
+    if (!response.ok || !response.body) throw new MediaProcessorError("ASR_AUDIO_EXTRACTION_FAILED", "无法读取已保存音频。");
+    let bytes = 0;
+    const bounded = new Transform({ transform(chunk: Buffer, _encoding, callback) {
+      bytes += chunk.length;
+      callback(bytes > expectedBytes + 1024 ? new MediaProcessorError("ASR_AUDIO_TOO_LARGE", "已保存音频大小与记录不一致。") : null, chunk);
+    } });
+    await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream), bounded, createWriteStream(path), { signal: AbortSignal.timeout(120_000) });
+    if (!bytes || bytes !== expectedBytes) throw new MediaProcessorError("ASR_AUDIO_EXTRACTION_FAILED", "已保存音频大小与记录不一致。");
+    return { path, cleanup };
+  } catch (error) { await cleanup(); throw error; }
+}
+
 async function transcribeWithProvider(input: {
   plan: TranscriptionPlan;
   providerInput: TranscriptionInput;
   record: TranscriptionRecord;
   attempt: number;
   durationMs: number;
+  partId?: string;
+  signal?: AbortSignal;
 }): Promise<{
   transcript: { language?: string; durationMs?: number; fullText: string; segments: Array<{ startMs: number; endMs: number; text: string }> };
   provider: TranscriptionProviderName;
@@ -448,7 +490,7 @@ async function transcribeWithProvider(input: {
       model: input.plan.model,
       device: input.plan.device,
       language: "auto",
-    }, { timeoutMs: 8 * 60_000 }));
+    }, { timeoutMs: offlineTranscriptionTimeout("LOCAL", input.durationMs), signal: input.signal }));
     const started = Date.now();
     try {
       const transcript = (await provider.transcribe(input.providerInput)).data;
@@ -461,6 +503,7 @@ async function transcribeWithProvider(input: {
         processingMs: typeof metadata.processingMs === "number" ? metadata.processingMs : Date.now() - started,
         success: true,
         metadata,
+        partId: input.partId,
       });
       return { transcript, provider: "LOCAL_FUNASR", metadata };
     } catch (error) {
@@ -472,6 +515,7 @@ async function transcribeWithProvider(input: {
         processingMs: Date.now() - started,
         success: false,
         errorCode: error instanceof LocalAsrError ? error.code : "LOCAL_ASR_TRANSCRIPTION_FAILED",
+        partId: input.partId,
       });
       if (!input.plan.fallbackToDoubao) throw error;
       const fallback = await transcribeWithProvider({
@@ -482,13 +526,16 @@ async function transcribeWithProvider(input: {
     }
   }
 
-  const config = await loadDoubaoConfig(input.record.workspaceId);
-  const protocol = config.protocol;
+  const configured = await loadDoubaoConfig(input.record.workspaceId);
+  const protocol = input.plan.protocol ?? configured.protocol;
+  const config = protocol === "FLASH" && configured.protocol !== "FLASH" && configured.flashResourceId
+    ? { ...configured, resourceId: String(configured.flashResourceId) } : configured;
+  const timeoutMs = offlineTranscriptionTimeout(protocol, input.durationMs);
   const provider = protocol === "STREAMING_2_0"
-    ? new DoubaoStreamingTranscriptionProvider(new DoubaoStreamingClient(config))
+    ? new DoubaoStreamingTranscriptionProvider(new DoubaoStreamingClient(config, { overallTimeoutMs: timeoutMs, signal: input.signal }))
     : protocol === "RECORDING_FILE_2_0"
-    ? new DoubaoRecordingFileTranscriptionProvider(new DoubaoRecordingFileClient(config, { overallTimeoutMs: 8 * 60_000 }))
-    : new DoubaoTranscriptionProvider(new DoubaoClient(config));
+    ? new DoubaoRecordingFileTranscriptionProvider(new DoubaoRecordingFileClient(config, { overallTimeoutMs: timeoutMs, signal: input.signal }))
+    : new DoubaoTranscriptionProvider(new DoubaoClient(config, { timeoutMs, signal: input.signal }));
   const started = Date.now();
   try {
     const transcript = (await provider.transcribe(input.providerInput)).data;
@@ -503,8 +550,9 @@ async function transcribeWithProvider(input: {
       protocol,
       providerRequestId: metadata.providerRequestId,
       metadata: { ...metadata, protocol },
+      partId: input.partId,
     });
-    return { transcript, provider: "DOUBAO_ASR", metadata };
+    return { transcript, provider: "DOUBAO_ASR", metadata: { ...metadata, protocol } };
   } catch (error) {
     const errorMetadata = doubaoErrorMetadata(error);
     const metadata = provider.getLastRequestMetadata();
@@ -519,6 +567,7 @@ async function transcribeWithProvider(input: {
       providerRequestId: metadata.providerRequestId,
       metadata: { ...metadata, ...errorMetadata },
       errorCode: error instanceof DoubaoError ? error.code : "DOUBAO_INVALID_RESPONSE",
+      partId: input.partId,
     });
     throw error;
   }
@@ -534,7 +583,7 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
       requestedById: job.data.requestedById,
       jobType: "TRANSCRIBE",
     },
-    include: { sourceItem: { include: { assets: true } } },
+    include: { sourceItem: { include: { assets: { where: { workspaceId: job.data.workspaceId } } } } },
   });
   if (!record) throw new UnrecoverableError("Transcription job scope mismatch");
   if (record.sourceItem.workspaceId !== record.workspaceId) throw new UnrecoverableError("Transcription parent workspace mismatch");
@@ -548,6 +597,11 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
   const attempt = Math.max(job.attemptsMade + 1, record.attempt + 1);
   let plan: TranscriptionPlan = { provider: "DOUBAO_ASR", qualityMode: "BALANCED", fallbackToDoubao: false };
   let cleanup: (() => Promise<void>) | undefined;
+  let jobMetadata = { ...object(record.metadata) };
+  const controller = new AbortController();
+  const executionSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(7 * 60 * 60_000)]);
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let claimed = false;
   try {
     plan = await resolveWorkspaceTranscriptionPlan(record.workspaceId);
     await db.$transaction([
@@ -562,7 +616,7 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
           finishedAt: null,
           errorCode: null,
           errorMessage: null,
-          metadata: json({ progressStage: "EXTRACTING_AUDIO", mediaAssetId, transcriptionPlan: plan }),
+          metadata: json({ ...jobMetadata, progressStage: "EXTRACTING_AUDIO", mediaAssetId, transcriptionPlan: plan }),
         },
       }),
       db.auditLog.create({
@@ -576,6 +630,17 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
         },
       }),
     ]);
+    claimed = true;
+    let heartbeatRunning = false;
+    heartbeat = setInterval(() => {
+      if (heartbeatRunning) return;
+      heartbeatRunning = true;
+      void db.ingestJob.updateMany({ where: { id: record.id, workspaceId: record.workspaceId, status: "RUNNING", attempt }, data: { updatedAt: new Date() } })
+        .then(updated => { if (!updated.count) controller.abort(); })
+        .catch(() => console.warn("TRANSCRIPTION_HEARTBEAT_FAILED"))
+        .finally(() => { heartbeatRunning = false; });
+    }, 60_000);
+    heartbeat.unref();
     const media = record.sourceItem.assets.find((asset) =>
       asset.id === mediaAssetId && (asset.assetType === "VIDEO" || asset.assetType === "AUDIO") && asset.status === "STORED" && asset.storageKey,
     );
@@ -584,9 +649,14 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
     const storage = getStorageProvider();
     const processor = new FFmpegMediaProcessor();
     const mediaIsAudio = media.assetType === "AUDIO";
+    const originalVideoId = !mediaIsAudio ? media.id : typeof object(media.metadata).derivedFromAssetId === "string" ? object(media.metadata).derivedFromAssetId as string : undefined;
+    if (originalVideoId) {
+      await updateProgress(record.id, 20, "PREPARING_VIDEO_PREVIEW", plan, jobMetadata);
+      await ensureVideoPreview({ workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, assetId: originalVideoId });
+    }
     if (!mediaIsAudio || !durationFromMetadata(media.metadata)) await processor.checkAvailability();
     let audio = mediaIsAudio ? media : record.sourceItem.assets
-      .filter((asset) => asset.assetType === "AUDIO" && asset.status === "STORED" && asset.storageKey)
+      .filter((asset) => asset.assetType === "AUDIO" && asset.status === "STORED" && asset.storageKey && object(asset.metadata).derivedFromAssetId === media.id)
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0];
     let extractedPath: string | undefined;
     let durationMs = audio ? durationFromMetadata(audio.metadata) : undefined;
@@ -621,7 +691,7 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
         cleanup = extracted.cleanup;
         extractedPath = extracted.path;
         durationMs = extracted.durationMs;
-        await updateProgress(record.id, 35, "UPLOADING_AUDIO", plan);
+        await updateProgress(record.id, 35, "UPLOADING_AUDIO", plan, jobMetadata);
         const storageKey = buildSourceAssetObjectKey({
           workspaceId: record.workspaceId,
           sourceItemId: record.sourceItemId,
@@ -676,11 +746,51 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
     const transcriptionDurationMs = durationMs;
     const sizeBytes = Number(audio.sizeBytes);
     const runProvider = async () => {
-      if (plan.provider === "DOUBAO_ASR" && plan.protocol === "FLASH") assertFlashAudioLimits({ sizeBytes, durationMs: transcriptionDurationMs });
+      executionSignal.throwIfAborted();
       const signedUrl = (await storage.getSignedUrl(transcriptionAudio.storageKey!, ASR_AUDIO_SIGNED_URL_TTL_SECONDS, {
         assetScope: { workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, assetId: transcriptionAudio.id },
         purpose: plan.provider === "DOUBAO_ASR" ? "doubao" : "browser",
       })).data.url;
+      const chunked = plan.protocol !== "RECORDING_FILE_2_0" && (
+        plan.protocol === "FLASH" ? sizeBytes > MAX_ASR_BINARY_DATA_BYTES || transcriptionDurationMs > 2 * 60 * 60_000
+          : transcriptionDurationMs > TRANSCRIPTION_CHUNK_MS);
+      if (chunked) {
+        const chunks = audioChunks(transcriptionDurationMs);
+        const config = plan.provider === "DOUBAO_ASR" ? await loadDoubaoConfig(record.workspaceId) : undefined;
+        const key = checkpointKey({ workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, audioAssetId: transcriptionAudio.id,
+          durationMs: transcriptionDurationMs, sizeBytes, route: [plan.provider, plan.protocol, plan.model, plan.device, plan.endpoint, config?.baseUrl,
+            plan.protocol === "FLASH" && config?.protocol !== "FLASH" ? config?.flashResourceId : config?.resourceId, config?.boostingTableId, config?.boostingTableName] });
+        const checkpoints = jobMetadata.chunkCheckpoints && typeof jobMetadata.chunkCheckpoints === "object" && !Array.isArray(jobMetadata.chunkCheckpoints)
+          ? jobMetadata.chunkCheckpoints as Record<string, unknown> : {};
+        const checkpoint = readChunkCheckpoint(checkpoints[key] ?? jobMetadata.chunkCheckpoint, key, chunks);
+        let localPath = extractedPath;
+        // Read the saved audio once; avoid loading a multi-hour file entirely into RAM.
+        if (!localPath && Object.keys(checkpoint.chunks).length < chunks.length) {
+          const downloaded = await downloadAudioForChunks(signedUrl, sizeBytes);
+          const previousCleanup = cleanup;
+          cleanup = async () => { try { await downloaded.cleanup(); } finally { await previousCleanup?.(); } };
+          localPath = downloaded.path;
+        }
+        const transcript = await transcribeChunks({ durationMs: transcriptionDurationMs, checkpoint, concurrency: plan.provider === "LOCAL_FUNASR" ? 1 : 2,
+          persist: async (value, progress) => {
+            jobMetadata = { ...jobMetadata, mediaAssetId, audioAssetId: transcriptionAudio.id, chunkCheckpoint: value,
+              chunkCheckpoints: { ...checkpoints, [key]: value }, chunkProgress: progress };
+            const updated = await db.ingestJob.updateMany({ where: { id: record.id, workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, status: "RUNNING", attempt },
+              data: { progress: 40 + Math.floor(45 * progress.completed / progress.total), metadata: json({ ...jobMetadata, progressStage: "TRANSCRIBING", transcriptionPlan: plan }) } });
+            if (!updated.count) throw new UnrecoverableError("Transcription execution was superseded or stopped");
+          },
+          recognize: async chunk => {
+            executionSignal.throwIfAborted();
+            const slice = await processor.extractAudio(localPath!, { limits: "NONE", localOnly: true, startMs: chunk.startMs, maxDurationMs: chunk.endMs - chunk.startMs });
+            try {
+              const providerInput = await localAudioInput({ signedUrl, extractedPath: slice.path });
+              return (await transcribeWithProvider({ plan, providerInput, record, attempt, durationMs: chunk.endMs - chunk.startMs, partId: `chunk-${chunk.index}-${randomUUID()}`, signal: executionSignal })).transcript;
+            } finally { await slice.cleanup(); }
+          },
+        });
+        return { transcript, provider: plan.provider, metadata: { protocol: plan.protocol, chunkCount: chunks.length, processingMs: Date.now() - startedAt.getTime() }, fallbackUsed: plan.fallbackUsed };
+      }
+      if (plan.provider === "DOUBAO_ASR" && plan.protocol === "FLASH") assertFlashAudioLimits({ sizeBytes, durationMs: transcriptionDurationMs });
       if (plan.protocol === "STREAMING_2_0" && !extractedPath && transcriptionAudio.sourceProvider !== "FFMPEG") {
         // Original audio uploads may use another codec/rate/bitrate. Preserve
         // the saved original and stream the same controlled encoding as video.
@@ -692,24 +802,37 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
       const providerInput = plan.provider === "LOCAL_FUNASR" || plan.protocol === "STREAMING_2_0"
         ? await localAudioInput({ signedUrl, extractedPath })
         : await doubaoAudioInput({ signedUrl, sizeBytes, extractedPath });
-      await updateProgress(record.id, 65, "TRANSCRIBING", plan);
-      return transcribeWithProvider({ plan, providerInput, record, attempt, durationMs: transcriptionDurationMs });
+      await updateProgress(record.id, 65, "TRANSCRIBING", plan, jobMetadata);
+      return transcribeWithProvider({ plan, providerInput, record, attempt, durationMs: transcriptionDurationMs, signal: executionSignal });
     };
     let result: Awaited<ReturnType<typeof transcribeWithProvider>>;
-    try {
-      result = await runProvider();
-    } catch (cloudError) {
+    const runLocalFallback = async (cloudError: unknown) => {
+      // Keep completed cloud chunks; a whole-file provider fallback would redo them.
+      if (cloudError instanceof TranscriptionChunkError && cloudError.completed > 0) throw cloudError;
       if (plan.provider !== "DOUBAO_ASR" || !plan.fallbackToLocal) throw cloudError;
       try {
         const config = await loadWorkspaceTranscriptionConfig(record.workspaceId);
         plan = { ...await resolveLocalPlan(config), fallbackToDoubao: false, fallbackUsed: true };
-      } catch {
-        throw cloudError;
-      }
+      } catch { throw cloudError; }
+      return runProvider();
+    };
+    try {
       result = await runProvider();
+    } catch (cloudError) {
+      if (plan.provider === "DOUBAO_ASR" && plan.protocol === "FLASH" &&
+        (cloudError instanceof DoubaoError || cloudError instanceof TranscriptionChunkError) && cloudError.code === "DOUBAO_PERMISSION_DENIED") {
+        const configured = await loadDoubaoConfig(record.workspaceId);
+        if (configured.flashResourceId && configured.protocol !== "FLASH") {
+          plan = { ...plan, protocol: configured.protocol, fallbackUsed: true };
+          try { result = await runProvider(); }
+          catch (fallbackError) { result = await runLocalFallback(fallbackError); }
+        } else result = await runLocalFallback(cloudError);
+      } else {
+        result = await runLocalFallback(cloudError);
+      }
     }
 
-    await updateProgress(record.id, 90, "PERSISTING", plan);
+    await updateProgress(record.id, 90, "PERSISTING", plan, jobMetadata);
     const finishedAt = new Date();
     const transcriptMetadata = {
       method: result.provider === "LOCAL_FUNASR" ? "LOCAL" : "DOUBAO",
@@ -721,6 +844,8 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
       technical: result.metadata,
     };
     await db.$transaction(async (tx) => {
+      const current = await tx.ingestJob.findFirst({ where: { id: record.id, workspaceId: record.workspaceId, sourceItemId: record.sourceItemId, status: "RUNNING", attempt }, select: { id: true } });
+      if (!current) throw new UnrecoverableError("Transcription execution was superseded or stopped");
       await tx.transcript.upsert({
         where: { sourceItemId: record.sourceItemId },
         create: {
@@ -750,7 +875,7 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
           provider: result.provider,
           status: "SUCCEEDED",
           progress: 100,
-          metadata: json({ progressStage: "SUCCEEDED", mediaAssetId: media.id, audioAssetId: audio.id, transcriptionPlan: plan, transcriptMetadata }),
+          metadata: json({ ...jobMetadata, progressStage: "SUCCEEDED", mediaAssetId: media.id, audioAssetId: audio.id, transcriptionPlan: plan, transcriptMetadata }),
           finishedAt,
         },
       });
@@ -770,8 +895,8 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
     const failure = publicFailure(error);
     const willRetry = failure.retryable && attempt < record.maxAttempts;
     await db.$transaction([
-      db.ingestJob.update({
-        where: { id: record.id },
+      db.ingestJob.updateMany({
+        where: { id: record.id, workspaceId: record.workspaceId, status: { in: ["QUEUED", "RUNNING"] }, attempt: claimed ? attempt : record.attempt },
         data: {
           status: willRetry ? "QUEUED" : "FAILED",
           progress: 0,
@@ -794,6 +919,8 @@ export async function processTranscribeSourceJob(job: Job<TranscribeSourcePayloa
     if (!failure.retryable) throw new UnrecoverableError(`${failure.code}: ${failure.message}`);
     throw error;
   } finally {
+    if (heartbeat) clearInterval(heartbeat);
+    controller.abort();
     await cleanup?.();
   }
 }

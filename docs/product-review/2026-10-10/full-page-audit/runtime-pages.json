@@ -1,0 +1,536 @@
+{
+  "checkedAt": "2026-10-10T03:47:49.111Z",
+  "scope": "Guest browser, no credentials, no business mutations",
+  "records": [
+    {
+      "route": "/admin",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/admin/system",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/admin/usage",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/admin/users",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/calendar",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/content-review",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/dashboard",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/discovery/ideas",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/discovery",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/discovery/trends",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/home",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/ip-context",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/knowledge/facts",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/knowledge",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/library/feishu",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/library/methods",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/library",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/projects/methods",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/projects/new",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/projects",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/benchmarks",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/focus",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/new",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/results",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/sources",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/teardown",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/trends",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/research/works",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/about",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/account",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/creator-profile",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/diagnostics",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/integrations",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/members",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/storage",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/settings/workspace",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/short-video",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/short-video/tasks",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/topics",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/account/invite",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/account/invite",
+      "finalPath": "/account/invite",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n接受公司邀请\n\n已有账号请先登录，再从邮件重新打开邀请；新成员可以在此设置本人密码。\n\n正在检查链接…\n\n登录邮箱\n姓名\n新密码\n确认密码\n\n密码须为 8–128 位，无需强制混合大小写、数字或符号。\n\n确认提交\n返回登录",
+      "screenshot": "screenshots/current-account-invite.png",
+      "routeRendered": true,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/account/recovery",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/account/recovery",
+      "finalPath": "/account/recovery",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n找回密码\n\n恢复不会重新启用停用账号，也不会恢复公司成员资格。新密码由你本人设置。\n\n邮件服务尚未配置，暂不能发送恢复邮件。请联系平台管理员安排受控恢复。\n\n登录邮箱\n申请恢复邮件\n返回登录",
+      "screenshot": "screenshots/current-account-recovery.png",
+      "routeRendered": true,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/account/reset",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/account/reset",
+      "finalPath": "/account/reset",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n设置新密码\n\n提交后所有登录设备将退出，请使用新密码重新登录。\n\n正在检查链接…\n\n新密码\n确认密码\n\n密码须为 8–128 位，无需强制混合大小写、数字或符号。\n\n确认提交\n返回登录",
+      "screenshot": "screenshots/current-account-reset.png",
+      "routeRendered": true,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/account/verify",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/account/verify",
+      "finalPath": "/account/verify",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n验证邮箱\n\n链接缺失或已失效。请从邮件重新打开，或申请新的链接。\n\n请先登录收到验证邮件的账号。此操作只验证邮箱，不修改权限。\n\n确认提交\n返回登录",
+      "screenshot": "screenshots/current-account-verify.png",
+      "routeRendered": true,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/login",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n登录\n忘记密码或无法登录？",
+      "screenshot": "screenshots/current-login.png",
+      "routeRendered": true,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/register",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/onboarding",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/platform/accounts",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/platform/spaces",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/workspace-unavailable",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    },
+    {
+      "route": "/__runtime",
+      "status": 200,
+      "finalUrl": "http://127.0.0.1:3022/login?reason=reauth",
+      "finalPath": "/login",
+      "text": "CONTENT OS / 鑫世界\n\nAI WORKBENCH · 1.0\n\n从灵感到作品，\n让创作有迹可循。\n\n连接项目、资料、研究与 Skill，\n在同一个工作台完成内容创作。\n\nBLACK TITANIUM / 内容工作台\n\nWELCOME BACK\n\n进入你的工作台\n\n使用当前环境的账号登录。\n\n账号或邮箱\n密码\n\n请重新登录以继续。登录状态可能已过期或失效。\n\n登录\n忘记密码或无法登录？",
+      "screenshot": null,
+      "routeRendered": false,
+      "validated": "guest navigation only; no login submission or business control exercised"
+    }
+  ]
+}

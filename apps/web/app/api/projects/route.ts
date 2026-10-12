@@ -4,6 +4,7 @@ import { apiError, getApiWorkspaceContext } from "@/server/api-access";
 import { createProject, listProjects } from "@/server/project-service";
 import { projectApiError } from "@/server/project-api";
 import { creationModelSchema } from "@/server/creation/models";
+import { projectSkillVersionIdsSchema } from "@/lib/contracts/creation";
 
 const createSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -14,7 +15,7 @@ const createSchema = z.object({
   sourceItemIds: z.array(z.string().trim().min(1)).max(8).optional(),
   clientRequestId: z.uuid().optional(),
   folderId: z.string().trim().min(1).optional(),
-  methodVersionIds: z.array(z.string().min(1).max(200)).max(1).optional(),
+  methodVersionIds: projectSkillVersionIdsSchema.optional(),
   modelSelection: creationModelSchema.nullable().optional(),
 });
 

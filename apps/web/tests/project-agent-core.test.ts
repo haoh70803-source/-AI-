@@ -85,10 +85,10 @@ describe("project agent core", () => {
     expect(retried.status).toBe("COMPLETED"); expect(prompts.at(-1)).toContain("ZEBRA123"); expect(prompts.at(-1)).not.toContain("ignored");
   });
 
-  it("enforces a real byte budget and supports an explicit unconfigured Knowledge adapter", async () => {
+  it("enforces a real byte budget and rejects an unavailable Knowledge entry", async () => {
     const result = fitContext([{ objectType: "SOURCE_ITEM", objectId: "large", version: null, ownership: "EXTERNAL", provenance: "test", whySelected: "test", content: "中文🙂".repeat(10000), truncated: false }], 2000);
     expect(Buffer.byteLength(JSON.stringify(result.items))).toBeLessThanOrEqual(2000); expect(result.items[0]?.truncated).toBe(true);
-    expect(await knowledgeContextAdapter.retrieve({ ...actor(), knowledgeBaseId: "future", query: "test" })).toEqual({ status: "unsupported", items: [] });
+    await expect(knowledgeContextAdapter.retrieve({ ...actor(), knowledgeBaseId: "future", query: "test" })).rejects.toMatchObject({ code: "PERMISSION_DENIED" });
   });
 
   it("keeps the newest turns after 80 messages and records a bounded older-history digest", async () => {

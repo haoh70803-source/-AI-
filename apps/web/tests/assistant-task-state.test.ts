@@ -1,6 +1,30 @@
 import { expect, it } from "vitest";
-import { advanceTaskState, readTaskState, taskDialogue, taskNeedsKnowledge } from "../server/assistant/task-state";
+import { advanceTaskState, readTaskState, resolveAssistantIntent, taskDialogue, taskNeedsKnowledge } from "../server/assistant/task-state";
 const first = { id: "first", content: "帮我把一件日常小事写成朋友圈文案。50字以内简短版，约120字叙事版，再给配图建议。根据真实场景和感受，不编故事。" };
+it.each(["你好", "什么是知识库？", "解释递归", "写一段生日祝福", "短一点", "你可以检索飞书知识库吗？"])("answers without automatic retrieval: %s", content => {
+  const state = advanceTaskState(null, { id: "now", content });
+  expect(resolveAssistantIntent(state, content)).toEqual({ knowledgeRetrieval: false, webQuery: null, mediaUrl: null, directAnswer: true });
+});
+it("distinguishes library retrieval from web search and explicit source reading", () => {
+  const state = advanceTaskState(null, { id: "now", content: "搜索知识库中的品牌资料" });
+  expect(resolveAssistantIntent(state, state.anchor.content, { webQuery: state.anchor.content })).toMatchObject({ knowledgeRetrieval: true, webQuery: null, directAnswer: false });
+  expect(resolveAssistantIntent(state, "根据引用资料写一版", { hasExplicitContext: true })).toMatchObject({ knowledgeRetrieval: false, directAnswer: true });
+  expect(resolveAssistantIntent(state, "根据飞书知识库和引用资料写一版", { hasExplicitContext: true })).toMatchObject({ knowledgeRetrieval: true });
+  expect(resolveAssistantIntent(state, "联网搜索最新政策", { webQuery: "最新政策" })).toMatchObject({ knowledgeRetrieval: false, webQuery: "最新政策", directAnswer: false });
+  expect(resolveAssistantIntent(state, "搜索知识库并联网搜索最新政策", { webQuery: "最新政策" })).toMatchObject({ knowledgeRetrieval: true, webQuery: "最新政策" });
+});
+it("inherits retrieval only for a continuation, not edits or unrelated questions", () => {
+  const state = advanceTaskState(null, { id: "first", content: "根据飞书知识库写方案" });
+  expect(taskNeedsKnowledge(state, "继续写方案")).toBe(true);
+  expect(taskNeedsKnowledge(state, "润色一下")).toBe(false);
+  expect(taskNeedsKnowledge(state, "1加1等于几")).toBe(false);
+  expect(taskNeedsKnowledge(state, "不用知识库，直接回答")).toBe(false);
+});
+it("routes media before web search and respects cancellation", () => {
+  const state = advanceTaskState(null, first);
+  expect(resolveAssistantIntent(state, "转写这个作品", { mediaUrl: "https://example.com/video", webQuery: "作品" })).toMatchObject({ mediaUrl: "https://example.com/video", webQuery: null, knowledgeRetrieval: false });
+  expect(resolveAssistantIntent(state, "不要转写，只解释这个链接", { mediaUrl: "https://example.com/video" })).toMatchObject({ mediaUrl: null, directAnswer: true });
+});
 it("pins the original task when the user answers the clarifying question", () => {
   const state = advanceTaskState(advanceTaskState(null, first), { id: "second", content: "煮泡面发现鸡蛋没了，清汤寡水吃完，居然挺满足" });
   expect(state.anchor).toEqual(first); expect(state.updates[0]?.content).toContain("挺满足"); expect(taskNeedsKnowledge(state, "短一点")).toBe(false);
